@@ -655,6 +655,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 		                    // make db object
 	                		testData.put("device", getSelectedDeviceName());    
 		                    testData.put("sgv", record.bGValue);
+		                    testData.put("type", "sgv");
 		                    testData.put("direction", record.trend);
 		                    typeSaved = 0;
 		                    if (cgmSelected == DexcomG4Activity.MEDTRONIC_CGM && (oRecord instanceof MedtronicSensorRecord)){
@@ -667,12 +668,21 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 		                    }
 		                    log.info("Uploading a EGVRecord");
 		                    dexcomData.save(testData, WriteConcern.UNACKNOWLEDGED);
-	                	}else if (oRecord instanceof GlucometerRecord && glucomData != null){
+	                	}else if (oRecord instanceof GlucometerRecord && (glucomData != null || dexcomData != null)){
 	                		typeSaved = 2;
 	                		GlucometerRecord gdRecord = (GlucometerRecord) oRecord;
-	                		testData.put("gdValue", gdRecord.numGlucometerValue);
-	                		log.info("Uploading a GlucometerRecord");
-	                		glucomData.save(testData, WriteConcern.UNACKNOWLEDGED);
+	                		if (glucomData != null){//To be deprecated
+		                		testData.put("gdValue", gdRecord.numGlucometerValue);
+		                		log.info("Uploading a GlucometerRecord");
+		                		glucomData.save(testData, WriteConcern.UNACKNOWLEDGED);
+	                		}
+	                		if (dexcomData != null){
+	                			 testData.put("device", getSelectedDeviceName());
+	                             testData.put("type", "mbg");
+	                             testData.put("mbg", gdRecord.numGlucometerValue);
+	                             log.info("Uploading a Glucometer Record!");
+	 		                     dexcomData.save(testData, WriteConcern.UNACKNOWLEDGED);
+	                		}
 	                	}else if (oRecord instanceof MedtronicPumpRecord && deviceData != null){
 	                		typeSaved = 3;
 	                		MedtronicPumpRecord pumpRecord = (MedtronicPumpRecord) oRecord;

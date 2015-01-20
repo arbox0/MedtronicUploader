@@ -568,7 +568,7 @@ public class MedtronicReader {
 														readData.length);
 									}
 									sResponse
-									.append(processGlucometerDataMessage(readData))
+									.append(processGlucometerDataMessage(readData, true))
 									.append("\n");
 									if (lastGlucometerValue > 0) {
 										isCalibrating = true;
@@ -617,7 +617,7 @@ public class MedtronicReader {
 												.copyOfRange(readData, 0,
 														readData.length);
 									}
-									sResponse.append("Glucomenter Deteted!! \n");
+									sResponse.append("Glucomenter Deteted!! \n").append(processGlucometerDataMessage(readData, false));
 									sendMessageToUI("Glucometer Detected!!..Waiting 15 min. to retrieve calibration factor...", false);
 									log.debug("Glucometer Detected!!..Waiting 15 min. to retrieve calibration factor...");
 									if (mHandlerSensorCalibration != null && getCalibrationFromSensor != null){
@@ -625,6 +625,37 @@ public class MedtronicReader {
 										mHandlerSensorCalibration.postDelayed(getCalibrationFromSensor, MedtronicConstants.TIME_15_MIN_IN_MS + 120000);
 									}else
 										log.debug("glucometer handler or glucometer runnable is null");
+								}else{
+									if (lastGlucometerMessage == null
+											|| lastGlucometerMessage.length == 0) {
+										lastGlucometerMessage = Arrays
+												.copyOfRange(readData, 0,
+														readData.length);
+										lastGlucometerMessageDate = System
+												.currentTimeMillis();
+										SharedPreferences.Editor editor = settings
+												.edit();
+										editor.putString(
+												"lastGlucometerMessage",
+												HexDump.toHexString(lastGlucometerMessage));
+										
+										editor.commit();
+									} else {
+										boolean isEqual = Arrays
+												.equals(lastGlucometerMessage,
+														readData);
+										if (isEqual
+												&& (System.currentTimeMillis()
+														- lastGlucometerMessageDate < MedtronicConstants.TIME_15_MIN_IN_MS)) {
+											continue;
+										}
+										lastGlucometerMessageDate = System
+												.currentTimeMillis();
+										lastGlucometerMessage = Arrays
+												.copyOfRange(readData, 0,
+														readData.length);
+									}
+									sResponse.append("Glucomenter Deteted!! \n").append(processGlucometerDataMessage(readData, false));
 								}
 								break;
 							}
@@ -1620,7 +1651,7 @@ public class MedtronicReader {
 	 * @param readData
 	 * @return String, for debug or notification purposes
 	 */
-	public String processGlucometerDataMessage(byte[] readData) {
+	public String processGlucometerDataMessage(byte[] readData, boolean calibrate) {
 		int firstMeasureByte = firstByteAfterDeviceId(readData);
 		if (firstMeasureByte < 0)
 			return "Error, I can not identify the initial byte of the glucometer measure";
@@ -1651,30 +1682,33 @@ public class MedtronicReader {
 		lastGlucometerRecord.lastDate = d.getTime();
 		lastGlucometerDate = d.getTime();
 		calculateDate(lastGlucometerRecord, d, 0);
-		if (HexDump.unsignedByte(expectedSensorSortNumber) == HexDump
-				.unsignedByte((byte) 0xff)) {
-			expectedSensorSortNumberForCalibration[0] = (byte) 0x00;
-			expectedSensorSortNumberForCalibration[1] = (byte) 0x71;
-		} else {
-			synchronized (expectedSensorSortNumberLock) {
-				byte expectedAux = expectedSensorSortNumber;
-				if (HexDump
-						.unsignedByte((byte) (expectedSensorSortNumber & (byte) 0x01)) > 0)
-					expectedAux = (byte) (expectedSensorSortNumber & (byte) 0xFE);
-				expectedSensorSortNumberForCalibration[0] = calculateNextSensorSortNameFrom(
-						6, expectedAux);
-				expectedSensorSortNumberForCalibration[1] = calculateNextSensorSortNameFrom(
-						10, expectedAux);
+		if (calibrate){
+			if (HexDump.unsignedByte(expectedSensorSortNumber) == HexDump
+					.unsignedByte((byte) 0xff)) {
+				expectedSensorSortNumberForCalibration[0] = (byte) 0x00;
+				expectedSensorSortNumberForCalibration[1] = (byte) 0x71;
+			} else {
+				synchronized (expectedSensorSortNumberLock) {
+					byte expectedAux = expectedSensorSortNumber;
+					if (HexDump
+							.unsignedByte((byte) (expectedSensorSortNumber & (byte) 0x01)) > 0)
+						expectedAux = (byte) (expectedSensorSortNumber & (byte) 0xFE);
+					expectedSensorSortNumberForCalibration[0] = calculateNextSensorSortNameFrom(
+							6, expectedAux);
+					expectedSensorSortNumberForCalibration[1] = calculateNextSensorSortNameFrom(
+							10, expectedAux);
+				}
 			}
+			
+			SharedPreferences.Editor editor = settings.edit();
+			editor.putFloat("lastGlucometerValue", (float) num);
+			editor.putLong("glucometerLastDate", d.getTime());
+			editor.putString("expectedSensorSortNumberForCalibration0",
+					HexDump.toHexString(expectedSensorSortNumberForCalibration[0]));
+			editor.putString("expectedSensorSortNumberForCalibration1",
+					HexDump.toHexString(expectedSensorSortNumberForCalibration[1]));
+			editor.commit();
 		}
-		SharedPreferences.Editor editor = settings.edit();
-		editor.putFloat("lastGlucometerValue", (float) num);
-		editor.putLong("glucometerLastDate", d.getTime());
-		editor.putString("expectedSensorSortNumberForCalibration0",
-				HexDump.toHexString(expectedSensorSortNumberForCalibration[0]));
-		editor.putString("expectedSensorSortNumberForCalibration1",
-				HexDump.toHexString(expectedSensorSortNumberForCalibration[1]));
-		editor.commit();
 		return "Measure received " + num + " mg/dl";
 	}
 
