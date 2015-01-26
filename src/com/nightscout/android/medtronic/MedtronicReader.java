@@ -535,7 +535,7 @@ public class MedtronicReader {
 											new Date(), 0);
 									lastMedtronicPumpRecord.deviceId = prefs.getString("medtronic_cgm_id", "");
 								}
-								lastMedtronicPumpRecord.isWarmingUp = prefs.getInt("isWarmingUp", -1) == 0;
+								lastMedtronicPumpRecord.isWarmingUp = prefs.getBoolean("isWarmingUp", false);
 								break;
 							case MedtronicConstants.MEDTRONIC_GL: {
 								
@@ -680,7 +680,7 @@ public class MedtronicReader {
 								editor.remove("expectedSensorSortNumber");
 								editor.remove("expectedSensorSortNumberForCalibration0");
 								editor.remove("expectedSensorSortNumberForCalibration1");
-								if (prefs.getInt("isWarmingUp", -1) < 0){
+								if (!prefs.getBoolean("isWarmingUp", false)){
 									if (lastMedtronicPumpRecord == null) {
 										lastMedtronicPumpRecord = new MedtronicPumpRecord();
 										calculateDate(lastMedtronicPumpRecord,
@@ -692,7 +692,7 @@ public class MedtronicReader {
 
 									lastMedtronicPumpRecord.isWarmingUp = true;
 								}
-								editor.commit();
+								
 								if (previousRecord == null) {
 									MedtronicSensorRecord auxRecord = new MedtronicSensorRecord();
 									calculateDate(auxRecord, new Date(), 0);
@@ -704,13 +704,18 @@ public class MedtronicReader {
 								sendMessageToUI("sensor data wUp.", false);
 								break;
 							}case MedtronicConstants.MEDTRONIC_SENSOR2:
+								SharedPreferences.Editor editor1 = settings.edit();
+								editor1.putBoolean("isWarmingUp", false);
+								editor1.commit();
+								if (lastMedtronicPumpRecord != null)
+									lastMedtronicPumpRecord.isWarmingUp = false;
 								if (prefs.getString("glucSrcTypes","1").equals("2")){
 									log.debug("Sensor value received, but value is took only by pump logs");
 									break;
 								}
 								Log.i("MEdtronic", "process sensor2");
 								log.info("SENSOR DATA RECEIVED");
-								if (prefs.getInt("isWarmingUp", -1) == 0){
+								if (prefs.getBoolean("isWarmingUp", false)){
 									if (lastMedtronicPumpRecord == null) {
 										lastMedtronicPumpRecord = new MedtronicPumpRecord();
 										calculateDate(lastMedtronicPumpRecord,
