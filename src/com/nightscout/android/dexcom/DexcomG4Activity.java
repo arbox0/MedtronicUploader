@@ -245,7 +245,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 				    	    		}
 				    	    	}
 				    	    	calib+= ""+ lastCal + tail;
-				    	    	if (prefs.getInt("isWarmingUp",-1) == 0){
+				    	    	if (prefs.getBoolean("isWarmingUp",false)){
 				    	    		calib = "";
 				    	    		record.bGValue = "W_Up";
 				    	    		record.trendArrow="---";
@@ -482,7 +482,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
     	    		calib+= ""+ lastCal + tail;
     	    	}
     	    	
-    	    	if (prefs.getInt("isWarmingUp",-1) == 0){
+    	    	if (prefs.getBoolean("isWarmingUp",false)){
     	    		calib = "";
     	    		record.bGValue = "W_Up";
     	    		record.trendArrow="---";

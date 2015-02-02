@@ -6,9 +6,6 @@ import java.util.HashMap;
 
 import android.os.Handler;
 import android.os.Messenger;
-import android.util.Log;
-
-import ch.qos.logback.core.pattern.PostCompileProcessor;
 
 import com.nightscout.android.dexcom.USB.HexDump;
 import com.physicaloid.lib.Physicaloid;

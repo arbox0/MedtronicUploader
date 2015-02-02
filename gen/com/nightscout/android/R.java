@@ -76,6 +76,7 @@ public final class R {
         public static final int hello_world=0x7f060002;
         public static final int self_destruct=0x7f060007;
         public static final int sgv_id=0x7f060004;
+        public static final int version=0x7f06000c;
     }
     public static final class style {
         /** 

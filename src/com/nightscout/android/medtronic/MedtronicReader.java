@@ -680,6 +680,7 @@ public class MedtronicReader {
 								editor.remove("expectedSensorSortNumber");
 								editor.remove("expectedSensorSortNumberForCalibration0");
 								editor.remove("expectedSensorSortNumberForCalibration1");
+								editor.remove("isCheckedWUP");
 								if (!prefs.getBoolean("isWarmingUp", false)){
 									if (lastMedtronicPumpRecord == null) {
 										lastMedtronicPumpRecord = new MedtronicPumpRecord();
@@ -702,14 +703,25 @@ public class MedtronicReader {
 									writeLocalCSV(previousRecord, context);
 								}
 								sendMessageToUI("sensor data wUp.", false);
+								editor.commit();
 								break;
 							}case MedtronicConstants.MEDTRONIC_SENSOR2:
-								SharedPreferences.Editor editor1 = settings.edit();
-								editor1.putBoolean("isWarmingUp", false);
-								editor1.commit();
+								
 								if (lastMedtronicPumpRecord != null)
 									lastMedtronicPumpRecord.isWarmingUp = false;
 								if (prefs.getString("glucSrcTypes","1").equals("2")){
+									if (prefs.getBoolean("isWarmingUp", false)){
+										if (lastMedtronicPumpRecord == null) {
+											lastMedtronicPumpRecord = new MedtronicPumpRecord();
+											calculateDate(lastMedtronicPumpRecord,
+													new Date(), 0);
+											lastMedtronicPumpRecord.deviceId = prefs.getString("medtronic_cgm_id", "");
+										}
+										lastMedtronicPumpRecord.isWarmingUp = false;
+										SharedPreferences.Editor editor1 = prefs.edit();
+										editor1.putBoolean("isWarmingUp", false);
+										editor1.commit();
+									}
 									log.debug("Sensor value received, but value is took only by pump logs");
 									break;
 								}

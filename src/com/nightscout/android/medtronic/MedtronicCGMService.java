@@ -438,7 +438,7 @@ public class MedtronicCGMService extends Service implements
 		//Debug.startMethodTracing();
 		
 		super.onCreate();
-	    
+		
 		if (android.os.Build.VERSION.SDK_INT > 9) 
 		{
 		    StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
@@ -447,6 +447,7 @@ public class MedtronicCGMService extends Service implements
 		
 		settings = getSharedPreferences(MedtronicConstants.PREFS_NAME, 0);
 		prefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+		prefs.edit().remove("isCheckedWUP").commit();
 		prefs.registerOnSharedPreferenceChangeListener(this);
 		String level = prefs.getString("logLevel", "1");
 		if ("2".equalsIgnoreCase(level))

@@ -34,6 +34,7 @@ import android.preference.PreferenceManager;
 import android.util.Log;
 
 import ch.qos.logback.classic.Logger;
+import ch.qos.logback.core.status.WarnStatus;
 
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
@@ -628,6 +629,8 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 		            			if (atLeastOne)
 		            				dexcomData.save(testData, WriteConcern.UNACKNOWLEDGED);
 	            			}
+            			}catch(IllegalArgumentException ex){
+            				Log.e("UploaderHelper", "Illegal record");
             			}catch (Exception e){
             				Log.e("UploaderHelper", "The retried can't be uploaded");
             				log.error("The retried record can't be uploaded ", e);
@@ -642,6 +645,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
             	}
                 Log.i(TAG, "The number of EGV records being sent to MongoDB is " + records.length);
                 log.info("The number of EGV records being sent to MongoDB is " + records.length);
+                Boolean isWarmingUp = false;
                 for (Record oRecord : records) {
                 	recordsTry = true;
                 	try{
@@ -665,6 +669,28 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 		                    	testData.put("calibrationStatus", ((MedtronicSensorRecord)record).calibrationStatus);
 		                    	testData.put("unfilteredGlucose", ((MedtronicSensorRecord)record).unfilteredGlucose);
 		                    	testData.put("isCalibrating", ((MedtronicSensorRecord)record).isCalibrating);
+		                    	log.info("Testing isCheckedWUP -->", prefs.getBoolean("isCheckedWUP", false));
+		                    	if (!prefs.getBoolean("isCheckedWUP", false) && deviceData != null){
+		                    		log.info("Testing isCheckedWUP -->GET INTO");
+			                		MedtronicPumpRecord pumpRecord = new MedtronicPumpRecord();
+			                		HashMap<String, Object> filter = new HashMap<String, Object>();
+			                		filter.put("deviceId", prefs.getString("medtronic_cgm_id", ""));
+			                		cursor = deviceData.find(new BasicDBObject(filter));
+			                		if (cursor.hasNext()){
+			                			DBObject previousRecord = cursor.next();
+										previousRecord.put("date", testData.get("date"));
+										previousRecord.put("dateString", testData.get("dateString"));
+										JSONObject job = new JSONObject(previousRecord.toMap());
+										isWarmingUp = job.getBoolean("isWarmingUp");
+										log.info("Testing isCheckedWUP -->NEXT -->ISWUP?? "+ isWarmingUp);
+										if (isWarmingUp){
+											pumpRecord.mergeCurrentWithDBObject(previousRecord);
+											log.info("Uploading a DeviceRecord");
+											deviceData.save(previousRecord, WriteConcern.ACKNOWLEDGED);
+											prefs.edit().putBoolean("isCheckedWUP", true).commit();
+										}
+			                		}
+		                    	}
 		                    }
 		                    log.info("Uploading a EGVRecord");
 		                    dexcomData.save(testData, WriteConcern.UNACKNOWLEDGED);
@@ -693,6 +719,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 	                			DBObject previousRecord = cursor.next();
 								previousRecord.put("date", testData.get("date"));
 								previousRecord.put("dateString", testData.get("dateString"));
+								isWarmingUp = pumpRecord.isWarmingUp;
 								pumpRecord.mergeCurrentWithDBObject(previousRecord);
 								log.info("Uploading a DeviceRecord");
 								deviceData.save(previousRecord, WriteConcern.ACKNOWLEDGED);
@@ -705,6 +732,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 	                    		testData.put("temporaryBasal", pumpRecord.temporaryBasal);
 	                    		testData.put("batteryStatus", pumpRecord.batteryStatus);
 	                    		testData.put("batteryVoltage", pumpRecord.batteryVoltage);
+	                    		isWarmingUp = pumpRecord.isWarmingUp;
 	                    		testData.put("isWarmingUp", pumpRecord.isWarmingUp);
 	                    		log.info("Uploading a DeviceRecord");
 	                			deviceData.save(testData, WriteConcern.UNACKNOWLEDGED);
@@ -712,10 +740,17 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 	                		if (cursor != null)
 	                    		cursor.close();
 	                	}
-                	}catch(Exception ex2){
+                	}catch(IllegalArgumentException ex){
+        				Log.e("UploaderHelper", "Illegal record");
+        				if (cursor != null)
+                    		cursor.close();
+        			}catch(Exception ex2){
                 		if (cursor != null)
                     		cursor.close();
 						 if ((typeSaved != null && (typeSaved == 0  ||typeSaved == 1 ))){//Only EGV records are important enough.
+							 if (isWarmingUp){
+								 prefs.edit().putBoolean("isCheckedWUP", false);
+							 }
 							 log.warn("added to records not uploaded");
 						    if (recordsNotUploadedList.size() > 49){
 						    	recordsNotUploadedList.remove(0);
@@ -723,6 +758,8 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 							}else{
 								recordsNotUploadedList.add(new JSONObject(testData.toMap()));
 							}
+						 }else if (typeSaved == 3){
+							 prefs.edit().putBoolean("isWarmingUp", isWarmingUp);
 						 }
                 		 Log.w(TAG, "Unable to upload data to mongo in loop");
                 		 log.warn("Unable to upload data to mongo in loop");
