@@ -597,6 +597,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                 }
                 log.debug("Uri TO CHANGE user "+user+" host "+source+" password "+password);
                 if (bAchieved){
+                	log.debug("URI CHANGE Achieved");
 	                MongoCredential mc = MongoCredential.createMongoCRCredential(user, source , password.toCharArray());
 	                ServerAddress  sa = new ServerAddress(host, iPort);
 	                List<MongoCredential> lcredential = new ArrayList<MongoCredential>();

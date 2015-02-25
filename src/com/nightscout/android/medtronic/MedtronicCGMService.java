@@ -135,17 +135,22 @@ public class MedtronicCGMService extends Service implements
 				break;
 			case MedtronicConstants.MSG_MEDTRONIC_SEND_MANUAL_CALIB_VALUE:
 				String value = msg.getData().getString("sgv");
+				if (value == null || value.equals("")){
+					value = prefs.getString("manual_sgv", "");
+				}
+				log.info("Manual Calibration Received SGV "+value);
 				try{
 					Float val = null;
-					if (medtronicReader != null && value != null){
+					if (medtronicReader != null && value != null && !value.equals("")){
 						if (prefs.getBoolean("mmolxl", false)){
 							try {
 								if (value.indexOf(".") > -1){
 									val = Float.parseFloat(value);
-									medtronicReader.processManualCalibrationDataMessage(val*18f, false);
+									medtronicReader.processManualCalibrationDataMessage(val, false);
 								}else{
-									medtronicReader.processManualCalibrationDataMessage(Integer.parseInt(value)*18f, false);
+									medtronicReader.processManualCalibrationDataMessage(Integer.parseInt(value), false);
 								}
+								sendMessageCalibrationDoneToUI();
 							} catch (Exception e) {
 								sendErrorMessageToUI("Error parsing Calibration");	
 								StringBuffer sb1 = new StringBuffer("");
@@ -156,7 +161,13 @@ public class MedtronicCGMService extends Service implements
 								sendMessageToUI(sb1.toString(), false);
 							}
 						}else{
-							medtronicReader.processManualCalibrationDataMessage(Integer.parseInt(value), false);
+							if (value.indexOf(".") > -1){
+								val = Float.parseFloat(value);
+								medtronicReader.processManualCalibrationDataMessage(val.intValue(), false);
+							}else{
+								medtronicReader.processManualCalibrationDataMessage(Integer.parseInt(value), false);
+							}
+							sendMessageCalibrationDoneToUI();
 						}
 					}
 				}catch(Exception e){
@@ -171,9 +182,13 @@ public class MedtronicCGMService extends Service implements
 				break;
 			case MedtronicConstants.MSG_MEDTRONIC_SEND_INSTANT_CALIB_VALUE:
 				value = msg.getData().getString("sgv");
+				if (value == null || value.equals("")){
+					value = prefs.getString("instant_sgv", "");
+				}
+				log.info("Instant Calibration received SGV "+value);
 				try{
 					Float val = null;
-					if (medtronicReader != null && value != null){
+					if (medtronicReader != null && value != null  && !value.equals("")){
 						if (prefs.getBoolean("mmolxl", false)){
 							try {
 								if (value.indexOf(".") > -1){
@@ -182,6 +197,7 @@ public class MedtronicCGMService extends Service implements
 								}else{
 									medtronicReader.calculateInstantCalibration(Integer.parseInt(value)*18f);
 								}
+								sendMessageCalibrationDoneToUI();
 							} catch (Exception e) {
 								sendErrorMessageToUI("Error parsing Calibration");	
 								StringBuffer sb1 = new StringBuffer("");
@@ -192,7 +208,13 @@ public class MedtronicCGMService extends Service implements
 								sendMessageToUI(sb1.toString(), false);
 							}
 						}else{
-							medtronicReader.calculateInstantCalibration(Integer.parseInt(value));
+							if (value.indexOf(".") > -1){
+								val = Float.parseFloat(value);
+								medtronicReader.calculateInstantCalibration(val.intValue());
+							}else{
+								medtronicReader.calculateInstantCalibration(Integer.parseInt(value));
+							}
+							sendMessageCalibrationDoneToUI();
 						}
 					}
 				}catch(Exception e){
@@ -207,13 +229,13 @@ public class MedtronicCGMService extends Service implements
 				break;
 			case MedtronicConstants.MSG_MEDTRONIC_SEND_GET_PUMP_INFO:
 				sendMessageToUI("Retrieving Pump info...", false);
-				log.debug("Retrieving Pump info...");
+				log.info("Retrieving Pump info...");
 				mHandler3ActivatePump.removeCallbacks(activateNewPump);
 				mHandler3ActivatePump.post(activateNewPump);
 				break;
 			case MedtronicConstants.MSG_MEDTRONIC_SEND_GET_SENSORCAL_FACTOR:
 				sendMessageToUI("Retrieve calibration factor...Now!", false);
-				log.debug("Retrieve calibration factor...Now!");
+				log.info("Retrieve calibration factor...Now!");
 				mHandlerSensorCalibration.removeCallbacks(getCalibrationFromSensor);
 				mHandlerSensorCalibration.post(getCalibrationFromSensor);
 				break;
@@ -279,7 +301,7 @@ public class MedtronicCGMService extends Service implements
                 		}
                 	}
                 }
-                log.debug("Uri TO CHANGE user "+user+" host "+source+" password "+password);
+                log.info("Uri TO CHANGE user "+user+" host "+source+" password "+password);
                 if (bAchieved){
 	                MongoCredential mc = MongoCredential.createMongoCRCredential(user, source , password.toCharArray());
 	                ServerAddress  sa = new ServerAddress(host, iPort);
@@ -409,6 +431,28 @@ public class MedtronicCGMService extends Service implements
 			}
 		}
 	}
+	
+	/**
+     * Sends message to the UI to indicate that a calibration has been made.
+     */
+	private void sendMessageCalibrationDoneToUI() {
+		Log.i("medtronicCGMService", "Calibration done");
+		for (int i = mClients.size() - 1; i >= 0; i--) {
+			try {
+				Message mSend = null;
+				mSend = Message.obtain(null,
+						MedtronicConstants.MSG_MEDTRONIC_CALIBRATION_DONE);
+				mClients.get(i).send(mSend);
+
+			} catch (RemoteException e) {
+				// The client is dead. Remove it from the list; we are going
+				// through the list from back to front so this is safe to do
+				// inside the loop.
+				mClients.remove(i);
+			}
+		}
+	}
+	
 	/**
      * Sends message to the UI to indicate that the device is disconnected.
      */
@@ -436,7 +480,7 @@ public class MedtronicCGMService extends Service implements
 	@Override
 	public void onCreate() {
 		//Debug.startMethodTracing();
-		
+		log.info("medCGM onCreate!");
 		super.onCreate();
 		
 		if (android.os.Build.VERSION.SDK_INT > 9) 
@@ -449,6 +493,7 @@ public class MedtronicCGMService extends Service implements
 		prefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
 		prefs.edit().remove("isCheckedWUP").commit();
 		prefs.registerOnSharedPreferenceChangeListener(this);
+		
 		String level = prefs.getString("logLevel", "1");
 		if ("2".equalsIgnoreCase(level))
 			log.setLevel(Level.INFO);
@@ -513,7 +558,7 @@ public class MedtronicCGMService extends Service implements
 		if (prefs.getString("glucSrcTypes","1").equals("2")){
 			medtronicReader.mHandlerCheckLastRead = null;
 			medtronicReader.checkLastRead = null;
-			log.debug("LOG READ ON CREATE");
+			log.info("LOG READ ON CREATE");
         	String type = prefs.getString("historicPeriod", "1");
         	if ("2".equalsIgnoreCase(type))
         		historicLogPeriod = MedtronicConstants.TIME_10_MIN_IN_MS;
@@ -525,19 +570,19 @@ public class MedtronicCGMService extends Service implements
         		historicLogPeriod = MedtronicConstants.TIME_5_MIN_IN_MS;
         
         	if (settings.getLong("lastHistoricRead", 0) != 0 ){
-        		log.debug("PREVIOUS READ");
+        		log.info("PREVIOUS READ");
 				if ((System.currentTimeMillis() - settings.getLong("lastHistoricRead", 0)) >= historicLogPeriod ){
-					log.debug("periodRead "+(System.currentTimeMillis() - settings.getLong("lastHistoricRead", 0))+" >= "+historicLogPeriod);
+					log.info("periodRead "+(System.currentTimeMillis() - settings.getLong("lastHistoricRead", 0))+" >= "+historicLogPeriod);
 					mHandlerReadFromHistoric.post(readDataFromHistoric);
 					SharedPreferences.Editor editor = settings.edit();
 					editor.putLong("lastHistoricRead", System.currentTimeMillis());
 					editor.commit();
 				}else{
-					log.debug("Read after delay");
+					log.info("Read after delay");
 					mHandlerReadFromHistoric.postDelayed(readDataFromHistoric, historicLogPeriod);
 				}
 			}else{
-				log.debug("Read log immediatly");
+				log.info("Read log immediatly");
 				mHandlerReadFromHistoric.post(readDataFromHistoric);
 				SharedPreferences.Editor editor = settings.edit();
 				editor.putLong("lastHistoricRead", System.currentTimeMillis());
@@ -580,6 +625,7 @@ public class MedtronicCGMService extends Service implements
 	@Override
 	public void onDestroy() {
 		//Debug.stopMethodTracing();
+		log.info("medCGM onDestroy!");
 		isDestroying = true;
 		prefs.unregisterOnSharedPreferenceChangeListener(this);
 		synchronized (medtronicReader.processingCommand) {
@@ -701,7 +747,7 @@ public class MedtronicCGMService extends Service implements
 	 */
 	private Runnable readAndUpload = new Runnable() {
 		public void run() {
-
+			log.info("run readAndUpload");
 			try {
 				UsbManager usbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
 				boolean hasPermission = false;
@@ -716,13 +762,15 @@ public class MedtronicCGMService extends Service implements
 				}
 				if (!hasPermission) {
 					synchronized (mHandlerCheckSerial) {
-						log.debug("I have lost usb permission changing listener attached to false...");
+						log.info("I have lost usb permission changing listener attached to false...");
 						listenerAttached = false;
 						mSerial.clearReadListener();
 						mHandlerRead.removeCallbacks(readByListener);
 						sendMessageDisconnectedToUI();
-						if (!mHandlerActive || isDestroying)
+						if (!mHandlerActive || isDestroying){
+							log.info("destroy readAnd Upload "+ mHandlerActive + " isDes "+ isDestroying);
 							return;
+						}
 						mHandlerCheckSerial.removeCallbacks(readAndUpload);
 						mHandlerCheckSerial.postDelayed(readAndUpload, MedtronicConstants.FIVE_SECONDS__MS);
 						return;
@@ -737,7 +785,7 @@ public class MedtronicCGMService extends Service implements
 					if (!isOnline())
 						sendErrorMessageToUI("NET connection error");
 					if (!listenerAttached) {
-						log.debug("!listener attached readByListener triggered");
+						log.info("!listener attached readByListener triggered");
 						mSerial.clearReadListener();
 						mHandlerRead.removeCallbacks(readByListener);
 						mSerial.addReadListener(readListener);
@@ -800,8 +848,10 @@ public class MedtronicCGMService extends Service implements
 				log.error("Unable to read from receptor or upload \n"+ e.toString());
 			}
 			synchronized (mHandlerCheckSerial) {
-				if (!mHandlerActive || isDestroying)
+				if (!mHandlerActive || isDestroying){
+					log.info("destroy readAnd Upload2 "+ mHandlerActive + " isDes "+ isDestroying);
 					return;
+				}
 				mHandlerCheckSerial.removeCallbacks(readAndUpload);
 				mHandlerCheckSerial.postDelayed(readAndUpload, MedtronicConstants.FIVE_SECONDS__MS);
 			}
@@ -821,10 +871,10 @@ public class MedtronicCGMService extends Service implements
 				size = -1;
 			}
 			if (auxSize >= 0){
-				log.debug("Quiero leer "+auxSize+" bytes");
+				log.info("Quiero leer "+auxSize+" bytes");
 				doReadAndUpload(auxSize);
 			}else
-				log.debug("ReadByListener NO TIENE NADA QUE SUBIR");
+				log.info("ReadByListener NO TIENE NADA QUE SUBIR");
 		}
 	};
 
@@ -836,22 +886,22 @@ public class MedtronicCGMService extends Service implements
 			synchronized (mSerial) {
 				if (mSerial.isOpened() && !isDestroying) {
 
-					log.debug("doREadAndUpload");
+					log.info("doREadAndUpload");
 					ArrayList<byte[]> bufferedMessages = medtronicReader
 							.readFromReceiver(getApplicationContext(), size);
-					log.debug("Stream Received--> READED");
+					log.info("Stream Received--> READED");
 					if (bufferedMessages != null && bufferedMessages.size() > 0) {
-						log.debug("Stream Received--> There are "+bufferedMessages.size()+" to process ");
+						log.info("Stream Received--> There are "+bufferedMessages.size()+" to process ");
 						synchronized (processBufferedMessages.bufferedMessages) {
 							processBufferedMessages.bufferedMessages
 									.addAll(bufferedMessages);
 						}
 						if (!isDestroying){
-							log.debug("Stream Received--> order process bufferedMessages ");
+							log.info("Stream Received--> order process bufferedMessages ");
 							mHandlerProcessRead.post(processBufferedMessages);
 						}
 					}else{
-						log.debug("NULL doReadAndUpload");
+						log.info("NULL doReadAndUpload");
 					}
 
 				}
@@ -874,7 +924,7 @@ public class MedtronicCGMService extends Service implements
 	 */
 	private Runnable reloadLostRecords = new Runnable() {
 		public void run() {
-			log.debug("Reloading Lost Records from medtronic service");
+			log.info("Reloading Lost Records from medtronic service");
 
     		JSONArray recordsNotUploadedJson;
     		JSONArray recordsNotUploaded;
@@ -883,9 +933,9 @@ public class MedtronicCGMService extends Service implements
 				recordsNotUploadedJson = new JSONArray(settings.getString("recordsNotUploadedJson","[]"));
 				synchronized (mHandlerReloadLost) {
 					if (isOnline()){
-						log.debug("reloadnotupload is online "+recordsNotUploaded.length() +" -> "+recordsNotUploadedJson.length() +" "+ !isDestroying);
+						log.info("reloadnotupload is online "+recordsNotUploaded.length() +" -> "+recordsNotUploadedJson.length() +" "+ !isDestroying);
 						if ((recordsNotUploaded.length() > 0 || recordsNotUploadedJson.length() > 0) && !isDestroying) {
-							log.debug("to upload old records");
+							log.info("to upload old records");
 							uploader = new UploadHelper(getApplicationContext(),
 									DexcomG4Activity.MEDTRONIC_CGM,
 									mClients);
@@ -909,9 +959,9 @@ public class MedtronicCGMService extends Service implements
 						    uploader.dsCollection = dsCollection;
 							
 							Record[] params = new Record[0];
-							log.debug("calling uploader");
+							log.info("calling uploader");
 							uploader.execute(params);
-							log.debug("uploader called");
+							log.info("uploader called");
 						}
 					}else{
 						if (!isDestroying)
@@ -927,7 +977,7 @@ public class MedtronicCGMService extends Service implements
 			
 			if (!isDestroying)
 				mHandlerReloadLost.postDelayed(reloadLostRecords, 60000);
-			log.debug("lost records reloaded from medtronic service");
+			log.info("lost records reloaded from medtronic service");
 		}
 	};
 	/**
@@ -938,9 +988,9 @@ public class MedtronicCGMService extends Service implements
 		public ArrayList<byte[]> bufferedMessages = new ArrayList<byte[]>();
 		public String sResult = "";
 		public void run() {
-			log.debug("Processing bufferedMessages ");
+			log.info("Processing bufferedMessages ");
 			synchronized (isUploading) {
-				log.debug("I am Not Uploading ");
+				log.info("I am Not Uploading ");
 				
 				try {
 					ArrayList<byte[]> bufferedMessages2Process = new ArrayList<byte[]>();
@@ -951,7 +1001,7 @@ public class MedtronicCGMService extends Service implements
 						bufferedMessages2Process.addAll(bufferedMessages);
 						bufferedMessages.clear();
 					}
-					log.debug("I am going to process "+ bufferedMessages2Process.size()+" Messages");
+					log.info("I am going to process "+ bufferedMessages2Process.size()+" Messages");
 					synchronized (sResult) {
 						sResult = medtronicReader
 								.processBufferedMessages(bufferedMessages2Process);
@@ -1027,7 +1077,7 @@ public class MedtronicCGMService extends Service implements
 					sendMessageToUI(sb1.toString() + "\n " + sResult, false);
 				}
 			}
-			log.debug("Buffered Messages Processed ");
+			log.info("Buffered Messages Processed ");
 		}
 
 	};
@@ -1574,10 +1624,10 @@ public class MedtronicCGMService extends Service implements
 		public void run() {
 			boolean bAfterPeriod = false;
 			try {
-				log.debug("Read data from Historic");
+				log.info("Read data from Historic");
 				synchronized (mSerial) {
 					if (mSerial.isOpened()) {
-						log.debug("mserial open");
+						log.info("mserial open");
 						synchronized (medtronicReader.processingCommand) {
 							if (medtronicReader.processingCommand){
 								while (medtronicReader.processingCommand) {
@@ -1585,7 +1635,7 @@ public class MedtronicCGMService extends Service implements
 										if (!prefs.getString("glucSrcTypes","1").equals("1")){
 											mHandlerReadFromHistoric.postDelayed(readDataFromHistoric,
 													MedtronicConstants.TIMEOUT);
-											log.debug("TIMEOUT");
+											log.info("TIMEOUT");
 										}
 										bAfterPeriod = true;
 										return;
@@ -1600,7 +1650,7 @@ public class MedtronicCGMService extends Service implements
 						
 						
 						if (prefs.getString("glucSrcTypes","1").equals("2")){
-							log.debug("EQUALS 2");
+							log.info("EQUALS 2");
 							medtronicReader.mHandlerCheckLastRead = null;
 							medtronicReader.checkLastRead = null;
 				        	String type = prefs.getString("historicPeriod", "1");
@@ -1614,7 +1664,7 @@ public class MedtronicCGMService extends Service implements
 				        		historicLogPeriod = MedtronicConstants.TIME_5_MIN_IN_MS;
 				        
 				        	if (settings.getLong("lastHistoricRead", 0) != 0 ){
-				        		log.debug("PREVIOUS READ");
+				        		log.info("PREVIOUS READ");
 								if ((System.currentTimeMillis() - settings.getLong("lastHistoricRead", 0)) >= historicLogPeriod ){
 									if (hGetter == null){
 										hGetter = new HistoricGetterThread(mClients, medtronicReader,
@@ -1630,13 +1680,13 @@ public class MedtronicCGMService extends Service implements
 										medtronicReader.datalog = new DataLog();
 									}
 									medtronicReader.hGetter = hGetter;
-									log.debug("SEND GETTER!!!!!");
+									log.info("SEND GETTER!!!!!");
 									mHandlerReadFromHistoric.post(hGetter);
 									SharedPreferences.Editor editor = settings.edit();
 									editor.putLong("lastHistoricRead", System.currentTimeMillis());
 									editor.commit();
 								}else{
-									log.debug("Read after delay");
+									log.info("Read after delay");
 									bAfterPeriod = true;
 									mHandlerReadFromHistoric.postDelayed(readDataFromHistoric,historicLogPeriod);
 									synchronized (medtronicReader.processingCommand) {
@@ -1645,7 +1695,7 @@ public class MedtronicCGMService extends Service implements
 									return;
 								}
 							}else{
-								log.debug("OTHER ELSE");
+								log.info("OTHER ELSE");
 								if (hGetter == null){
 									hGetter = new HistoricGetterThread(mClients, medtronicReader,
 											medtronicReader.idPump, mSerial, mHandlerReadFromHistoric);
@@ -1660,7 +1710,7 @@ public class MedtronicCGMService extends Service implements
 									medtronicReader.datalog = new DataLog();
 								}
 								medtronicReader.hGetter = hGetter;
-								log.debug("SEND GETTER!!!!!");
+								log.info("SEND GETTER!!!!!");
 								mHandlerReadFromHistoric.post(hGetter);
 								SharedPreferences.Editor editor = settings.edit();
 								editor.putLong("lastHistoricRead", System.currentTimeMillis());
@@ -1685,7 +1735,7 @@ public class MedtronicCGMService extends Service implements
 							}
 							medtronicReader.hGetter = hGetter;
 							mHandlerReadFromHistoric.post(hGetter);
-							log.debug("SEND GETTER!!!!!");
+							log.info("SEND GETTER!!!!!");
 					        mHandlerCheckLastRead.postDelayed(checkLastRead, MedtronicConstants.TIME_30_MIN_IN_MS);
 						}
 						
@@ -1706,7 +1756,7 @@ public class MedtronicCGMService extends Service implements
 					medtronicReader.processingCommand = false;
 				}
 			}finally{
-				log.debug("Executing read_Historic finally");
+				log.info("Executing read_Historic finally");
 				if (prefs.getString("glucSrcTypes","1").equals("2")){
 					
 		        	String type = prefs.getString("historicPeriod", "1");
@@ -1752,17 +1802,17 @@ public class MedtronicCGMService extends Service implements
 	private Runnable getCalibrationFromSensor = new Runnable() {
 		public void run() {
 			try {
-				log.debug("getting Calibration factor!!");
+				log.info("getting Calibration factor!!");
 				synchronized (mSerial) {
-					log.debug("mSerial synchronized!");
+					log.info("mSerial synchronized!");
 					if (mSerial.isOpened()) {
-						log.debug("mSerial open!!");
+						log.info("mSerial open!!");
 						if (calibrationSelected == MedtronicConstants.CALIBRATION_SENSOR) {
 							synchronized (medtronicReader.processingCommand) {
 								if (medtronicReader.processingCommand){
 									while (medtronicReader.processingCommand) {
 										if (medtronicReader.processingCommand) {
-											log.debug("is processing other commands wait 3 secs.");
+											log.info("is processing other commands wait 3 secs.");
 											mHandlerSensorCalibration.postDelayed(getCalibrationFromSensor,
 													MedtronicConstants.TIMEOUT);
 											return;
@@ -1778,7 +1828,7 @@ public class MedtronicCGMService extends Service implements
 									MedtronicConstants.MEDTRONIC_GET_CALIBRATION_FACTOR,
 									MedtronicConstants.MEDTRONIC_GET_REMAINING_INSULIN,
 									MedtronicConstants.MEDTRONIC_GET_BATTERY_STATUS};
-							log.debug("get Cal Factor and other info!!");
+							log.info("get Cal Factor and other info!!");
 	
 							//mHandler2CheckDevice.removeCallbacks(cMThread);
 							cMThread = new CommandSenderThread(medtronicReader,

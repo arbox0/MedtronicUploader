@@ -92,6 +92,7 @@ public class MedtronicConstants {
 	public static final int MSG_MEDTRONIC_SEND_GET_PUMP_INFO = 11;
 	public static final int MSG_MEDTRONIC_SEND_INSTANT_CALIB_VALUE = 12;
 	public static final int MSG_MEDTRONIC_SEND_INSTANT_GLUC_VALUE = 13;
+	public static final int MSG_MEDTRONIC_CALIBRATION_DONE = 14;
 	
 	
 	public static String getCalibrationStrValue(int val){

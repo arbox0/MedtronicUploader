@@ -5,6 +5,8 @@ import java.io.FileInputStream;
 import java.io.ObjectInputStream;
 import java.text.DecimalFormat;
 
+import org.slf4j.LoggerFactory;
+
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.ActivityManager.RunningServiceInfo;
@@ -25,6 +27,7 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
+import android.os.StrictMode;
 import android.preference.PreferenceManager;
 import android.text.InputType;
 import android.text.method.ScrollingMovementMethod;
@@ -40,6 +43,7 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.TextView.BufferType;
+import ch.qos.logback.classic.Logger;
 
 import com.nightscout.android.R;
 import com.nightscout.android.eula.Eula;
@@ -52,7 +56,7 @@ import com.nightscout.android.upload.Record;
 
 /* Main activity for the DexcomG4Activity program */
 public class DexcomG4Activity extends Activity implements OnSharedPreferenceChangeListener, OnEulaAgreedTo{
-
+	private Logger log = (Logger)LoggerFactory.getLogger(DexcomG4Activity.class.getName());
 	//CGMs supported
 	public static final int DEXCOMG4 = 0; 
 	public static final int MEDTRONIC_CGM = 1;
@@ -77,6 +81,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
     private int msgsDisplayed = 0;
     public static int batLevel = 0;
     BatteryReceiver mArrow;
+    IBinder bService = null;
     Intent batteryReceiver;
     Messenger mService = null;
     boolean mIsBound;
@@ -87,6 +92,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
     ActivityManager manager = null;
     final Context ctx = this;
     SharedPreferences settings = null;
+    SharedPreferences prefs = null;
     private static final boolean ISDEBUG = true;
    
     class IncomingHandler extends Handler {
@@ -137,6 +143,11 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	            	}
             	}
                 break;
+            case MedtronicConstants.MSG_MEDTRONIC_CALIBRATION_DONE:
+            	Log.e("MedtronicCGMMessageReceived",  MedtronicConstants.MSG_MEDTRONIC_CALIBRATION_DONE+"\n");
+            	mHandler.removeCallbacks(updateDataView);
+ 	        	mHandler.post(updateDataView);
+                break;
             default:
                 super.handleMessage(msg);
             }
@@ -144,6 +155,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
     }
     private ServiceConnection mConnection = new ServiceConnection() {
         public void onServiceConnected(ComponentName className, IBinder service) {
+        	bService = service;
             mService = new Messenger(service);
             try {
                 Message msg = Message.obtain(null, MedtronicConstants.MSG_REGISTER_CLIENT);
@@ -212,7 +224,11 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 			            	
 			            	
 			            
-			            	DecimalFormat df = new DecimalFormat("#.##");
+			            	DecimalFormat df =  null;
+			            	if (prefs.getBoolean("mmolDecimals", false))
+			            		df = new DecimalFormat("#.##");
+			            	else
+			            		df = new DecimalFormat("#.#");
 			            	if (cgmSelected == MEDTRONIC_CGM && auxRecord instanceof MedtronicSensorRecord && auxRecord != null){
 				            	
 				    	    	MedtronicSensorRecord record = (MedtronicSensorRecord) auxRecord;
@@ -221,12 +237,14 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 			            			Float fBgValue = null;
 				            		try{
 				            			fBgValue =  (float)Integer.parseInt(record.bGValue);
-				            			if (prefs.getBoolean("mmolxl", false))
+				            			log.info("mmolxl true --> "+record.bGValue);
 				            				record.bGValue = df.format(fBgValue/18f);
+				            				log.info("mmolxl/18 true --> "+record.bGValue);
 				            		}catch (Exception e){
 				            			
 				            		}
-			            		}
+			            		}else
+			            			log.info("mmolxl false --> "+record.bGValue);
 				    	    	boolean isCalibrating = record.isCalibrating;
 				    	    	String calib = "---";
 				    	    	if (isCalibrating){
@@ -262,12 +280,14 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 			            			Float fBgValue = null;
 				            		try{
 				            			fBgValue =  (float)Integer.parseInt(record.bGValue);
-				            			if (prefs.getBoolean("mmolxl", false))
+				            			log.info("mmolxl true --> "+record.bGValue);
 				            				record.bGValue = df.format(fBgValue/18f);
+				            				log.info("mmolxl/18 true --> "+record.bGValue);
 				            		}catch (Exception e){
 				            			
 				            		}
-			            		}
+			            		}else
+			            			log.info("mmolxl false --> "+record.bGValue);
 				            	mDumpTextView.setTextColor(Color.WHITE);
 				                mDumpTextView.setText("\n" + record.displayTime + "\n" + record.bGValue + "  " + record.trendArrow + "\n");
 				            }else{
@@ -290,7 +310,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 		        }
 		        
 		        mHandler.removeCallbacks(updateDataView);
-	        	mHandler.postDelayed(updateDataView, 120000);
+	        	mHandler.postDelayed(updateDataView, 60000);
 	        }
         }
     };
@@ -314,11 +334,17 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
     	Log.i(TAG, "onCreate called");
     	keepServiceAlive = Eula.show(this);
         super.onCreate(savedInstanceState);
-  
+
+		if (android.os.Build.VERSION.SDK_INT > 9) 
+		{
+		    StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+		    StrictMode.setThreadPolicy(policy);
+		}
+		
         this.settings = getBaseContext().getSharedPreferences(
 				MedtronicConstants.PREFS_NAME, 0);
         PreferenceManager.getDefaultSharedPreferences(getBaseContext()).registerOnSharedPreferenceChangeListener(this);
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+        prefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
         if (prefs.contains("monitor_type")){
         	String type = prefs.getString("monitor_type", "1");
         	if ("2".equalsIgnoreCase(type)){
@@ -380,7 +406,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
         //lnr3.addView(b4);
         if (menu != null){
 	        if (calibrationSelected == MedtronicConstants.CALIBRATION_MANUAL){
-	        	menu.getItem(3).setVisible(true);
+	        	menu.getItem(3).setVisible(false);
 	        	menu.getItem(4).setVisible(true);
 	        } else{
 	        	menu.getItem(3).setVisible(false);
@@ -431,14 +457,18 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
                          mHandler.removeCallbacks(updateDataView);
                          mHandler.post(updateDataView);
                          if (!usbAllowedPermission)
-                        	 if (mService != null) {
+                        	 if (mService == null && bService != null) {
+                        		 mService = new Messenger(bService);
+                        	 }
+                         	 if (mService != null){
                                  try {
                                      Message msg = Message.obtain(null, MedtronicConstants.MSG_MEDTRONIC_CGM_REQUEST_PERMISSION, 0, 0);
                                      msg.replyTo = mMessenger;
                                      mService.send(msg);
                                  } catch (RemoteException e) {
+                                	 mService = null;
                                  }
-                             }
+                         	 }
                          mHandlerActive = true;
                          b1.setText("Stop Uploading CGM Data");
                      }
@@ -451,63 +481,116 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 
     @Override
     protected void onPause() {
+    	log.info("ON PAUSE!");
         super.onPause();
 
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        //Refresh the status
-        try{
-        	Record auxRecord =  DexcomG4Activity.this.loadClassFile(new File(getBaseContext().getFilesDir(), "save.bin"));
-            if (cgmSelected == MEDTRONIC_CGM && auxRecord instanceof MedtronicSensorRecord && auxRecord != null && mDumpTextView != null){
-            	SharedPreferences prefs = PreferenceManager
-        				.getDefaultSharedPreferences(getBaseContext());
-            	MedtronicSensorRecord record = (MedtronicSensorRecord) auxRecord;
-    	    	String calib = MedtronicConstants.getCalibrationStrValue(record.calibrationStatus);
-    	    	long calDate = -1;
-    	    	if (settings.contains("lastCalibrationDate")){
-    	    		calDate = settings.getLong("lastCalibrationDate", -1);
-    	    	}
-    	    	
-    	    	String tail = " min. ago";
-    	    	if (calDate > 0){
-    	    		calib += "\nlast cal. ";
-    	    		int lastCal = (int)((System.currentTimeMillis() - calDate)/60000); 
-    	    		if (lastCal >= 60){
-    	    			lastCal = lastCal / 60;
-    	    			tail = " hour(s) ago";
-    	    		}
-    	    		calib+= ""+ lastCal + tail;
-    	    	}
-    	    	
-    	    	if (prefs.getBoolean("isWarmingUp",false)){
-    	    		calib = "";
-    	    		record.bGValue = "W_Up";
-    	    		record.trendArrow="---";
-    	    	}
-    	    	mDumpTextView.setTextColor(Color.WHITE);
-    	    	if (record.displayDateTime == 0){
-    	    		mDumpTextView.setText("\n" +record.displayTime + "\n" + record.bGValue + "  " + record.trendArrow + "\n" +calib+ "\n");	
-    	    	}else
-    	    		mDumpTextView.setText("\n" +(System.currentTimeMillis() - record.displayDateTime)/60000 + " min. ago\n" + record.bGValue + "  " + record.trendArrow + "\n" +calib+ "\n");
-            }else if (auxRecord instanceof EGVRecord){
-            	EGVRecord record = (EGVRecord)auxRecord;
-            	mDumpTextView.setTextColor(Color.WHITE);
-                mDumpTextView.setText("\n" + record.displayTime + "\n" + record.bGValue + "  " + record.trendArrow + "\n");
-            }else{
-            	mDumpTextView.setTextColor(Color.WHITE);
-            	if (auxRecord == null || auxRecord.displayTime == null)
-            		mDumpTextView.setText("\n---\n---\n---\n");
-            	else
-            		mDumpTextView.setText("\n" + auxRecord.displayTime + "\n---\n---\n");
-            }
-        }catch (Exception e){
-        	e.printStackTrace();
-        }
-        
-    }
+	@Override
+	protected void onResume() {
+		log.info("ON RESUME!");
+		super.onResume();
+		// Refresh the status
+		try {
+			Record auxRecord = DexcomG4Activity.this.loadClassFile(new File(
+					getBaseContext().getFilesDir(), "save.bin"));
+			long calDate = -1;
+			if (settings.contains("lastCalibrationDate")) {
+				calDate = settings.getLong("lastCalibrationDate", -1);
+			}
+			SharedPreferences prefs = PreferenceManager
+					.getDefaultSharedPreferences(getBaseContext());
+
+			DecimalFormat df = null;
+			if (prefs.getBoolean("mmolDecimals", false))
+				df = new DecimalFormat("#.##");
+			else
+				df = new DecimalFormat("#.#");
+			if (cgmSelected == MEDTRONIC_CGM
+					&& auxRecord instanceof MedtronicSensorRecord
+					&& auxRecord != null) {
+
+				MedtronicSensorRecord record = (MedtronicSensorRecord) auxRecord;
+
+				if (prefs.getBoolean("mmolxl", false)){
+        			Float fBgValue = null;
+            		try{
+            			fBgValue =  (float)Integer.parseInt(record.bGValue);
+            			log.info("mmolxl true --> "+record.bGValue);
+            				record.bGValue = df.format(fBgValue/18f);
+            				log.info("mmolxl/18 true --> "+record.bGValue);
+            		}catch (Exception e){
+            			
+            		}
+        		}else
+        			log.info("mmolxl false --> "+record.bGValue);
+				boolean isCalibrating = record.isCalibrating;
+				String calib = "---";
+				if (isCalibrating) {
+					calib = MedtronicConstants.CALIBRATING_STR;
+				} else {
+					calib = MedtronicConstants
+							.getCalibrationStrValue(record.calibrationStatus);
+				}
+				calib += "\nlast cal. ";
+				String tail = " min. ago";
+				int lastCal = 0;
+				if (calDate > 0) {
+					lastCal = (int) ((System.currentTimeMillis() - calDate) / 60000);
+					if (lastCal >= 60) {
+						lastCal = lastCal / 60;
+						tail = " hour(s) ago";
+					}
+				}
+				calib += "" + lastCal + tail;
+				if (prefs.getBoolean("isWarmingUp", false)) {
+					calib = "";
+					record.bGValue = "W_Up";
+					record.trendArrow = "---";
+				}
+				mDumpTextView.setTextColor(Color.WHITE);
+				if (record.displayDateTime == 0) {
+					mDumpTextView.setText("\n" + record.displayTime + "\n"
+							+ record.bGValue + "  " + record.trendArrow + "\n"
+							+ calib + "\n");
+				} else
+					mDumpTextView
+							.setText("\n"
+									+ (System.currentTimeMillis() - record.displayDateTime)
+									/ 60000 + " min. ago\n" + record.bGValue
+									+ "  " + record.trendArrow + "\n" + calib
+									+ "\n");
+
+			} else if (auxRecord instanceof EGVRecord) {
+				EGVRecord record = (EGVRecord) auxRecord;
+				if (prefs.getBoolean("mmolxl", false)){
+        			Float fBgValue = null;
+            		try{
+            			fBgValue =  (float)Integer.parseInt(record.bGValue);
+            			log.info("mmolxl true --> "+record.bGValue);
+            				record.bGValue = df.format(fBgValue/18f);
+            				log.info("mmolxl/18 true --> "+record.bGValue);
+            		}catch (Exception e){
+            			
+            		}
+        		}else
+        			log.info("mmolxl false --> "+record.bGValue);
+				mDumpTextView.setTextColor(Color.WHITE);
+				mDumpTextView.setText("\n" + record.displayTime + "\n"
+						+ record.bGValue + "  " + record.trendArrow + "\n");
+			} else {
+				mDumpTextView.setTextColor(Color.WHITE);
+				if (auxRecord == null || auxRecord.displayTime == null)
+					mDumpTextView.setText("\n---\n---\n---\n");
+				else
+					mDumpTextView.setText("\n" + auxRecord.displayTime
+							+ "\n---\n---\n");
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+	}
 
     //Check to see if service is running
     private boolean isMyServiceRunning() {
@@ -558,7 +641,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 			}
         	menu.getItem(1).setVisible(true);
         	if (calibrationSelected == MedtronicConstants.CALIBRATION_MANUAL){
-	        	menu.getItem(3).setVisible(true);
+	        	menu.getItem(3).setVisible(false);
 	        	menu.getItem(4).setVisible(true);
 	        } else{
 	        	menu.getItem(3).setVisible(false);
@@ -575,12 +658,16 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+    	
         switch (item.getItemId()) {
             case R.id.menu_settings:
                 Intent intent = new Intent(this, SettingsActivity.class);
                 startActivity(intent);
                 break;
             case R.id.refreshCalFactor:
+            	 if (mService == null && bService != null) {
+            		 mService = new Messenger(bService);
+            	 }
             	if (mService != null){
 	            	 try {
 	                     Message msg = Message.obtain(null, MedtronicConstants.MSG_MEDTRONIC_SEND_GET_SENSORCAL_FACTOR);
@@ -602,7 +689,9 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
             
             	break;
             case R.id.readPumpInfo:
-    
+            	 if (mService == null && bService != null) {
+            		 mService = new Messenger(bService);
+            	 }
             	if (mService != null){
 	            	 try {
 	                     Message msg = Message.obtain(null, MedtronicConstants.MSG_MEDTRONIC_SEND_GET_PUMP_INFO);
@@ -623,13 +712,16 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
            	}
             	break;
             case R.id.calibMan:{
+            	
+            	log.debug("Manual Calibration");
             	AlertDialog.Builder alert = new AlertDialog.Builder(ctx);
 	        	alert.setTitle("Manual Calibration");
 	        	alert.setMessage("Insert your glucose value in mg/dl (only natural numbers)");
-	        	SharedPreferences prefs = PreferenceManager
-        				.getDefaultSharedPreferences(getBaseContext());
-	        	if (prefs.getBoolean("mmolxl", false))
+	    
+	        	if (prefs.getBoolean("mmolxl", false)){
 	        		alert.setMessage("Insert your glucose value in mmol/l (only 2 decimals)");
+	        		log.debug("mmol/l");
+	        	}
 	        		
 	        		
 	        	// Set an EditText view to get user input 
@@ -640,11 +732,16 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	        	alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
 	        	public void onClick(DialogInterface dialog, int whichButton) {
 	        	  String value = input.getText().toString();
+	        	  log.debug("Manual Calibration send "+value);
+	        	  if (mService == null && bService != null) {
+             		 mService = new Messenger(bService);
+             	 }
 	        	  if (mService != null){
 		            	 try {
 		                     Message msg = Message.obtain(null, MedtronicConstants.MSG_MEDTRONIC_SEND_MANUAL_CALIB_VALUE);
 		                     Bundle b = new Bundle();
 		 					 b.putString("sgv", value);
+		 					 prefs.edit().putString("manual_sgv", value).commit();
 		 					 msg.setData(b);
 		                     msg.replyTo = mMessenger;
 		                     mService.send(msg);
@@ -674,15 +771,17 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
             }
             	break;
             case R.id.instantCalib:{
-            
+            	log.debug("Instant Calibration ");
             	AlertDialog.Builder alert2 = new AlertDialog.Builder(ctx);
             	
 	        	alert2.setTitle("Instant Calibration");
 	        	alert2.setMessage("Insert pump value in mg/dl (only natural numbers)");
-	        	SharedPreferences prefs = PreferenceManager
+	        	prefs = PreferenceManager
         				.getDefaultSharedPreferences(getBaseContext());
-	        	if (prefs.getBoolean("mmolxl", false))
+	        	if (prefs.getBoolean("mmolxl", false)){
 	        		alert2.setMessage("Insert pump value in mmol/l (only 2 decimals)");
+	        		log.debug("Instant Calibration mmol/l");
+	        	}
 	        	// Set an EditText view to get user input 
 	        	input = new EditText(ctx);
 	        	input.setInputType(InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);
@@ -691,11 +790,13 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	        	alert2.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
 	        	public void onClick(DialogInterface dialog, int whichButton) {
 	        	  String value = input.getText().toString();
+	        	  log.debug("Instant Calibration send "+value);
 	        	  if (mService != null){
 		            	 try {
 		                     Message msg = Message.obtain(null, MedtronicConstants.MSG_MEDTRONIC_SEND_INSTANT_CALIB_VALUE);
 		                     Bundle b = new Bundle();
 		 					 b.putString("sgv", value);
+		 					 prefs.edit().putString("instant_sgv", value).commit();
 		 					 msg.setData(b);
 		                     msg.replyTo = mMessenger;
 		                     mService.send(msg);
@@ -769,6 +870,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
     @Override
     protected void onDestroy() {
     	Log.i(TAG, "onDestroy called");
+    	log.info("onDestroy called");
     	PreferenceManager.getDefaultSharedPreferences(getBaseContext()).unregisterOnSharedPreferenceChangeListener(this);
     	unregisterReceiver(mArrow);
         synchronized (mHandlerActive) {
@@ -797,6 +899,9 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
     void doUnbindService() {
         if (mIsBound) {
             // If we have received the service, and hence registered with it, then now is the time to unregister.
+        	 if (mService == null && bService != null) {
+        		 mService = new Messenger(bService);
+        	 }
             if (mService != null) {
                 try {
                     Message msg = Message.obtain(null, MedtronicConstants.MSG_UNREGISTER_CLIENT);
@@ -844,7 +949,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	             	b4.setVisibility(View.GONE);*/
 	         	if (menu != null){
 	    	        if (calibrationSelected == MedtronicConstants.CALIBRATION_MANUAL){
-	    	        	menu.getItem(3).setVisible(true);
+	    	        	menu.getItem(3).setVisible(false);
 	    	        	menu.getItem(4).setVisible(true);
 	    	        } else{
 	    	        	menu.getItem(3).setVisible(false);
@@ -860,7 +965,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 						if ("3".equalsIgnoreCase(type)){
 							menu.getItem(2).setVisible(false);
 							if (menu != null){
-						 		menu.getItem(3).setVisible(true);
+						 		menu.getItem(3).setVisible(false);
 			    	        	menu.getItem(4).setVisible(true);	    	        
 				            }
 						}else if ("2".equalsIgnoreCase(type)) {
