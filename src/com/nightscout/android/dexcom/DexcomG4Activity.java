@@ -87,6 +87,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
     boolean mIsBound;
     boolean keepServiceAlive = true;
     Boolean mHandlerActive = false;
+    Object mHandlerActiveLock = new Object();
     Boolean usbAllowedPermission = false;
     final Messenger mMessenger = new Messenger(new IncomingHandler());
     ActivityManager manager = null;
@@ -123,6 +124,9 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
                 mHandler.removeCallbacks(updateDataView);
 	        	mHandler.post(updateDataView);
                 break;
+            case MedtronicConstants.MSG_MEDTRONIC_GLUCMEASURE_DETECTED:
+            	showUseCalibConfirmation(msg.getData().getFloat("data"), msg.getData().getBoolean("calibrating"), msg.getData().getBoolean("isCalFactorFromPump"));
+            	break;
             case MedtronicConstants.MSG_MEDTRONIC_CGM_USB_GRANTED:
                 usbAllowedPermission = true;
                 mHandler.removeCallbacks(updateDataView);
@@ -148,11 +152,93 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
             	mHandler.removeCallbacks(updateDataView);
  	        	mHandler.post(updateDataView);
                 break;
+            case MedtronicConstants.MSG_REFRESH_DB_CONNECTION:
+            	if (mService != null){
+	            	 try {
+	                     Message message = Message.obtain(null, MedtronicConstants.MSG_REFRESH_DB_CONNECTION);
+	                     msg.replyTo = mMessenger;
+	                     mService.send(message);
+	                 } catch (RemoteException e) {
+	                	 StringBuffer sb1 = new StringBuffer("");
+	            		 sb1.append("EXCEPTION!!!!!! "+ e.getMessage()+" "+e.getCause());
+	            		 for (StackTraceElement st : e.getStackTrace()){
+	            			 sb1.append(st.toString()).append("\n");
+	            		 }
+	            		 Log.e("ApprovingGlucValReceived", "Error approving gluc. value \n "+sb1.toString());
+	                	 if (ISDEBUG){
+	                		 display.setText(display.getText()+"Error approving gluc. value\n", BufferType.EDITABLE);
+	                	 }
+	                 }
+	    		}
+            	break;
             default:
                 super.handleMessage(msg);
             }
         }
     }
+	private void showUseCalibConfirmation(final float num, final boolean calibrate, final boolean isCalFactorFromPump){
+		AlertDialog.Builder alert = new AlertDialog.Builder(ctx);
+    	alert.setTitle("Calibration Detected!!!");
+    	alert.setMessage("Do you want to use the received glucometer value for calibration?");
+
+    	alert.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+	    	public void onClick(DialogInterface dialog, int whichButton) {
+	    		if (mService != null){
+	            	 try {
+	                     Message msg = Message.obtain(null, MedtronicConstants.MSG_MEDTRONIC_GLUCMEASURE_APPROVED);
+	                     Bundle b = new Bundle();
+	                	 b.putBoolean("approved", true);
+	 					 b.putFloat("data", num);
+	 					 b.putBoolean("calibrating", calibrate);
+	 					 b.putBoolean("isCalFactorFromPump", isCalFactorFromPump);
+	 					 msg.setData(b);
+	                     msg.replyTo = mMessenger;
+	                     mService.send(msg);
+	                 } catch (RemoteException e) {
+	                	 StringBuffer sb1 = new StringBuffer("");
+	            		 sb1.append("EXCEPTION!!!!!! "+ e.getMessage()+" "+e.getCause());
+	            		 for (StackTraceElement st : e.getStackTrace()){
+	            			 sb1.append(st.toString()).append("\n");
+	            		 }
+	            		 Log.e("ApprovingGlucValReceived", "Error approving gluc. value \n "+sb1.toString());
+	                	 if (ISDEBUG){
+	                		 display.setText(display.getText()+"Error approving gluc. value\n", BufferType.EDITABLE);
+	                	 }
+	                 }
+	    		}
+	    	}
+    	});
+
+    	alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+    	  public void onClick(DialogInterface dialog, int whichButton) {
+    		  if (mService != null){
+	            	 try {
+	                     Message msg = Message.obtain(null, MedtronicConstants.MSG_MEDTRONIC_GLUCMEASURE_APPROVED);
+	                     Bundle b = new Bundle();
+	 					
+	 					 b.putBoolean("approved", false);
+	 					
+	 					 msg.setData(b);
+	                     msg.replyTo = mMessenger;
+	                     mService.send(msg);
+	                 } catch (RemoteException e) {
+	                	 StringBuffer sb1 = new StringBuffer("");
+	            		 sb1.append("EXCEPTION!!!!!! "+ e.getMessage()+" "+e.getCause());
+	            		 for (StackTraceElement st : e.getStackTrace()){
+	            			 sb1.append(st.toString()).append("\n");
+	            		 }
+	            		 Log.e("ApprovingGlucValReceived", "Error approving gluc. value \n "+sb1.toString());
+	                	 if (ISDEBUG){
+	                		 display.setText(display.getText()+"Error approving gluc. value\n", BufferType.EDITABLE);
+	                	 }
+	                 }
+	    		}
+    	  }
+    	});
+
+    	alert.show();
+	}
+
     private ServiceConnection mConnection = new ServiceConnection() {
         public void onServiceConnected(ComponentName className, IBinder service) {
         	bService = service;
@@ -179,6 +265,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
         public void onServiceDisconnected(ComponentName className) {
             // This is called when the connection with the service has been unexpectedly disconnected - process crashed.
             mService = null;
+            bService = null;
             Log.i("DXCG4_MEDTRONICSERVICE_ONSERVICEDISCONNECTED","Service Disconnected\n");
             if (ISDEBUG){
             	display.setText(display.getText()+"Service Disconnected\n", BufferType.EDITABLE);
@@ -191,7 +278,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
     //All I'm really doing here is creating a simple activity to launch and maintain the service
     private Runnable updateDataView = new Runnable() {
         public void run() {
-        	synchronized (mHandlerActive) {
+        	synchronized (mHandlerActiveLock) {
         		if (!mHandlerActive)
         			return;
 		        if (!isMyServiceRunning()) {
@@ -442,7 +529,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
         b1.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
-            	synchronized (mHandlerActive) {
+            	synchronized (mHandlerActiveLock) {
             		 if (b1.getText() == "Stop Uploading CGM Data") {
                      	mHandlerActive = false;
                          mHandler.removeCallbacks(updateDataView);
@@ -785,6 +872,16 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	        	// Set an EditText view to get user input 
 	        	input = new EditText(ctx);
 	        	input.setInputType(InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);
+	        	
+	        	float num = settings.getFloat("lastGlucometerValue", (float) -1f);
+	        	if (num <= 0)
+	        		num = 0;
+	        
+	        	if (prefs.getBoolean("mmolxl", false)){
+	        		DecimalFormat df = new DecimalFormat("#.#");
+	        		input.setText(df.format((num/18.0)));
+	        	}else
+	        		input.setText(""+(int)num);
 	        	alert2.setView(input);
 	
 	        	alert2.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
@@ -873,7 +970,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
     	log.info("onDestroy called");
     	PreferenceManager.getDefaultSharedPreferences(getBaseContext()).unregisterOnSharedPreferenceChangeListener(this);
     	unregisterReceiver(mArrow);
-        synchronized (mHandlerActive) {
+        synchronized (mHandlerActiveLock) {
         	mHandler.removeCallbacks(updateDataView);
         	doUnbindService();
         	if (keepServiceAlive){
@@ -992,21 +1089,24 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 				stopService(new Intent(DexcomG4Activity.this, DexcomG4Service.class));
 	        	SharedPreferences settings = getSharedPreferences(MedtronicConstants.PREFS_NAME, 0);
 	        	SharedPreferences.Editor editor = settings.edit();
-	        	editor.remove("lastGlucometerMessage");
-		        editor.remove("previousValue");
-		        editor.remove("expectedSensorSortNumber");
-		        editor.remove("knownDevices");
-		        editor.remove("isCalibrating");
-		        editor.remove("lastGlucometerMessage");
-		        editor.remove("previousValue");	
-		        editor.remove("lastGlucometerValue");
-		        editor.remove("lastGlucometerDate");
-		        editor.remove("expectedSensorSortNumberForCalibration0");
-		        editor.remove("expectedSensorSortNumberForCalibration1");
-		        editor.remove("lastPumpAwake");
-		        editor.commit();
+	        	String type = prefs.getString("monitor_type", "1");
+	        	if ("1".equalsIgnoreCase(type)){
+		        	editor.remove("lastGlucometerMessage");
+			        editor.remove("previousValue");
+			        editor.remove("expectedSensorSortNumber");
+			        editor.remove("knownDevices");
+			        editor.remove("isCalibrating");
+			        editor.remove("lastGlucometerMessage");
+			        editor.remove("previousValue");	
+			        editor.remove("lastGlucometerValue");
+			        editor.remove("lastGlucometerDate");
+			        editor.remove("expectedSensorSortNumberForCalibration0");
+			        editor.remove("expectedSensorSortNumberForCalibration1");
+			        editor.remove("lastPumpAwake");
+			        editor.commit();
+	        	}
 		        if (!sharedPreferences.getBoolean("IUNDERSTAND", false)){
-					 synchronized (mHandlerActive) {
+					 synchronized (mHandlerActiveLock) {
 				        	mHandler.removeCallbacks(updateDataView);
 				        	mHandlerActive = false;
 					 }
@@ -1023,7 +1123,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 			 //If i do not
 			 if (key.equals("IUNDERSTAND")){
 				 if (!sharedPreferences.getBoolean("IUNDERSTAND", false)){
-					 synchronized (mHandlerActive) {
+					 synchronized (mHandlerActiveLock) {
 				        	mHandler.removeCallbacks(updateDataView);
 				        	mHandlerActive = false;
 					 }

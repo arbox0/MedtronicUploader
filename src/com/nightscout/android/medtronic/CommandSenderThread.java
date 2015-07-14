@@ -78,21 +78,21 @@ public class CommandSenderThread implements Runnable{
 			 }
 		 	if (wThread.retries >= MedtronicConstants.NUMBER_OF_RETRIES){
 		 		mHandler3.removeCallbacks(wThread);
-	    		synchronized (reader.sendingCommand) {
+	    		synchronized (reader.sendingCommandLock) {
 	    			reader.sendingCommand = false;
 				}
-	    		synchronized (reader.waitingCommand) {
+	    		synchronized (reader.waitingCommandLock) {
 	    			reader.waitingCommand = false;
 	    			reader.lastCommandSend = null;
 				}
-	    		synchronized (reader.processingCommand) {
+	    		synchronized (reader.processingCommandLock) {
 	    			reader.processingCommand = false;
 				}
 	    		sendMessageToUI("Timeout expired executing command list", false);
-	    		synchronized (reader.processingCommand) {
+	    		synchronized (reader.processingCommandLock) {
 	    			reader.processingCommand = false;
 				}
-	    		synchronized (reader.waitingCommand) {
+	    		synchronized (reader.waitingCommandLock) {
 	        		reader.waitingCommand = false;
 	        		reader.lastCommandSend = null;
 				}
@@ -100,22 +100,22 @@ public class CommandSenderThread implements Runnable{
 	    	}
 		 	
 		 	if (index >= commandList.length){
-        		synchronized (reader.processingCommand) {
+        		synchronized (reader.processingCommandLock) {
 	    			reader.processingCommand = false;
 				}
-        		synchronized (reader.waitingCommand) {
+        		synchronized (reader.waitingCommandLock) {
             		reader.waitingCommand = false;
             		reader.lastCommandSend = null;
     			}
         		return;
         	}
 		 	if (withoutConfirmation <= 0){
-				synchronized (reader.waitingCommand) {
+				synchronized (reader.waitingCommandLock) {
 					reader.waitingCommand = true;
 					reader.lastCommandSend = null;
 				}
 			}else{
-				synchronized (reader.waitingCommand) {
+				synchronized (reader.waitingCommandLock) {
 					reader.waitingCommand = false;
 					reader.lastCommandSend = null;
 				}
@@ -235,7 +235,7 @@ public class CommandSenderThread implements Runnable{
     	
     	public void run(){
     		try{
-			synchronized (reader.processingCommand) {
+			synchronized (reader.processingCommandLock) {
 				if (!reader.processingCommand)
 					return;
 			}
@@ -247,7 +247,7 @@ public class CommandSenderThread implements Runnable{
     		}
     		log.debug("sendcommand");
     		
-    		synchronized (reader.sendingCommand) {
+    		synchronized (reader.sendingCommandLock) {
         		if (reader.sendingCommand){
         			if (timeoutSending < 11){
         				log.debug("timeoutSending++ "+timeoutSending);
@@ -268,7 +268,7 @@ public class CommandSenderThread implements Runnable{
     			log.debug("sent ");
     			//if I have sent it, I will wait once to give the "enlite" time to answer, next time I will retry.
     			sent = false;
-    			synchronized (reader.waitingCommand) {
+    			synchronized (reader.waitingCommandLock) {
             		if (!reader.waitingCommand){
             			retries = 0;
             			mHandler4.removeCallbacks(instance);
@@ -282,7 +282,7 @@ public class CommandSenderThread implements Runnable{
 				mHandler3.postDelayed(wThread, delay);
     			return;
     		}
-    		synchronized (reader.waitingCommand) {
+    		synchronized (reader.waitingCommandLock) {
         		if (!reader.waitingCommand){
         			if (withoutConfirmation > 0){
         				log.debug("sending command without expecting confirmation still send -->"+ (withoutConfirmation--));
@@ -304,11 +304,11 @@ public class CommandSenderThread implements Runnable{
     		else
     			sendMedtronicPumpCommand(command, repeat, postCommandBytes);
  
-        	synchronized (reader.waitingCommand) {
+        	synchronized (reader.waitingCommandLock) {
         			reader.lastCommandSend = command;// register the command
     		}
     		
-			synchronized (reader.sendingCommand) {
+			synchronized (reader.sendingCommandLock) {
 				log.debug("send command "+retries);
 				reader.sendingCommand = true;
 				if (!sent){

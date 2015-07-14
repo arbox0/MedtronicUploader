@@ -37,21 +37,21 @@ public class HistoricGetterThread extends CommandSenderThread {
 		mHandler3.removeCallbacks(wThread);
 		//mHandler4.removeCallbacks(this);
 		if (reader != null){
-			synchronized (reader.sendingCommand) {
+			synchronized (reader.sendingCommandLock) {
 				reader.sendingCommand = false;
 			}
-			synchronized (reader.waitingCommand) {
+			synchronized (reader.waitingCommandLock) {
 				reader.waitingCommand = false;
 				reader.lastCommandSend = null;
 			}
-			synchronized (reader.processingCommand) {
+			synchronized (reader.processingCommandLock) {
 				reader.processingCommand = false;
 			}
 			sendMessageToUI("Init historicGetter", false);
-			synchronized (reader.processingCommand) {
+			synchronized (reader.processingCommandLock) {
 				reader.processingCommand = false;
 			}
-			synchronized (reader.waitingCommand) {
+			synchronized (reader.waitingCommandLock) {
 				reader.waitingCommand = false;
 				reader.lastCommandSend = null;
 			}
@@ -90,27 +90,27 @@ public class HistoricGetterThread extends CommandSenderThread {
 			}
 			if (wThread.retries >= MedtronicConstants.NUMBER_OF_RETRIES){
 				mHandler3.removeCallbacks(wThread);
-				synchronized (reader.sendingCommand) {
+				synchronized (reader.sendingCommandLock) {
 					reader.sendingCommand = false;
 				}
-				synchronized (reader.waitingCommand) {
+				synchronized (reader.waitingCommandLock) {
 					reader.waitingCommand = false;
 					reader.lastCommandSend = null;
 				}
-				synchronized (reader.processingCommand) {
+				synchronized (reader.processingCommandLock) {
 					reader.processingCommand = false;
 				}
 				sendMessageToUI("Timeout expired executing command list", false);
-				synchronized (reader.processingCommand) {
+				synchronized (reader.processingCommandLock) {
 					reader.processingCommand = false;
 				}
-				synchronized (reader.waitingCommand) {
+				synchronized (reader.waitingCommandLock) {
 					reader.waitingCommand = false;
 					reader.lastCommandSend = null;
 				}
 				return;
 			}
-			synchronized (reader.processingCommand) {//TODO: LAST
+			synchronized (reader.processingCommandLock) {//TODO: LAST
 				if (!reader.processingCommand)
 					return;
 			}
@@ -134,7 +134,7 @@ public class HistoricGetterThread extends CommandSenderThread {
 					wThread.postCommandBytes[4] = lastHistoricPage[3];
 					isWaitingNextLine = true;
 				
-					synchronized (reader.waitingCommand) {
+					synchronized (reader.waitingCommandLock) {
 						reader.waitingCommand = true;
 						reader.lastCommandSend = null;
 					}
@@ -148,10 +148,10 @@ public class HistoricGetterThread extends CommandSenderThread {
 					index++;
 					return;
 				}
-				synchronized (reader.processingCommand) {
+				synchronized (reader.processingCommandLock) {
 					reader.processingCommand = false;
 				}
-				synchronized (reader.waitingCommand) {
+				synchronized (reader.waitingCommandLock) {
 					reader.waitingCommand = false;
 					reader.lastCommandSend = null;
 				}
@@ -159,12 +159,12 @@ public class HistoricGetterThread extends CommandSenderThread {
 			}
 			byte command = commandList[index];
 			if (withoutConfirmation <= 0 || command == MedtronicConstants.MEDTRONIC_INIT ){
-				synchronized (reader.waitingCommand) {
+				synchronized (reader.waitingCommandLock) {
 					reader.waitingCommand = true;
 					reader.lastCommandSend = null;
 				}
 			}else{
-				synchronized (reader.waitingCommand) {
+				synchronized (reader.waitingCommandLock) {
 					reader.waitingCommand = false;
 					reader.lastCommandSend = null;
 				}

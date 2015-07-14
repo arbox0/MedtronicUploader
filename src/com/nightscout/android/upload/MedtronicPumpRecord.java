@@ -2,6 +2,8 @@ package com.nightscout.android.upload;
 
 import java.io.Serializable;
 
+import org.bson.Document;
+
 import com.mongodb.DBObject;
 import com.nightscout.android.medtronic.MedtronicConstants;
 
@@ -80,47 +82,47 @@ public class MedtronicPumpRecord extends DeviceRecord implements Serializable{
 	public void setsSensorID(String sSensorID) {
 		this.sSensorID = sSensorID;
 	}
-	public void mergeCurrentWithDBObject(DBObject previousRecord){
-		if (!previousRecord.containsField("insulinLeft") || insulinLeft > 0){
+	public void mergeCurrentWithDBObject(Document previousRecord){
+		if (!previousRecord.containsKey("insulinLeft") || insulinLeft > 0){
 			previousRecord.put("insulinLeft", insulinLeft);
 		}
-		if (!previousRecord.containsField("status") || !("---".equals(status))){
+		if (!previousRecord.containsKey("status") || !("---".equals(status))){
 			previousRecord.put("status", status);
 		}
-		if (!previousRecord.containsField("alarm") || !("---".equals(alarm))){
+		if (!previousRecord.containsKey("alarm") || !("---".equals(alarm))){
 			previousRecord.put("alarm", alarm);
 		}
-		if (!previousRecord.containsField("temporaryBasal") || !("---".equals(temporaryBasal))){
+		if (!previousRecord.containsKey("temporaryBasal") || !("---".equals(temporaryBasal))){
 			previousRecord.put("temporaryBasal", temporaryBasal);
 		}
-		if (!previousRecord.containsField("batteryStatus") || !("---".equals(batteryStatus))){
+		if (!previousRecord.containsKey("batteryStatus") || !("---".equals(batteryStatus))){
 			previousRecord.put("batteryStatus", batteryStatus);
 		}
-		if (!previousRecord.containsField("batteryVoltage") || !("---".equals(batteryVoltage))){
+		if (!previousRecord.containsKey("batteryVoltage") || !("---".equals(batteryVoltage))){
 			previousRecord.put("batteryVoltage", batteryVoltage);
 		}
-		if (!previousRecord.containsField("model") || !("---".equals(model))){
+		if (!previousRecord.containsKey("model") || !("---".equals(model))){
 			previousRecord.put("model", model);
 		}
-		if (!previousRecord.containsField("sRemoteControlID1") || !("---".equals(sRemoteControlID1))){
+		if (!previousRecord.containsKey("sRemoteControlID1") || !("---".equals(sRemoteControlID1))){
 			previousRecord.put("sRemoteControlID1", sRemoteControlID1);
 		}
-		if (!previousRecord.containsField("sRemoteControlID2") || !("---".equals(sRemoteControlID2))){
+		if (!previousRecord.containsKey("sRemoteControlID2") || !("---".equals(sRemoteControlID2))){
 			previousRecord.put("sRemoteControlID2", sRemoteControlID2);
 		}
-		if (!previousRecord.containsField("sRemoteControlID3") || !("---".equals(sRemoteControlID3))){
+		if (!previousRecord.containsKey("sRemoteControlID3") || !("---".equals(sRemoteControlID3))){
 			previousRecord.put("sRemoteControlID3", sRemoteControlID3);
 		}
-		if (!previousRecord.containsField("sParadigmLink1") || !("---".equals(sParadigmLink1))){
+		if (!previousRecord.containsKey("sParadigmLink1") || !("---".equals(sParadigmLink1))){
 			previousRecord.put("sParadigmLink1", sParadigmLink1);
 		}
-		if (!previousRecord.containsField("sParadigmLink2") || !("---".equals(sParadigmLink2))){
+		if (!previousRecord.containsKey("sParadigmLink2") || !("---".equals(sParadigmLink2))){
 			previousRecord.put("sParadigmLink2", sParadigmLink2);
 		}
-		if (!previousRecord.containsField("sParadigmLink3") || !("---".equals(sParadigmLink3))){
+		if (!previousRecord.containsKey("sParadigmLink3") || !("---".equals(sParadigmLink3))){
 			previousRecord.put("sParadigmLink3", sParadigmLink3);
 		}
-		if (!("---".equals(sSensorID)) || (!previousRecord.containsField("sSensorID"))){
+		if (!("---".equals(sSensorID)) || (!previousRecord.containsKey("sSensorID"))){
 			previousRecord.put("sSensorID", sSensorID);
 		}
 		previousRecord.put("isWarmingUp", isWarmingUp);
