@@ -177,6 +177,8 @@ public class MedtronicCGMService extends Service implements
 				String value = msg.getData().getString("sgv");
 				if (value == null || value.equals("")){
 					value = prefs.getString("manual_sgv", "");
+					if (value != null && value.indexOf(",") >= 0)
+						value = value.replace(",", ".");
 				}
 				log.debug("Manual Calibration Received SGV "+value);
 				try{
@@ -224,6 +226,8 @@ public class MedtronicCGMService extends Service implements
 				value = msg.getData().getString("sgv");
 				if (value == null || value.equals("")){
 					value = prefs.getString("instant_sgv", "");
+					if (value != null && value.indexOf(",") >= 0)
+						value = value.replace(",", ".");
 				}
 				log.debug("Instant Calibration received SGV "+value);
 				try{
