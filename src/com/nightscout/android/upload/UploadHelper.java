@@ -310,6 +310,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
             if (baseURI.endsWith("/v1/")) apiVersion = 1;
 
             String baseURL = null;
+            String host = null;
             String secret = null;
             String[] uriParts = baseURI.split("@");
 
@@ -325,7 +326,22 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                 throw new Exception("Starting with API v1, a pass phase is required");
             } else if (uriParts.length == 2 && apiVersion > 0) {
                 secret = uriParts[0];
-                baseURL = uriParts[1];
+                String[] urlLeft = uriParts[1].split("/"); 
+                host = urlLeft[0];
+                if (baseURL == null)
+                	baseURL = "";
+                if (urlLeft.length > 1){
+                	for (int i = 1; i < urlLeft.length; i++){
+                		if ((baseURL == null || !baseURL.endsWith("/")) && !urlLeft[i].startsWith("/")) {
+                			baseURL += "/";
+                		}
+                		baseURL += urlLeft[i];
+                	}
+                }else
+                	baseURL = host;
+                if (!baseURL.endsWith("/")){
+                	baseURL += "/";
+                }
             } else {
             	if (recordsNotUploadedListJson.size() > 0){
                  	JSONArray jsonArray = new JSONArray(recordsNotUploadedListJson);
@@ -364,6 +380,11 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                              }
                             throw new Exception("Starting with API v1, a pass phase is required");
                         } else {
+                        	if (secret.indexOf("https://") >= 0){
+                        		secret = secret.replace("https://", "");
+                        	} else if (secret.indexOf("http://") >= 0) {
+                        		secret = secret.replace("http://", "");
+                        	}
                             MessageDigest digest = MessageDigest.getInstance("SHA-1");
                             byte[] bytes = secret.getBytes("UTF-8");
                             digest.update(bytes, 0, bytes.length);
@@ -459,6 +480,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                     post.setEntity(se);
                     post.setHeader("Accept", "application/json");
                     post.setHeader("Content-type", "application/json");
+                    post.setHeader("host", host);
 
 					ResponseHandler responseHandler = new BasicResponseHandler();
                     httpclient.execute(post, responseHandler);
