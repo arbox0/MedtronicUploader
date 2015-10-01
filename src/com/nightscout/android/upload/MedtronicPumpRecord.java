@@ -3,6 +3,8 @@ package com.nightscout.android.upload;
 import java.io.Serializable;
 
 import org.bson.Document;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import com.mongodb.DBObject;
 import com.nightscout.android.medtronic.MedtronicConstants;
@@ -127,6 +129,125 @@ public class MedtronicPumpRecord extends DeviceRecord implements Serializable{
 		}
 		previousRecord.put("isWarmingUp", isWarmingUp);
 	}
-	
+	public void mergeCurrentWithDBObject(JSONObject previousRecord){
+		try {
+			if (!previousRecord.has("insulinLeft") || insulinLeft > 0){
+				previousRecord.put("insulinLeft", insulinLeft);
+			}
+		}catch (Exception e) {
+			
+		}
+		if (!previousRecord.has("status") || !("---".equals(status))){
+			try {
+				previousRecord.put("status", status);
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		
+		if (!previousRecord.has("alarm") || !("---".equals(alarm))){
+			try {
+				previousRecord.put("alarm", alarm);
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		if (!previousRecord.has("temporaryBasal") || !("---".equals(temporaryBasal))){
+			try {
+				previousRecord.put("temporaryBasal", temporaryBasal);
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		if (!previousRecord.has("batteryStatus") || !("---".equals(batteryStatus))){
+			try {
+				previousRecord.put("batteryStatus", batteryStatus);
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		if (!previousRecord.has("batteryVoltage") || !("---".equals(batteryVoltage))){
+			try {
+				previousRecord.put("batteryVoltage", batteryVoltage);
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		if (!previousRecord.has("model") || !("---".equals(model))){
+			try {
+				previousRecord.put("model", model);
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		if (!previousRecord.has("sRemoteControlID1") || !("---".equals(sRemoteControlID1))){
+			try {
+				previousRecord.put("sRemoteControlID1", sRemoteControlID1);
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		if (!previousRecord.has("sRemoteControlID2") || !("---".equals(sRemoteControlID2))){
+			try {
+				previousRecord.put("sRemoteControlID2", sRemoteControlID2);
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		if (!previousRecord.has("sRemoteControlID3") || !("---".equals(sRemoteControlID3))){
+			try {
+				previousRecord.put("sRemoteControlID3", sRemoteControlID3);
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		if (!previousRecord.has("sParadigmLink1") || !("---".equals(sParadigmLink1))){
+			try {
+				previousRecord.put("sParadigmLink1", sParadigmLink1);
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		if (!previousRecord.has("sParadigmLink2") || !("---".equals(sParadigmLink2))){
+			try {
+				previousRecord.put("sParadigmLink2", sParadigmLink2);
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		if (!previousRecord.has("sParadigmLink3") || !("---".equals(sParadigmLink3))){
+			try {
+				previousRecord.put("sParadigmLink3", sParadigmLink3);
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		if (!("---".equals(sSensorID)) || (!previousRecord.has("sSensorID"))){
+			try {
+				previousRecord.put("sSensorID", sSensorID);
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		try {
+			previousRecord.put("isWarmingUp", isWarmingUp);
+		} catch (JSONException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
 	
 }

@@ -1,5 +1,11 @@
 package com.nightscout.android.upload;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.security.MessageDigest;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -10,10 +16,17 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 
+import javax.crypto.spec.GCMParameterSpec;
+
 import static com.mongodb.client.model.Filters.*;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.HttpClient;
 import org.apache.http.client.ResponseHandler;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.BasicResponseHandler;
 import org.apache.http.impl.client.DefaultHttpClient;
@@ -210,7 +223,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 					Message mSend = null;
 					mSend = Message
 							.obtain(null,
-									MedtronicConstants.MSG_MEDTRONIC_CGM_ERROR_RECEIVED);
+                                    MedtronicConstants.MSG_MEDTRONIC_CGM_ERROR_RECEIVED);
 					Bundle b = new Bundle();
 					b.putString("data", valuetosend);
 					mSend.setData(b);
@@ -224,6 +237,115 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 				}
 			}
 		} 
+	}
+	
+	
+	
+	private JSONArray doGetRequest(HttpClient client, String url, String filter, String sort, String limit, String apiKey){
+		JSONArray result = null;
+		 URI nUri = null;
+		 String query = "";
+		 if (filter != null && filter.length() > 0) {
+			 query += filter + "&";
+		 }
+		 if (sort != null && sort.length() > 0) {
+			 query += sort + "&";
+		 }
+		 if (limit != null && limit.length() > 0) {
+			 query += limit + "&";
+		 }
+		    try {
+				nUri = new URI("https", null, "api.mongolab.com", 443, url, query + "apiKey="+apiKey,null);
+			} catch (URISyntaxException e2) {
+				// TODO Auto-generated catch block
+				e2.printStackTrace();
+			}
+		    //URIUtils.
+		    HttpGet getRequest = new HttpGet(nUri);
+		    HttpPost postRequest = null;
+		    getRequest.addHeader("accept", "application/json");
+		    try {
+				HttpResponse response = client.execute(getRequest);
+				InputStream instream = response.getEntity().getContent();
+		        String sResult = convertStreamToString(instream);
+		        // now you have the string representation of the HTML request
+		        System.out.println("RESPONSE: " + sResult);
+		        instream.close();
+		        result = new JSONArray(sResult);
+			} catch (ClientProtocolException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			} catch (Exception e2) {
+				// TODO Auto-generated catch block
+				e2.printStackTrace();
+			}
+		return result;
+	}
+	
+	private boolean doPutRequest(HttpClient client, String url, String filter, String apiKey, JSONObject data){
+		 String query = "";
+		 if (filter != null && filter.length() > 0) {
+			 query += filter + "&";
+		 }
+	
+		try {
+			URI nUri = null;
+		    try {
+				nUri = new URI("https", null, "api.mongolab.com", 443, url, query + "&apiKey="+apiKey,null);
+			} catch (URISyntaxException e2) {
+				// TODO Auto-generated catch block
+				e2.printStackTrace();
+				return false;
+			}
+			HttpPut putRequest = new HttpPut(nUri);
+			putRequest.setHeader("Accept", "application/json");
+			putRequest.setHeader("Content-type", "application/json");
+	        StringEntity se = new StringEntity(data.toString());
+	        putRequest.setEntity(se);
+	        HttpResponse resp = client.execute(putRequest);
+	        if (resp.getStatusLine().getStatusCode() > 201) {
+	        	Log.e("UploaderHelper", "The can't be uploaded");
+				log.error("The record can't be uploaded Code: "+resp.getStatusLine().getStatusCode());
+				return false;
+	        }
+		}catch(IllegalArgumentException ex){
+			log.error("UploaderHelper", "Illegal record");
+			return false;
+		}catch (Exception e){
+			Log.e("UploaderHelper", "The retried can't be uploaded");
+			log.error("The retried record can't be uploaded ", e);
+			return false;
+		}
+		return true;
+	}
+	
+	private boolean doPostRequest(HttpClient client, String url, String apiKey, JSONObject data){
+		URI nUri = null;
+		try {
+			nUri = new URI("https", null, "api.mongolab.com", 443, url, "apiKey="+apiKey,null);
+			HttpPost postRequest = new HttpPost(url);
+			postRequest.setHeader("Accept", "application/json");
+	        postRequest.setHeader("Content-type", "application/json");
+	        StringEntity se = new StringEntity(data.toString());
+	        postRequest.setEntity(se);
+	        HttpResponse resp = client.execute(postRequest);
+	        if (resp.getStatusLine().getStatusCode() > 201) {
+	        	Log.e("UploaderHelper", "The can't be uploaded");
+				log.error("The record can't be uploaded Code: "+resp.getStatusLine().getStatusCode());
+				return false;
+	        }
+		}catch(IllegalArgumentException ex){
+			log.error("UploaderHelper", "Illegal record");
+			return false;
+		}catch (Exception e){
+			Log.e("UploaderHelper", "The retried can't be uploaded");
+			log.error("The retried record can't be uploaded ", e);
+			return false;
+		}
+		return true;
 	}
     
     /**
@@ -255,12 +377,21 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                 Log.i(TAG, String.format("Finished upload of %s record using a REST API in %s ms", records.length, System.currentTimeMillis() - start));
                 log.info(String.format("Finished upload of %s record using a REST API in %s ms", records.length, System.currentTimeMillis() - start));
             }else if (enableMongoUpload) {
-                long start = System.currentTimeMillis();
-                Log.i(TAG, String.format("Starting upload of %s record using Mongo", records.length));
-                log.info(String.format("Starting upload of %s record using Mongo "+dbURI, records.length));
-                doMongoUpload(prefs, records);
-                Log.i(TAG, String.format("Finished upload of %s record using a Mongo in %s ms", records.length, System.currentTimeMillis() - start));
-                log.info(String.format("Finished upload of %s record using a Mongo in %s ms", records.length, System.currentTimeMillis() - start));
+            	if (!prefs.getBoolean("isMongoRest", false)){
+	                long start = System.currentTimeMillis();
+	                Log.i(TAG, String.format("Starting upload of %s record using Mongo", records.length));
+	                log.info(String.format("Starting upload of %s record using Mongo "+dbURI, records.length));
+	                doMongoUpload(prefs, records);
+	                Log.i(TAG, String.format("Finished upload of %s record using a Mongo in %s ms", records.length, System.currentTimeMillis() - start));
+	                log.info(String.format("Finished upload of %s record using a Mongo in %s ms", records.length, System.currentTimeMillis() - start));
+            	} else {
+            		long start = System.currentTimeMillis();
+	                Log.i(TAG, String.format("Starting upload of %s record using Mongo", records.length));
+	                log.info(String.format("Starting upload of %s record using Mongo "+dbURI, records.length));
+	                doMongoRestUpload(prefs, records);
+	                Log.i(TAG, String.format("Finished upload of %s record using a Mongo in %s ms", records.length, System.currentTimeMillis() - start));
+	                log.info(String.format("Finished upload of %s record using a Mongo in %s ms", records.length, System.currentTimeMillis() - start));
+            	}
             }	
         }catch(Exception e){
         	log.error("ERROR uploading data!!!!!", e);
@@ -310,7 +441,6 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
             if (baseURI.endsWith("/v1/")) apiVersion = 1;
 
             String baseURL = null;
-            String host = null;
             String secret = null;
             String[] uriParts = baseURI.split("@");
 
@@ -326,22 +456,22 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                 throw new Exception("Starting with API v1, a pass phase is required");
             } else if (uriParts.length == 2 && apiVersion > 0) {
                 secret = uriParts[0];
-                String[] urlLeft = uriParts[1].split("/"); 
-                host = urlLeft[0];
-                if (baseURL == null)
-                	baseURL = "";
-                if (urlLeft.length > 1){
-                	for (int i = 1; i < urlLeft.length; i++){
-                		if ((baseURL == null || !baseURL.endsWith("/")) && !urlLeft[i].startsWith("/")) {
-                			baseURL += "/";
-                		}
-                		baseURL += urlLeft[i];
-                	}
-                }else
-                	baseURL = host;
-                if (!baseURL.endsWith("/")){
-                	baseURL += "/";
+                baseURL = uriParts[1];
+
+                // new format URL!
+
+                if (secret.contains("http")) {
+                    String b = "http://";
+                    if (secret.contains("https")) {
+                        baseURL = "https://" + baseURL;
+                    } else {
+                        baseURL = "http://" + baseURL;
+                    }
+                    String[] uriParts2 = secret.split("//");
+                    secret = uriParts2[1];
                 }
+
+
             } else {
             	if (recordsNotUploadedListJson.size() > 0){
                  	JSONArray jsonArray = new JSONArray(recordsNotUploadedListJson);
@@ -359,6 +489,9 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
             HttpConnectionParams.setConnectionTimeout(params, CONNECTION_TIMEOUT);
 
             DefaultHttpClient httpclient = new DefaultHttpClient(params);
+
+            postDeviceStatus(baseURL,httpclient);
+
             if (recordsNotUploadedListJson.size() > 0){
             	List<JSONObject> auxList = new ArrayList<JSONObject>(recordsNotUploadedListJson);
             	recordsNotUploadedListJson.clear();
@@ -367,7 +500,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
         			String postURL = baseURL; 
                 	postURL += "entries";
                     Log.i(TAG, "postURL: " + postURL);
-                    
+
                     HttpPost post = new HttpPost(postURL);
 
                     if (apiVersion > 0) {
@@ -380,11 +513,6 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                              }
                             throw new Exception("Starting with API v1, a pass phase is required");
                         } else {
-                        	if (secret.indexOf("https://") >= 0){
-                        		secret = secret.replace("https://", "");
-                        	} else if (secret.indexOf("http://") >= 0) {
-                        		secret = secret.replace("http://", "");
-                        	}
                             MessageDigest digest = MessageDigest.getInstance("SHA-1");
                             byte[] bytes = secret.getBytes("UTF-8");
                             digest.update(bytes, 0, bytes.length);
@@ -421,8 +549,8 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
             for (Record record : records) {
             	String postURL = baseURL; 
             	if (record instanceof GlucometerRecord){
-            		typeSaved = 2;
-            		postURL +=  "gdentries";
+            		typeSaved = 0;
+            		postURL +=  "entries";
             	}else if (record instanceof MedtronicPumpRecord){
             		typeSaved = 3;
             		postURL += "deviceentries";
@@ -432,6 +560,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
             	}
                 Log.i(TAG, "postURL: " + postURL);
                 log.info( "postURL: " + postURL);
+
                 HttpPost post = new HttpPost(postURL);
 
                 if (apiVersion > 0) {
@@ -480,7 +609,6 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                     post.setEntity(se);
                     post.setHeader("Accept", "application/json");
                     post.setHeader("Content-type", "application/json");
-                    post.setHeader("host", host);
 
 					ResponseHandler responseHandler = new BasicResponseHandler();
                     httpclient.execute(post, responseHandler);
@@ -571,9 +699,12 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
     private void populateV1APIEntry(JSONObject json, Record oRecord) throws Exception {
     	Date date = DATE_FORMAT.parse(oRecord.displayTime);
     	json.put("date", date.getTime());
-    	
+
     	if (oRecord instanceof GlucometerRecord){
     		 json.put("gdValue", ((GlucometerRecord)oRecord).numGlucometerValue);
+             json.put("device", getSelectedDeviceName());
+             json.put("type", "mbg");
+             json.put("mbg", ((GlucometerRecord)oRecord).numGlucometerValue);
     	}else if (oRecord instanceof EGVRecord){
     		EGVRecord record = (EGVRecord) oRecord;
     		json.put("device", getSelectedDeviceName());
@@ -632,7 +763,362 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
     		json.put("isWarmingUp", pumpRecord.isWarmingUp);
     	}
     }
+	private static String convertStreamToString(InputStream is) {
 
+	    BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+	    StringBuilder sb = new StringBuilder();
+
+	    String line = null;
+	    try {
+	        while ((line = reader.readLine()) != null) {
+	            sb.append(line + "\n");
+	        }
+	    } catch (IOException e) {
+	        e.printStackTrace();
+	    } finally {
+	        try {
+	            is.close();
+	        } catch (IOException e) {
+	            e.printStackTrace();
+	        }
+	    }
+	    return sb.toString();
+	}
+	
+	private void doMongoRestUpload(SharedPreferences prefs, Record...records) {
+	    HttpParams params = new BasicHttpParams();
+	    //HttpConnectionParams.setSoTimeout(params, 60000);
+	    HttpConnectionParams.setConnectionTimeout(params, 60000);
+
+	    DefaultHttpClient httpclient = new DefaultHttpClient(params);
+	    String dbName = "";
+	    String[] splitted = dbURI.split(":");
+	    if (splitted.length >= 4 ){
+    		dbName = prefs.getString("dbName", "");
+    	}
+	    String entriesUrl =  "/api/1/databases/"+dbName + "/collections/"+collectionName;
+	    String deviceStatusUrl =  "/api/1/databases/"+dbName + "/collections/"+devicesCollectionName;
+	    String gdCollectionUrl =  "/api/1/databases/"+dbName + "/collections/"+gdCollectionName;
+	    String dsCollectioncUrl =  "/api/1/databases/"+dbName + "/collections/"+dsCollectionName;
+	    String apiKey = prefs.getString("apiKey", "aaaaa");
+	    String filter = "q={'type':{$ne:'mbg'}}&";
+	    String sort =  "s={'date':-1}&";
+	    String limit = "l=1&";
+	    JSONObject testData = null;
+	    URI nUri = null;
+	    try {
+			nUri = new URI("https", null, "api.mongolab.com", 443, entriesUrl, filter + sort + limit + "apiKey="+apiKey,null);
+		} catch (URISyntaxException e2) {
+			// TODO Auto-generated catch block
+			e2.printStackTrace();
+		}
+	    //URIUtils.
+	    HttpGet getRequest = new HttpGet(nUri);
+	    HttpPost postRequest = null;
+	    getRequest.addHeader("accept", "application/json");
+	    try {
+			HttpResponse response = httpclient.execute(getRequest);
+			InputStream instream = response.getEntity().getContent();
+	        String result = convertStreamToString(instream);
+	        // now you have the string representation of the HTML request
+	        System.out.println("RESPONSE: " + result);
+	        instream.close();
+	        JSONObject myObject = new JSONObject(result);
+			System.out.println("hola!!!");
+		} catch (ClientProtocolException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} catch (Exception e2) {
+			// TODO Auto-generated catch block
+			e2.printStackTrace();
+		}
+	    if (recordsNotUploadedList.size() > 0){
+        	Log.i(TAG, "The number of not uploaded EGV records to retry " + recordsNotUploadedList.size());
+        	log.warn("The number of not uploaded EGV records to retry " + recordsNotUploadedList.size());
+        	List<JSONObject> auxList = new ArrayList<JSONObject>(recordsNotUploadedList);
+        	recordsNotUploadedList = new ArrayList<JSONObject>();
+    		for (int i = 0; i < auxList.size(); i++){
+    			try{
+        			JSONObject ob = auxList.get(i);
+        			if (ob != null){
+            			Iterator<String> keys = ob.keys();
+            			boolean atLeastOne= false;
+            			testData = new JSONObject();
+            			while (keys.hasNext()){
+            				String key = keys.next();
+            				if (ob.get(key) != null){
+            					testData.put(key, ob.get(key));
+            					atLeastOne = true;
+            				}
+            			}
+            			if (atLeastOne){
+            				postRequest = new HttpPost(entriesUrl);
+            				postRequest.setHeader("Accept", "application/json");
+            		        postRequest.setHeader("Content-type", "application/json");
+            		        StringEntity se = new StringEntity(testData.toString());
+                            postRequest.setEntity(se);
+                            HttpResponse resp = httpclient.execute(postRequest);
+                            if (resp.getStatusLine().getStatusCode() > 201) {
+                            	Log.e("UploaderHelper", "The retried can't be uploaded");
+                				log.error("The retried record can't be uploaded ");
+                				sendErrorMessageToUI("Error retrying the upload of a stored mongo record code: "+ resp.getStatusLine().getStatusCode());
+                				if (recordsNotUploadedList.size() > 49){
+            				    	recordsNotUploadedList.remove(0);
+            				    	recordsNotUploadedList.add(49, new JSONObject(testData.toString()));
+            					}else{
+            						recordsNotUploadedList.add(new JSONObject(testData.toString()));
+            					}
+                            }
+                        }
+        			}
+    			}catch(IllegalArgumentException ex){
+    				log.error("UploaderHelper", "Illegal record");
+    			}catch (Exception e){
+    				Log.e("UploaderHelper", "The retried can't be uploaded");
+    				log.error("The retried record can't be uploaded ", e);
+    				sendErrorMessageToUI("Error retrying the upload of a stored mongo record "+ e.getLocalizedMessage());
+    				try {
+    					if (recordsNotUploadedList.size() > 49){
+    				    	recordsNotUploadedList.remove(0);
+    				    	recordsNotUploadedList.add(49, new JSONObject(testData.toString()));
+    					}else{
+    						recordsNotUploadedList.add(new JSONObject(testData.toString()));
+    					}	
+					} catch (Exception e2) {
+						// TODO: handle exception
+					}
+    				
+    			}
+    		}
+    	}
+	    
+	    Log.i(TAG, "The number of EGV records being sent to MongoDB is " + records.length);
+        log.info("The number of EGV records being sent to MongoDB is " + records.length);
+        Boolean isWarmingUp = false;
+        Boolean recordsTry = false;
+        Integer typeSaved = 0;
+        for (Record oRecord : records) {
+        	recordsTry = true;
+        	try{
+            	testData = new JSONObject();
+            	Date date = DATE_FORMAT.parse(oRecord.displayTime);
+                testData.put("date", date.getTime());
+                testData.put("dateString", oRecord.displayTime);
+                typeSaved = null;
+                if (oRecord instanceof EGVRecord && dexcomData != null){
+            		EGVRecord record = (EGVRecord) oRecord; 
+                    // make db object
+            		testData.put("device", getSelectedDeviceName());    
+                    testData.put("sgv", record.bGValue);
+                    testData.put("type", "sgv");
+                    testData.put("direction", record.trend);
+                    typeSaved = 0;
+                    if (cgmSelected == DexcomG4Activity.MEDTRONIC_CGM && (oRecord instanceof MedtronicSensorRecord)){
+                    	typeSaved = 1;
+                    	testData.put("isig", ((MedtronicSensorRecord)record).isig);
+                    	testData.put("calibrationFactor", ((MedtronicSensorRecord)record).calibrationFactor);
+                    	testData.put("calibrationStatus", ((MedtronicSensorRecord)record).calibrationStatus);
+                    	testData.put("unfilteredGlucose", ((MedtronicSensorRecord)record).unfilteredGlucose);
+                    	testData.put("isCalibrating", ((MedtronicSensorRecord)record).isCalibrating);
+                    	log.info("Testing isCheckedWUP -->", prefs.getBoolean("isCheckedWUP", false));
+                    	if (!prefs.getBoolean("isCheckedWUP", false) && deviceData != null){
+                    		log.info("Testing isCheckedWUP -->GET INTO");
+	                		MedtronicPumpRecord pumpRecord = new MedtronicPumpRecord();
+	                		JSONArray previousRecordCursor  = doGetRequest(httpclient, deviceStatusUrl, "q={'deviceId':{$eq:'"+prefs.getString("medtronic_cgm_id", "")+"'}}", null, null, apiKey);
+	                		if (previousRecordCursor != null && previousRecordCursor.length() > 0){
+	                			JSONObject previousRecord = previousRecordCursor.getJSONObject(0);
+								previousRecord.put("date", testData.get("date"));
+								previousRecord.put("dateString", testData.get("dateString"));
+								JSONObject job = new JSONObject(previousRecord.toString());
+								isWarmingUp = job.getBoolean("isWarmingUp");
+								log.info("Testing isCheckedWUP -->NEXT -->ISWUP?? "+ isWarmingUp);
+								if (isWarmingUp){
+									pumpRecord.mergeCurrentWithDBObject(previousRecord);
+									log.info("Uploading a DeviceRecord");
+									filter = "q={'_id':{$eq:'"+previousRecord.get("_id")+"'}}";
+									doPutRequest(httpclient, deviceStatusUrl, filter, apiKey, previousRecord);
+									prefs.edit().putBoolean("isCheckedWUP", true).commit();
+								}
+	                		}
+                    	}
+                    }
+                    log.info("Uploading a EGVRecord");
+                    boolean result = doPostRequest(httpclient, entriesUrl, apiKey, testData);
+                    if (!result) {
+                    	throw new Exception("Error uploading record ");
+                    }
+            	}else if (oRecord instanceof GlucometerRecord && (glucomData != null || dexcomData != null)){
+            		typeSaved = 2;
+            		GlucometerRecord gdRecord = (GlucometerRecord) oRecord;
+            		if (glucomData != null){//To be deprecated
+                		testData.put("gdValue", gdRecord.numGlucometerValue);
+                		log.info("Uploading a GlucometerRecord");
+                		doPostRequest(httpclient, gdCollectionUrl, apiKey, testData);
+            		}
+            		if (dexcomData != null){
+            			 testData.put("device", getSelectedDeviceName());
+                         testData.put("type", "mbg");
+                         testData.put("mbg", gdRecord.numGlucometerValue);
+                         log.info("Uploading a Glucometer Record!");
+                         doPostRequest(httpclient, entriesUrl, apiKey, testData);
+            		}
+            	}else if (oRecord instanceof MedtronicPumpRecord && deviceData != null){
+            		typeSaved = 3;
+            		MedtronicPumpRecord pumpRecord = (MedtronicPumpRecord) oRecord;
+            		filter = "q={'deviceId':{$eq:'"+pumpRecord.deviceId+"'}}";
+            		JSONArray previousRecordCursor = doGetRequest(httpclient, deviceStatusUrl, filter, null, "1", apiKey);
+            		if (previousRecordCursor != null && previousRecordCursor.length() > 0){
+            			JSONObject previousRecord = previousRecordCursor.getJSONObject(0);
+						previousRecord.put("date", testData.get("date"));
+						previousRecord.put("dateString", testData.get("dateString"));
+						isWarmingUp = pumpRecord.isWarmingUp;
+						pumpRecord.mergeCurrentWithDBObject(previousRecord);
+						log.info("Uploading a DeviceRecord");
+						filter = "q={'_id':{$eq:'"+previousRecord.get("_id")+"'}}";
+						doPutRequest(httpclient, deviceStatusUrl, filter, apiKey, previousRecord);
+            		}else{
+            			testData.put("name", pumpRecord.getDeviceName());
+                		testData.put("deviceId", pumpRecord.deviceId);
+                		testData.put("insulinLeft", pumpRecord.insulinLeft);
+                		testData.put("alarm", pumpRecord.alarm);
+                		testData.put("status", pumpRecord.status);
+                		testData.put("temporaryBasal", pumpRecord.temporaryBasal);
+                		testData.put("batteryStatus", pumpRecord.batteryStatus);
+                		testData.put("batteryVoltage", pumpRecord.batteryVoltage);
+                		isWarmingUp = pumpRecord.isWarmingUp;
+                		testData.put("isWarmingUp", pumpRecord.isWarmingUp);
+                		log.info("Uploading a DeviceRecord");
+                		 doPostRequest(httpclient, deviceStatusUrl, apiKey, testData);
+            		}
+            	}
+        	}catch(IllegalArgumentException ex){
+				Log.e("UploaderHelper", "Illegal record");
+			}catch(Exception ex2){
+				sendErrorMessageToUI("Error uploading mongo record "+ ex2.getLocalizedMessage());
+				 if ((typeSaved != null && (typeSaved == 0  ||typeSaved == 1 ))){//Only EGV records are important enough.
+					 sendErrorMessageToUI("It is a SGV record, I am going to store it and retry the upload later.");
+					 if (isWarmingUp){
+						 prefs.edit().putBoolean("isCheckedWUP", false);
+					 }
+					 log.warn("added to records not uploaded");
+					try {
+						 if (recordsNotUploadedList.size() > 49){
+						    	recordsNotUploadedList.remove(0);
+						    	recordsNotUploadedList.add(49, new JSONObject(testData.toString()));
+							}else{
+								recordsNotUploadedList.add(new JSONObject(testData.toString()));
+							}
+					} catch (Exception e) {
+						// TODO: handle exception
+					}
+				    
+				 }else if (typeSaved == 3){
+					 prefs.edit().putBoolean("isWarmingUp", isWarmingUp);
+				 }
+        		 Log.w(TAG, "Unable to upload data to mongo in loop");
+        		 log.warn("Unable to upload data to mongo in loop");
+        	}
+        }
+        try{
+            //Uploading devicestatus
+            boolean update = true;
+            if (prefs.contains("lastBatteryUpdated")){
+            	long lastTimeUpdated = prefs.getLong("lastBatteryUpdated", 0);
+            	if (lastTimeUpdated > 0){
+            		long current = System.currentTimeMillis();
+            		long diff = current - lastTimeUpdated;
+            		if (diff < MedtronicConstants.TIME_5_MIN_IN_MS)
+            			update = false;
+            		else{
+            			SharedPreferences.Editor editor = prefs.edit();
+            			editor.putLong("lastBatteryUpdated", current);
+            			editor.commit();
+            		}	
+            	}else{
+            		SharedPreferences.Editor editor = prefs.edit();
+        			editor.putLong("lastBatteryUpdated", System.currentTimeMillis());
+        			editor.commit();
+            	}
+            }else{
+            	SharedPreferences.Editor editor = prefs.edit();
+    			editor.putLong("lastBatteryUpdated", System.currentTimeMillis());
+    			editor.commit();
+            }
+            if (update){
+                JSONObject devicestatus = new JSONObject();
+                devicestatus.put("uploaderBattery", DexcomG4Activity.batLevel);
+                devicestatus.put("created_at", new Date());
+                log.debug("Update Battery");
+                doPostRequest(httpclient, dsCollectioncUrl, apiKey, devicestatus);
+            }
+        
+        } catch (Exception e) {
+        	if (client != null){
+        		client.close();
+        		client = null;
+        	}
+            Log.e(TAG, "Unable to upload battery data to mongo", e);
+            log.error("Unable to upload battery data to mongo", e);
+            StringBuffer sb1 = new StringBuffer("");
+      		 sb1.append("EXCEPTION!!!!!! "+ e.getMessage()+" "+e.getCause());
+      		 for (StackTraceElement st : e.getStackTrace()){
+      			 sb1.append(st.toString());
+      		 }
+      		sendMessageToUI(sb1.toString(), false);
+      	
+        }
+       
+    	if (client != null){
+    		client.close();
+    		client = null;
+    	}
+    	if (recordsNotUploadedList.size() > 0){
+        	synchronized (isModifyingRecordsLock) {
+    	        try {
+	        		JSONArray recordsNotUploaded = new JSONArray(settings.getString("recordsNotUploaded","[]"));
+	        		if (recordsNotUploaded.length() > 0 && recordsNotUploaded.length() < recordsNotUploadedList.size()){
+    	        		for (int i = 0; i < recordsNotUploaded.length(); i++){
+    	        			if (recordsNotUploadedList.size() > 49){
+    	        				recordsNotUploadedList.remove(0);
+    	        				recordsNotUploadedList.add(49, recordsNotUploaded.getJSONObject(i));
+							}else{
+								recordsNotUploadedList.add(recordsNotUploaded.getJSONObject(i));
+							}
+    	        		}
+	        		}else{
+	        			for (int i = 0; i < recordsNotUploadedList.size(); i++){
+							recordsNotUploaded.put(recordsNotUploadedList.get(i));
+    	        		}
+	        			recordsNotUploadedList.clear();
+	        			int start = 0;
+	        			if (recordsNotUploaded.length() > 50){
+	        				start = recordsNotUploaded.length() - 51;
+	        			}
+	        			for (int i = start; i < recordsNotUploaded.length(); i++){
+	        				recordsNotUploadedList.add(recordsNotUploaded.getJSONObject(i));
+    	        		}
+	        		}
+	        		log.debug("retrieving older json records -->" +recordsNotUploaded.length());
+	            	SharedPreferences.Editor editor = settings.edit();
+	            	editor.remove("recordsNotUploaded");
+	            	editor.commit();	
+    			} catch (Exception e) {
+    				log.debug("ERROR RETRIVING OLDER LISTs, I have lost them");	
+    				SharedPreferences.Editor editor = settings.edit();
+    				if (settings.contains("recordsNotUploaded"))
+    					editor.remove("recordsNotUploaded");
+    	        	editor.commit();
+    			}
+    	        JSONArray jsonArray = new JSONArray(recordsNotUploadedList);
+            	SharedPreferences.Editor editor = settings.edit();
+            	editor.putString("recordsNotUploaded", jsonArray.toString());
+            	editor.commit();
+            }
+        }
+	}
     private void doMongoUpload(SharedPreferences prefs, Record... records) {
         Integer typeSaved = null;
         boolean recordsTry = false;

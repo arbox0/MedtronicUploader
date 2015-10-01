@@ -306,83 +306,85 @@ public class MedtronicCGMService extends Service implements
         dsCollectionName = prefs.getString("DeviceStatus Collection Name", "devicestatus");
         gdCollectionName = prefs.getString("gcdCollectionName", null);
         devicesCollectionName = "devices";
-        db = null;
-        if (dbURI != null) {
-        	log.debug("URI != null");
-          
-            try {
-
-                // connect to db
-                MongoClientURI uri = new MongoClientURI(dbURI.trim());
-                Builder b = MongoClientOptions.builder();
-                b.heartbeatConnectTimeout(150000);
-                b.heartbeatFrequency(120000);
-                b.heartbeatSocketTimeout(150000);
-                b.maxWaitTime(150000);
-                b.connectTimeout(150000);
-                boolean bAchieved = false;
-                String user = "";
-                String password = "";
-                String source = "";
-                String host = "";
-                String port = "";
-                int iPort = -1;
-                if  (dbURI.length() > 0){
-                	String[] splitted = dbURI.split(":");
-                	if (splitted.length >= 4 ){
-                		user = splitted[1].substring(2);
-                		if (splitted[2].indexOf("@") < 0)
-                			bAchieved = false;
-                		else{
-                			password = splitted[2].substring(0,splitted[2].indexOf("@"));
-                			host = splitted[2].substring(splitted[2].indexOf("@")+1, splitted[2].length());
-                			if (splitted[3].indexOf("/") < 0)
-                				bAchieved = false;
-                			else{
-                				port = splitted[3].substring(0, splitted[3].indexOf("/"));
-                				source = splitted[3].substring(splitted[3].indexOf("/")+1, splitted[3].length());
-                				try{
-                				iPort = Integer.parseInt(port);
-                				}catch(Exception ne){
-                					iPort = -1;
-                				}
-                				if (iPort > -1)
-                					bAchieved = true;
-                			}
-                		}
-                	}
-                }
-                log.debug("Uri TO CHANGE user "+user+" host "+source+" password "+password);
-                if (bAchieved){
-	                MongoCredential mc = MongoCredential.createMongoCRCredential(user, source , password.toCharArray());
-	                ServerAddress  sa = new ServerAddress(host, iPort);
-	                List<MongoCredential> lcredential = new ArrayList<MongoCredential>();
-	                lcredential.add(mc);
-	                if (sa != null && sa.getHost() != null && sa.getHost().indexOf("localhost") < 0){
-	                	client = new MongoClient(sa, lcredential, b.build());
+      
+	        db = null;
+	        if (dbURI != null) {
+	        	log.debug("URI != null");
+	          
+	            try {
+	            if (!prefs.getBoolean("isMongoRest", false)){ 
+	                // connect to db gYumpKyCgbOhcAGOTXvkCcq4V04W6K1Z
+	                MongoClientURI uri = new MongoClientURI(dbURI.trim());
+	                Builder b = MongoClientOptions.builder();
+	                b.heartbeatConnectTimeout(150000);
+	                b.heartbeatFrequency(120000);
+	                b.heartbeatSocketTimeout(150000);
+	                b.maxWaitTime(150000);
+	                b.connectTimeout(150000);
+	                boolean bAchieved = false;
+	                String user = "";
+	                String password = "";
+	                String source = "";
+	                String host = "";
+	                String port = "";
+	                int iPort = -1;
+	                if  (dbURI.length() > 0){
+	                	String[] splitted = dbURI.split(":");
+	                	if (splitted.length >= 4 ){
+	                		user = splitted[1].substring(2);
+	                		if (splitted[2].indexOf("@") < 0)
+	                			bAchieved = false;
+	                		else{
+	                			password = splitted[2].substring(0,splitted[2].indexOf("@"));
+	                			host = splitted[2].substring(splitted[2].indexOf("@")+1, splitted[2].length());
+	                			if (splitted[3].indexOf("/") < 0)
+	                				bAchieved = false;
+	                			else{
+	                				port = splitted[3].substring(0, splitted[3].indexOf("/"));
+	                				source = splitted[3].substring(splitted[3].indexOf("/")+1, splitted[3].length());
+	                				try{
+	                				iPort = Integer.parseInt(port);
+	                				}catch(Exception ne){
+	                					iPort = -1;
+	                				}
+	                				if (iPort > -1)
+	                					bAchieved = true;
+	                			}
+	                		}
+	                	}
 	                }
-                }
-                // get db
-                db = client.getDatabase(uri.getDatabase());
-                
-
-                // get collection
-                dexcomData = null;
-                glucomData = null;
-                deviceData = db.getCollection(devicesCollectionName);
-                if (deviceData == null){
-                	db.createCollection("device", null);
-                	deviceData = db.getCollection("device");
-                }
-                if (collectionName != null)
-                	dexcomData = db.getCollection(collectionName.trim());
-                if (gdCollectionName != null)
-                	glucomData = db.getCollection(gdCollectionName.trim());
-                dsCollection = db.getCollection(dsCollectionName);
-                if (dsCollection == null){
-                	db.createCollection("devicestatus", null);
-                	dsCollection =  db.getCollection("devicestatus");
-                }
+	                log.debug("Uri TO CHANGE user "+user+" host "+source+" password "+password);
+	                if (bAchieved){
+		                MongoCredential mc = MongoCredential.createMongoCRCredential(user, source , password.toCharArray());
+		                ServerAddress  sa = new ServerAddress(host, iPort);
+		                List<MongoCredential> lcredential = new ArrayList<MongoCredential>();
+		                lcredential.add(mc);
+		                if (sa != null && sa.getHost() != null && sa.getHost().indexOf("localhost") < 0){
+		                	client = new MongoClient(sa, lcredential, b.build());
+		                }
+	                }
+	                // get db
+	                db = client.getDatabase(uri.getDatabase());
+	                
+	
+	                // get collection
+	                dexcomData = null;
+	                glucomData = null;
+	                deviceData = db.getCollection(devicesCollectionName);
+	                if (deviceData == null){
+	                	db.createCollection("device", null);
+	                	deviceData = db.getCollection("device");
+	                }
+	                if (collectionName != null)
+	                	dexcomData = db.getCollection(collectionName.trim());
+	                if (gdCollectionName != null)
+	                	glucomData = db.getCollection(gdCollectionName.trim());
+	                dsCollection = db.getCollection(dsCollectionName);
+	                if (dsCollection == null){
+	                	db.createCollection("devicestatus", null);
+	                	dsCollection =  db.getCollection("devicestatus");
+	                }
+	            }
             }catch (Exception e){
             	log.error("EXCEPTION INIT",e);
             	return false;

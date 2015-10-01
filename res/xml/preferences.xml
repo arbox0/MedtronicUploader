@@ -108,6 +108,15 @@
             android:disableDependentsState="false"
             android:summary="If you're using MongoLab and Azure this should be enabled">
     </com.nightscout.android.utils.CustomSwitchPreference>
+    <com.nightscout.android.utils.CustomSwitchPreference
+            android:title="MongoDB REST Upload"
+            android:key="isMongoRest"
+            android:disableDependentsState="false"
+            android:switchTextOn="YES"
+            android:switchTextOff="NO"
+            android:summaryOn="Activated. USING MONGO REST API.Mogo Driver is disabled. Mongodb 3.0"
+            android:summaryOff="Deactivated. USING MONGO DRIVER.Mogo Rest is disabled. Mongodb 2.6 and older">
+    </com.nightscout.android.utils.CustomSwitchPreference>
     <EditTextPreference
             android:dependency="EnableMongoUpload"
             android:title="MongoDB URI"
@@ -115,6 +124,21 @@
             android:dialogTitle="Enter MongoDB URI"
             android:dialogMessage="Replace example values in {}'s with your correct values"
             android:defaultValue="mongodb://{user}:{password}@{host}.mongolab.com:{11111}/{database}">
+    </EditTextPreference>
+    <EditTextPreference
+            android:dependency="EnableMongoUpload"
+            android:title="APIKEY"
+            android:key="apiKey"
+            android:dialogTitle="Enter API Key"
+            android:dialogMessage="get your API KEY from mongolabs"
+            android:defaultValue="">
+    </EditTextPreference>
+     <EditTextPreference
+            android:title="Database Name"
+            android:key="dbName"
+            android:dialogTitle="Enter Database Name"
+            android:dialogMessage="set your Database Name"
+            android:defaultValue="">
     </EditTextPreference>
     <EditTextPreference
             android:dependency="EnableMongoUpload"
