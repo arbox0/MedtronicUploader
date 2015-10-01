@@ -39,6 +39,7 @@ public class Eula {
     private static final String ASSET_EULA = "EULA";
     private static final String PREFERENCE_EULA_ACCEPTED = "eula.accepted";
     private static final String PREFERENCES_EULA = "eula";
+    private static AlertDialog aDialog = null;
 
     /**
      * callback to let the activity know when the user has accepted the EULA.
@@ -75,6 +76,8 @@ public class Eula {
                     if (activity instanceof OnEulaAgreedTo) {
                         ((OnEulaAgreedTo) activity).onEulaAgreedTo();
                     }
+                    aDialog.dismiss();
+                    aDialog = null;
                 }
             });
             builder.setNegativeButton(R.string.eula_refuse, new DialogInterface.OnClickListener() {
@@ -83,6 +86,8 @@ public class Eula {
                         ((OnEulaAgreedTo) activity).onEulaRefusedTo();
                     }
                     refuse(activity);
+                    aDialog.dismiss();
+                    aDialog = null;
                 }
             });
             builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
@@ -91,10 +96,14 @@ public class Eula {
                         ((OnEulaAgreedTo) activity).onEulaRefusedTo();
                     }
                     refuse(activity);
+                    aDialog.dismiss();
+                    aDialog = null;
                 }
             });
             builder.setMessage(readEula(activity));
-            builder.create().show();
+            aDialog = builder.create();
+            aDialog.show();
+           
             return false;
         }
         return true;

@@ -325,8 +325,8 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 	private boolean doPostRequest(HttpClient client, String url, String apiKey, JSONObject data){
 		URI nUri = null;
 		try {
-			nUri = new URI("https", null, "api.mongolab.com", 443, url, "apiKey="+apiKey,null);
-			HttpPost postRequest = new HttpPost(url);
+			nUri = new URI("https", null, "api.mongolab.com", 443, url, "apiKey="+apiKey, null);
+			HttpPost postRequest = new HttpPost(nUri);
 			postRequest.setHeader("Accept", "application/json");
 	        postRequest.setHeader("Content-type", "application/json");
 	        StringEntity se = new StringEntity(data.toString());
@@ -815,26 +815,6 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 	    //URIUtils.
 	    HttpGet getRequest = new HttpGet(nUri);
 	    HttpPost postRequest = null;
-	    getRequest.addHeader("accept", "application/json");
-	    try {
-			HttpResponse response = httpclient.execute(getRequest);
-			InputStream instream = response.getEntity().getContent();
-	        String result = convertStreamToString(instream);
-	        // now you have the string representation of the HTML request
-	        System.out.println("RESPONSE: " + result);
-	        instream.close();
-	        JSONObject myObject = new JSONObject(result);
-			System.out.println("hola!!!");
-		} catch (ClientProtocolException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		} catch (Exception e2) {
-			// TODO Auto-generated catch block
-			e2.printStackTrace();
-		}
 	    if (recordsNotUploadedList.size() > 0){
         	Log.i(TAG, "The number of not uploaded EGV records to retry " + recordsNotUploadedList.size());
         	log.warn("The number of not uploaded EGV records to retry " + recordsNotUploadedList.size());
@@ -855,23 +835,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
             				}
             			}
             			if (atLeastOne){
-            				postRequest = new HttpPost(entriesUrl);
-            				postRequest.setHeader("Accept", "application/json");
-            		        postRequest.setHeader("Content-type", "application/json");
-            		        StringEntity se = new StringEntity(testData.toString());
-                            postRequest.setEntity(se);
-                            HttpResponse resp = httpclient.execute(postRequest);
-                            if (resp.getStatusLine().getStatusCode() > 201) {
-                            	Log.e("UploaderHelper", "The retried can't be uploaded");
-                				log.error("The retried record can't be uploaded ");
-                				sendErrorMessageToUI("Error retrying the upload of a stored mongo record code: "+ resp.getStatusLine().getStatusCode());
-                				if (recordsNotUploadedList.size() > 49){
-            				    	recordsNotUploadedList.remove(0);
-            				    	recordsNotUploadedList.add(49, new JSONObject(testData.toString()));
-            					}else{
-            						recordsNotUploadedList.add(new JSONObject(testData.toString()));
-            					}
-                            }
+            				doPostRequest(httpclient, entriesUrl, apiKey, testData);
                         }
         			}
     			}catch(IllegalArgumentException ex){
@@ -908,7 +872,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                 testData.put("date", date.getTime());
                 testData.put("dateString", oRecord.displayTime);
                 typeSaved = null;
-                if (oRecord instanceof EGVRecord && dexcomData != null){
+                if (oRecord instanceof EGVRecord){
             		EGVRecord record = (EGVRecord) oRecord; 
                     // make db object
             		testData.put("device", getSelectedDeviceName());    
@@ -924,7 +888,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                     	testData.put("unfilteredGlucose", ((MedtronicSensorRecord)record).unfilteredGlucose);
                     	testData.put("isCalibrating", ((MedtronicSensorRecord)record).isCalibrating);
                     	log.info("Testing isCheckedWUP -->", prefs.getBoolean("isCheckedWUP", false));
-                    	if (!prefs.getBoolean("isCheckedWUP", false) && deviceData != null){
+                    	if (!prefs.getBoolean("isCheckedWUP", false)){
                     		log.info("Testing isCheckedWUP -->GET INTO");
 	                		MedtronicPumpRecord pumpRecord = new MedtronicPumpRecord();
 	                		JSONArray previousRecordCursor  = doGetRequest(httpclient, deviceStatusUrl, "q={'deviceId':{$eq:'"+prefs.getString("medtronic_cgm_id", "")+"'}}", null, null, apiKey);
@@ -950,22 +914,21 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                     if (!result) {
                     	throw new Exception("Error uploading record ");
                     }
-            	}else if (oRecord instanceof GlucometerRecord && (glucomData != null || dexcomData != null)){
+            	}else if (oRecord instanceof GlucometerRecord){
             		typeSaved = 2;
             		GlucometerRecord gdRecord = (GlucometerRecord) oRecord;
-            		if (glucomData != null){//To be deprecated
-                		testData.put("gdValue", gdRecord.numGlucometerValue);
-                		log.info("Uploading a GlucometerRecord");
-                		doPostRequest(httpclient, gdCollectionUrl, apiKey, testData);
-            		}
-            		if (dexcomData != null){
-            			 testData.put("device", getSelectedDeviceName());
-                         testData.put("type", "mbg");
-                         testData.put("mbg", gdRecord.numGlucometerValue);
-                         log.info("Uploading a Glucometer Record!");
-                         doPostRequest(httpclient, entriesUrl, apiKey, testData);
-            		}
-            	}else if (oRecord instanceof MedtronicPumpRecord && deviceData != null){
+            		
+            		testData.put("gdValue", gdRecord.numGlucometerValue);
+            		log.info("Uploading a GlucometerRecord");
+            		doPostRequest(httpclient, gdCollectionUrl, apiKey, testData);
+            		
+        			 testData.put("device", getSelectedDeviceName());
+                     testData.put("type", "mbg");
+                     testData.put("mbg", gdRecord.numGlucometerValue);
+                     log.info("Uploading a Glucometer Record!");
+                     doPostRequest(httpclient, entriesUrl, apiKey, testData);
+        		
+            	}else if (oRecord instanceof MedtronicPumpRecord){
             		typeSaved = 3;
             		MedtronicPumpRecord pumpRecord = (MedtronicPumpRecord) oRecord;
             		filter = "q={'deviceId':{$eq:'"+pumpRecord.deviceId+"'}}";
