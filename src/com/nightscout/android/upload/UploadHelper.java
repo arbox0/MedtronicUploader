@@ -210,7 +210,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 					Message mSend = null;
 					mSend = Message
 							.obtain(null,
-									MedtronicConstants.MSG_MEDTRONIC_CGM_ERROR_RECEIVED);
+                                    MedtronicConstants.MSG_MEDTRONIC_CGM_ERROR_RECEIVED);
 					Bundle b = new Bundle();
 					b.putString("data", valuetosend);
 					mSend.setData(b);
@@ -310,7 +310,6 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
             if (baseURI.endsWith("/v1/")) apiVersion = 1;
 
             String baseURL = null;
-            String host = null;
             String secret = null;
             String[] uriParts = baseURI.split("@");
 
@@ -326,22 +325,22 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                 throw new Exception("Starting with API v1, a pass phase is required");
             } else if (uriParts.length == 2 && apiVersion > 0) {
                 secret = uriParts[0];
-                String[] urlLeft = uriParts[1].split("/"); 
-                host = urlLeft[0];
-                if (baseURL == null)
-                	baseURL = "";
-                if (urlLeft.length > 1){
-                	for (int i = 1; i < urlLeft.length; i++){
-                		if ((baseURL == null || !baseURL.endsWith("/")) && !urlLeft[i].startsWith("/")) {
-                			baseURL += "/";
-                		}
-                		baseURL += urlLeft[i];
-                	}
-                }else
-                	baseURL = host;
-                if (!baseURL.endsWith("/")){
-                	baseURL += "/";
+                baseURL = uriParts[1];
+
+                // new format URL!
+
+                if (secret.contains("http")) {
+                    String b = "http://";
+                    if (secret.contains("https")) {
+                        baseURL = "https://" + baseURL;
+                    } else {
+                        baseURL = "http://" + baseURL;
+                    }
+                    String[] uriParts2 = secret.split("//");
+                    secret = uriParts2[1];
                 }
+
+
             } else {
             	if (recordsNotUploadedListJson.size() > 0){
                  	JSONArray jsonArray = new JSONArray(recordsNotUploadedListJson);
@@ -359,6 +358,9 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
             HttpConnectionParams.setConnectionTimeout(params, CONNECTION_TIMEOUT);
 
             DefaultHttpClient httpclient = new DefaultHttpClient(params);
+
+            postDeviceStatus(baseURL,httpclient);
+
             if (recordsNotUploadedListJson.size() > 0){
             	List<JSONObject> auxList = new ArrayList<JSONObject>(recordsNotUploadedListJson);
             	recordsNotUploadedListJson.clear();
@@ -367,7 +369,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
         			String postURL = baseURL; 
                 	postURL += "entries";
                     Log.i(TAG, "postURL: " + postURL);
-                    
+
                     HttpPost post = new HttpPost(postURL);
 
                     if (apiVersion > 0) {
@@ -380,11 +382,6 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                              }
                             throw new Exception("Starting with API v1, a pass phase is required");
                         } else {
-                        	if (secret.indexOf("https://") >= 0){
-                        		secret = secret.replace("https://", "");
-                        	} else if (secret.indexOf("http://") >= 0) {
-                        		secret = secret.replace("http://", "");
-                        	}
                             MessageDigest digest = MessageDigest.getInstance("SHA-1");
                             byte[] bytes = secret.getBytes("UTF-8");
                             digest.update(bytes, 0, bytes.length);
@@ -421,8 +418,8 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
             for (Record record : records) {
             	String postURL = baseURL; 
             	if (record instanceof GlucometerRecord){
-            		typeSaved = 2;
-            		postURL +=  "gdentries";
+            		typeSaved = 0;
+            		postURL +=  "entries";
             	}else if (record instanceof MedtronicPumpRecord){
             		typeSaved = 3;
             		postURL += "deviceentries";
@@ -432,6 +429,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
             	}
                 Log.i(TAG, "postURL: " + postURL);
                 log.info( "postURL: " + postURL);
+
                 HttpPost post = new HttpPost(postURL);
 
                 if (apiVersion > 0) {
@@ -480,7 +478,6 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                     post.setEntity(se);
                     post.setHeader("Accept", "application/json");
                     post.setHeader("Content-type", "application/json");
-                    post.setHeader("host", host);
 
 					ResponseHandler responseHandler = new BasicResponseHandler();
                     httpclient.execute(post, responseHandler);
@@ -571,9 +568,12 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
     private void populateV1APIEntry(JSONObject json, Record oRecord) throws Exception {
     	Date date = DATE_FORMAT.parse(oRecord.displayTime);
     	json.put("date", date.getTime());
-    	
+
     	if (oRecord instanceof GlucometerRecord){
     		 json.put("gdValue", ((GlucometerRecord)oRecord).numGlucometerValue);
+             json.put("device", getSelectedDeviceName());
+             json.put("type", "mbg");
+             json.put("mbg", ((GlucometerRecord)oRecord).numGlucometerValue);
     	}else if (oRecord instanceof EGVRecord){
     		EGVRecord record = (EGVRecord) oRecord;
     		json.put("device", getSelectedDeviceName());
