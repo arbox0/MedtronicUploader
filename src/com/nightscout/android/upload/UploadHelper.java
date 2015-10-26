@@ -906,7 +906,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 									doPutRequest(httpclient, deviceStatusUrl, filter, apiKey, previousRecord);
 									prefs.edit().putBoolean("isCheckedWUP", true).commit();
 								}
-	                		}
+	                		} 
                     	}
                     }
                     log.info("Uploading a EGVRecord");
@@ -920,7 +920,8 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
             		
             		testData.put("gdValue", gdRecord.numGlucometerValue);
             		log.info("Uploading a GlucometerRecord");
-            		doPostRequest(httpclient, gdCollectionUrl, apiKey, testData);
+            		if (gdCollectionName != null && gdCollectionName.length() > 0)
+            			doPostRequest(httpclient, gdCollectionUrl, apiKey, testData);
             		
         			 testData.put("device", getSelectedDeviceName());
                      testData.put("type", "mbg");
