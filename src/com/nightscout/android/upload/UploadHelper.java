@@ -16,7 +16,6 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.HttpConnectionParams;
 import org.apache.http.params.HttpParams;
-
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -46,6 +45,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 
     Context context;
     private int cgmSelected = DexcomG4Activity.DEXCOMG4;
+    private ArrayList<Messenger> mClients;
     private List<JSONObject> recordsNotUploadedList = new ArrayList<JSONObject>();
     private List<JSONObject> recordsNotUploadedListJson = new ArrayList<JSONObject>();
 
