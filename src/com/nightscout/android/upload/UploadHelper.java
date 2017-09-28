@@ -1,40 +1,22 @@
 package com.nightscout.android.upload;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.security.MessageDigest;
-import java.text.ParseException;
+
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 
-import javax.crypto.spec.GCMParameterSpec;
-
-import static com.mongodb.client.model.Filters.*;
-
-import org.apache.http.HttpResponse;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.HttpClient;
 import org.apache.http.client.ResponseHandler;
-import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.BasicResponseHandler;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.HttpConnectionParams;
 import org.apache.http.params.HttpParams;
-import org.bson.BsonDocument;
-import org.bson.Document;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -43,31 +25,11 @@ import org.slf4j.LoggerFactory;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
-import android.os.Bundle;
-import android.os.Message;
 import android.os.Messenger;
-import android.os.RemoteException;
 import android.preference.PreferenceManager;
 import android.util.Log;
 
 import ch.qos.logback.classic.Logger;
-import ch.qos.logback.core.status.WarnStatus;
-
-import com.mongodb.BasicDBObject;
-import com.mongodb.DB;
-import com.mongodb.DBCollection;
-import com.mongodb.DBCursor;
-import com.mongodb.DBObject;
-import com.mongodb.MongoClient;
-import com.mongodb.MongoClientOptions;
-import com.mongodb.MongoClientOptions.Builder;
-import com.mongodb.client.FindIterable;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoCursor;
-import com.mongodb.client.MongoDatabase;
-import com.mongodb.MongoCredential;
-import com.mongodb.ServerAddress;
-import com.mongodb.WriteConcern;
 import com.nightscout.android.dexcom.DexcomG4Activity;
 import com.nightscout.android.dexcom.EGVRecord;
 import com.nightscout.android.medtronic.MedtronicConstants;
@@ -84,21 +46,11 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 
     Context context;
     private int cgmSelected = DexcomG4Activity.DEXCOMG4;
-    private ArrayList<Messenger> mClients;
     private List<JSONObject> recordsNotUploadedList = new ArrayList<JSONObject>();
     private List<JSONObject> recordsNotUploadedListJson = new ArrayList<JSONObject>();
-    public String dbURI = null;
-    public String collectionName = null;
-    public String dsCollectionName = null;
-    public String gdCollectionName = null;
-    public String devicesCollectionName = "devices";
-    public MongoDatabase db = null;
-    public MongoCollection<Document> dexcomData = null;
-    public MongoCollection<Document> glucomData = null;
-    public MongoCollection<Document> deviceData = null;
-    public MongoCollection<Document> dsCollection = null;
+
     public static Object isModifyingRecordsLock = new Object();
-    private MongoClient client = null;
+
     public UploadHelper(Context context) {
         this(context, DexcomG4Activity.DEXCOMG4);
     }

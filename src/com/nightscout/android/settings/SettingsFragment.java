@@ -9,7 +9,6 @@ import android.preference.MultiSelectListPreference;
 import android.preference.Preference;
 import android.preference.PreferenceCategory;
 import android.preference.PreferenceFragment;
-import android.preference.SwitchPreference;
 
 import com.nightscout.android.R;
 

@@ -6,8 +6,6 @@ import org.bson.Document;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.mongodb.DBObject;
-import com.nightscout.android.medtronic.MedtronicConstants;
 
 public class MedtronicPumpRecord extends DeviceRecord implements Serializable{
 	
