@@ -42,7 +42,7 @@ public class CGMWidget extends AppWidgetProvider {
 	            if (auxRecord instanceof MedtronicSensorRecord){
 	    	    	MedtronicSensorRecord record = (MedtronicSensorRecord) auxRecord;
 	    	    	boolean isCalibrating = record.isCalibrating;
-	    	    	String calib = "---";
+	    	    	String calib;
 	    	    	if (isCalibrating)
 	    	    		calib = "*";
 	    	    	else

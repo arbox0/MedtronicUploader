@@ -45,7 +45,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 
     Context context;
     private int cgmSelected = DexcomG4Activity.DEXCOMG4;
-    private ArrayList<Messenger> mClients;
+
     private List<JSONObject> recordsNotUploadedList = new ArrayList<JSONObject>();
     private List<JSONObject> recordsNotUploadedListJson = new ArrayList<JSONObject>();
 
@@ -57,8 +57,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
     
     public UploadHelper(Context context, int cgmSelected) {
         this.context = context;
-        this.cgmSelected = cgmSelected; 
-        this.mClients = null;
+        this.cgmSelected = cgmSelected;
         settings = context.getSharedPreferences(MedtronicConstants.PREFS_NAME, 0);
         synchronized (isModifyingRecordsLock) {
 	        try {
@@ -106,11 +105,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 			}
         }
     }
-    
-    public UploadHelper(Context context, int cgmSelected, ArrayList<Messenger> mClients) {
-    	this(context, cgmSelected);
-        this.mClients = mClients;
-    }
+
 
 
     /**
@@ -193,7 +188,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 
             if (uriParts.length == 1 && apiVersion == 0) {
                 baseURL = uriParts[0];
-            } else if (uriParts.length == 1 && apiVersion > 0) {
+            } else if (uriParts.length == 1) {
             	if (recordsNotUploadedListJson.size() > 0){
                  	JSONArray jsonArray = new JSONArray(recordsNotUploadedListJson);
                  	SharedPreferences.Editor editor = settings.edit();
@@ -208,7 +203,6 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                 // new format URL!
 
                 if (secret.contains("http")) {
-                    String b = "http://";
                     if (secret.contains("https")) {
                         baseURL = "https://" + baseURL;
                     } else {
@@ -360,7 +354,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 					ResponseHandler responseHandler = new BasicResponseHandler();
                     httpclient.execute(post, responseHandler);
                 } catch (Exception e) {
-                    if ((typeSaved != null) && (typeSaved == 0)){//Only EGV records are important enough.
+                    if (typeSaved == 0){//Only EGV records are important enough.
     	                if (recordsNotUploadedListJson.size() > 49){
     	                	recordsNotUploadedListJson.remove(0);
     	                	recordsNotUploadedListJson.add(49,json);

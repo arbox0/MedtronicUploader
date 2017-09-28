@@ -69,7 +69,7 @@ public class CGMWidgetUpdater extends Service{
     				.getDefaultSharedPreferences(getBaseContext());
         	MedtronicSensorRecord record = (MedtronicSensorRecord) auxRecord;
         	boolean isCalibrating = record.isCalibrating;
-	    	String calib = "---";
+	    	String calib;
 	    	if (isCalibrating)
 	    		calib = "*";
 	    	else

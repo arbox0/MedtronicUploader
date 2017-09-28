@@ -295,21 +295,13 @@ public class MedtronicReader {
 	}
 
 
-	private void sendMessageToUI(String valuetosend, boolean clear) {
+	private void sendMessageToUI(String valuetosend) {
 		Log.i("medtronicReader", valuetosend);
 		// log.debug("MedtronicReader Sends to UI "+valuetosend);
 		if (mClients != null && mClients.size() > 0) {
 			for (int i = mClients.size() - 1; i >= 0; i--) {
 				try {
-					Message mSend = null;
-					if (clear) {
-						mSend = Message
-								.obtain(null,
-										MedtronicConstants.MSG_MEDTRONIC_CGM_CLEAR_DISPLAY);
-						mClients.get(i).send(mSend);
-						continue;
-					}
-					mSend = Message
+					Message mSend = Message
 							.obtain(null,
 									MedtronicConstants.MSG_MEDTRONIC_CGM_MESSAGE_RECEIVED);
 					Bundle b = new Bundle();
@@ -470,7 +462,7 @@ public class MedtronicReader {
 				for (StackTraceElement st : e.getStackTrace()) {
 					sb1.append(st.toString());
 				}
-				sendMessageToUI(sb1.toString(), false);
+				sendMessageToUI(sb1.toString());
 				bufferedMessages = new ArrayList<byte[]>();
 			}
 		}
@@ -568,8 +560,8 @@ public class MedtronicReader {
 										
 											editor.putBoolean("isCalibrating", calibrationSelectedAux == MedtronicConstants.CALIBRATION_GLUCOMETER);
 											if (calibrationSelectedAux == MedtronicConstants.CALIBRATION_GLUCOMETER)
-												sendMessageToUI("isCalibrating", false);
-											sendMessageToUI("glucometer data received", false);
+												sendMessageToUI("isCalibrating");
+											sendMessageToUI("glucometer data received");
 										
 										editor.commit();
 									}
@@ -627,7 +619,7 @@ public class MedtronicReader {
 									log.debug("4");
 									writeLocalCSV(previousRecord, context);
 								}
-								sendMessageToUI("sensor data wUp.", false);
+								sendMessageToUI("sensor data wUp.");
 								editor.commit();
 								break;
 							}
@@ -687,8 +679,7 @@ public class MedtronicReader {
 									editor.putBoolean("isCalibrating", false);
 									editor.commit();
 								}
-								sendMessageToUI("sensor data value received",
-										false);
+								sendMessageToUI("sensor data value received");
 								break;
 							default:
 								Log.i("MEdtronic", "No Match");
@@ -739,7 +730,7 @@ public class MedtronicReader {
 			for (StackTraceElement st : ex2.getStackTrace()) {
 				sb1.append(st.toString());
 			}
-			sendMessageToUI(sb1.toString(), false);
+			sendMessageToUI(sb1.toString());
 		}
 		SharedPreferences.Editor editor = settings.edit();
 		editor.remove("last_read");
@@ -802,12 +793,10 @@ public class MedtronicReader {
 						hGetter.timeout = 0;
 						log.debug("too much retries");
 						sendMessageToUI(
-								"historic log read aborted! too much crc errors, waiting to retry.",
-								false);
+								"historic log read aborted! too much crc errors, waiting to retry.");
 					} else {
 						sendMessageToUI(
-								"CRC error reading historic log line, reinitializating read...",
-								false);
+								"CRC error reading historic log line, reinitializating read...");
 						hGetter.timeout++;
 						hGetter.commandList = Arrays.copyOf(
 								hGetter.commandList,
@@ -888,21 +877,20 @@ public class MedtronicReader {
 			return "lastCommand == null";
 		switch (readData[commandByte]) {
 		case MedtronicConstants.MEDTRONIC_GET_LAST_PAGE: {
-			if (lastCommandSend != null) {
-				synchronized (waitingCommandLock) {
-					waitingCommand = false;
-					lastCommandSend = null;
-				}
-				byte[] modelArray = Arrays.copyOfRange(readData,
-						commandByte + 2, (commandByte + 6));
-				historicPageIndex = HexDump.byteArrayToInt(modelArray);
-				hGetter.historicPageIndex = historicPageIndex;
-				hGetter.lastHistoricPage = modelArray;
-				String sModel = new String(HexDump.toHexString(modelArray));
-				sResult = "Command " + commandByte + " Read Data "
-						+ HexDump.toHexString(readData)
-						+ " Pump last historic page......: " + sModel;
+			synchronized (waitingCommandLock) {
+				waitingCommand = false;
+				lastCommandSend = null;
 			}
+			byte[] modelArray = Arrays.copyOfRange(readData,
+					commandByte + 2, (commandByte + 6));
+			historicPageIndex = HexDump.byteArrayToInt(modelArray);
+			hGetter.historicPageIndex = historicPageIndex;
+			hGetter.lastHistoricPage = modelArray;
+			String sModel = new String(HexDump.toHexString(modelArray));
+			sResult = "Command " + commandByte + " Read Data "
+					+ HexDump.toHexString(readData)
+					+ " Pump last historic page......: " + sModel;
+
 			log.debug(sResult);
 			return sResult;
 		}
@@ -979,7 +967,7 @@ public class MedtronicReader {
 		}
 		case MedtronicConstants.MEDTRONIC_GET_PUMP_MODEL:
 			log.debug("Pump Model Received");
-			sendMessageToUI("Pump Model Received...", false);
+			sendMessageToUI("Pump Model Received...");
 			if (lastMedtronicPumpRecord == null) {
 				lastMedtronicPumpRecord = new MedtronicPumpRecord();
 				calculateDate(lastMedtronicPumpRecord, new Date(), 0);
@@ -1022,7 +1010,7 @@ public class MedtronicReader {
 			return sResult;
 		case MedtronicConstants.MEDTRONIC_GET_PUMP_STATE:
 			log.debug("Pump Status Received");
-			sendMessageToUI("Pump Status Received...", false);
+			sendMessageToUI("Pump Status Received...");
 			if (lastMedtronicPumpRecord == null) {
 				lastMedtronicPumpRecord = new MedtronicPumpRecord();
 				calculateDate(lastMedtronicPumpRecord, new Date(), 0);
@@ -1065,7 +1053,7 @@ public class MedtronicReader {
 			return sResult;
 		case MedtronicConstants.MEDTRONIC_GET_BATTERY_STATUS:
 			log.debug("Pump Battery Status Received");
-			sendMessageToUI("Pump Battery Status Received...", false);
+			sendMessageToUI("Pump Battery Status Received...");
 			if (lastMedtronicPumpRecord == null) {
 				lastMedtronicPumpRecord = new MedtronicPumpRecord();
 				calculateDate(lastMedtronicPumpRecord, new Date(), 0);
@@ -1095,7 +1083,7 @@ public class MedtronicReader {
 			return sResult;
 		case MedtronicConstants.MEDTRONIC_GET_REMAINING_INSULIN:
 			log.debug("Pump Remaining Insulin Received");
-			sendMessageToUI("Pump Remaining Insulin Received...", false);
+			sendMessageToUI("Pump Remaining Insulin Received...");
 			if (lastMedtronicPumpRecord == null) {
 				lastMedtronicPumpRecord = new MedtronicPumpRecord();
 				calculateDate(lastMedtronicPumpRecord, new Date(), 0);
@@ -1116,7 +1104,7 @@ public class MedtronicReader {
 			return sResult;
 		case MedtronicConstants.MEDTRONIC_GET_REMOTE_CONTROL_IDS:
 			log.debug("Pump Remote Control Ids Received");
-			sendMessageToUI("Pump Remote Control Ids Received...", false);
+			sendMessageToUI("Pump Remote Control Ids Received...");
 			if (lastCommandSend != null) {
 				synchronized (waitingCommandLock) {
 					waitingCommand = false;
@@ -1154,7 +1142,7 @@ public class MedtronicReader {
 			return sResult;
 		case MedtronicConstants.MEDTRONIC_GET_PARADIGM_LINK_IDS:
 			log.debug("Pump Paradigm Link Ids Received");
-			sendMessageToUI("Pump Paradigm Link Ids Received...", false);
+			sendMessageToUI("Pump Paradigm Link Ids Received...");
 			if (lastCommandSend != null) {
 				synchronized (waitingCommandLock) {
 					waitingCommand = false;
@@ -1191,7 +1179,7 @@ public class MedtronicReader {
 			return sResult;
 		case MedtronicConstants.MEDTRONIC_GET_SENSORID:
 			log.debug("Pump Sensor Id Received");
-			sendMessageToUI("Pump Sensor Id Received...", false);
+			sendMessageToUI("Pump Sensor Id Received...");
 			if (lastCommandSend != null) {
 				synchronized (waitingCommandLock) {
 					waitingCommand = false;
@@ -1212,7 +1200,7 @@ public class MedtronicReader {
 			return sResult;
 		case MedtronicConstants.MEDTRONIC_GET_CALIBRATION_FACTOR:
 			log.debug("Pump Calibration Factor Received");
-			sendMessageToUI("Pump Cal. Factor Received...", false);
+			sendMessageToUI("Pump Cal. Factor Received...");
 			if (lastCommandSend != null) {
 				synchronized (waitingCommandLock) {
 					waitingCommand = false;
@@ -1309,13 +1297,11 @@ public class MedtronicReader {
 				hGetter.timeout = 0;
 				log.debug("too much retries");
 				sendMessageToUI(
-						"historic log read aborted! too much crc errors, waiting to retry",
-						false);
+						"historic log read aborted! too much crc errors, waiting to retry");
 				return;
 			}
 			sendMessageToUI(
-					"Crc error in page read, reinitializing page read...",
-					false);
+					"Crc error in page read, reinitializing page read...");
 			hGetter.timeout++;
 			hGetter.commandList = Arrays.copyOf(hGetter.commandList,
 					hGetter.commandList.length + 1);
@@ -1611,7 +1597,7 @@ public class MedtronicReader {
 				writeLocalCSV(previousRecord, context);
 			}
 			if (otherPage) {
-				sendMessageToUI("The next page must be read", false);
+				sendMessageToUI("The next page must be read");
 				log.debug("The next page must be read");
 				hGetter.commandList = Arrays.copyOf(hGetter.commandList,
 						hGetter.commandList.length + 2);
@@ -1645,7 +1631,7 @@ public class MedtronicReader {
 			hGetter.wThread.postCommandBytes = null;
 
 			// clear vars and EXIT!!!
-			sendMessageToUI("historic log has been read", false);
+			sendMessageToUI("historic log has been read");
 			// hGetter.init();
 			historicPageIndex = -1;
 			historicPageShift = 0;
@@ -1658,7 +1644,7 @@ public class MedtronicReader {
 						MedtronicConstants.TIME_10_MIN_IN_MS);
 
 		} else {
-			sendMessageToUI("The next page must be read", false);
+			sendMessageToUI("The next page must be read");
 			log.debug("The next page must be read");
 			hGetter.commandList = Arrays.copyOf(hGetter.commandList,
 					hGetter.commandList.length + 2);
@@ -1721,8 +1707,7 @@ public class MedtronicReader {
 			processManualCalibrationDataMessage(num, false, calibrate);
 		else{
 			sendMessageToUI(
-					"Glucometer Detected!!..Waiting 15 min. to retrieve calibration factor...",
-					false);
+					"Glucometer Detected!!..Waiting 15 min. to retrieve calibration factor...");
 			log.debug("Glucometer Detected!!..Waiting 15 min. to retrieve calibration factor...");
 			if (mHandlerSensorCalibration != null
 					&& getCalibrationFromSensor != null) {

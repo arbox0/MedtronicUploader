@@ -152,25 +152,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
             	mHandler.removeCallbacks(updateDataView);
  	        	mHandler.post(updateDataView);
                 break;
-            case MedtronicConstants.MSG_REFRESH_DB_CONNECTION:
-            	if (mService != null){
-	            	 try {
-	                     Message message = Message.obtain(null, MedtronicConstants.MSG_REFRESH_DB_CONNECTION);
-	                     msg.replyTo = mMessenger;
-	                     mService.send(message);
-	                 } catch (RemoteException e) {
-	                	 StringBuffer sb1 = new StringBuffer("");
-	            		 sb1.append("EXCEPTION!!!!!! "+ e.getMessage()+" "+e.getCause());
-	            		 for (StackTraceElement st : e.getStackTrace()){
-	            			 sb1.append(st.toString()).append("\n");
-	            		 }
-	            		 Log.e("ApprovingGlucValReceived", "Error approving gluc. value \n "+sb1.toString());
-	                	 if (ISDEBUG){
-	                		 display.setText(display.getText()+"Error approving gluc. value\n", BufferType.EDITABLE);
-	                	 }
-	                 }
-	    		}
-            	break;
+
             default:
                 super.handleMessage(msg);
             }
