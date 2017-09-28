@@ -211,13 +211,13 @@ public class MedtronicReader {
 			lastGlucometerMessage = HexDump.hexStringToByteArray(settings
 					.getString("lastGlucometerMessage", ""));
 		if (settings.contains("calibrationFactor"))
-			calibrationFactor = (float) settings.getFloat("calibrationFactor",
-					(float) this.calibrationFactor);
+			calibrationFactor = settings.getFloat("calibrationFactor",
+                    this.calibrationFactor);
 		if (settings.contains("lastCalibrationDate"))
 			lastCalibrationDate = settings.getLong("lastCalibrationDate", 0);
 		if (settings.contains("previousValue"))
-			previousValue = (float) settings.getFloat("previousValue",
-					(float) this.previousValue);
+			previousValue = settings.getFloat("previousValue",
+                    this.previousValue);
 		if (settings.contains("expectedSensorSortNumber")
 				&& settings.getString("expectedSensorSortNumber", "").length() > 0) {
 			expectedSensorSortNumber = HexDump.hexStringToByteArray(settings
@@ -1220,7 +1220,7 @@ public class MedtronicReader {
 					}
 					SharedPreferences.Editor editor = settings.edit();
 					editor.putFloat("calibrationFactor",
-							(float) calibrationFactor);
+                            calibrationFactor);
 					editor.putInt("calibrationStatus", calibrationStatus);
 					editor.commit();
 					if (previousRecord == null) {
@@ -1586,7 +1586,7 @@ public class MedtronicReader {
 			}
 
 			SharedPreferences.Editor editor = settings.edit();
-			editor.putFloat("previousValue", (float) previousValue);
+			editor.putFloat("previousValue", previousValue);
 			editor.putInt("calibrationStatus", calibrationStatus);
 			lastSensorValueDate = d.getTime();
 			editor.putLong("lastSensorValueDate", lastSensorValueDate);
@@ -1672,7 +1672,7 @@ public class MedtronicReader {
 			return "Error, I can not identify the initial byte of the glucometer measure";
 		int numBytes = ByteBuffer.wrap(
 				new byte[] { (byte) 0x00, (byte) 0x00, (byte) 0x00,
-						(byte) readData[1] }).getInt();
+                        readData[1]}).getInt();
 		if (firstMeasureByte > readData.length || numBytes > readData.length)
 			return "Error, I have detected an error in glucometer message size";
 		byte[] arr = Arrays.copyOfRange(readData, firstMeasureByte,
@@ -1727,7 +1727,7 @@ public class MedtronicReader {
 			lastGlucometerDate = d.getTime();
 			calculateDate(lastGlucometerRecord, d, 0);
 			SharedPreferences.Editor editor = settings.edit();
-			editor.putFloat("lastGlucometerValue", (float) lastGlucometerValue);
+			editor.putFloat("lastGlucometerValue", lastGlucometerValue);
 			editor.putLong("glucometerLastDate", d.getTime());
 			editor.commit();
 		}
@@ -1770,7 +1770,7 @@ public class MedtronicReader {
 			}
 		}
 		SharedPreferences.Editor editor = settings.edit();
-		editor.putFloat("lastGlucometerValue", (float) num);
+		editor.putFloat("lastGlucometerValue", num);
 		editor.putLong("glucometerLastDate", d.getTime());
 		if (!instant && doCalibration) {
 			editor.putString("expectedSensorSortNumberForCalibration0", HexDump
@@ -1920,7 +1920,7 @@ public class MedtronicReader {
 				log.debug("change instant lastCalibrationDate");
 				editor.putLong("lastCalibrationDate", lastCalibrationDate);
 				editor.putBoolean("isCalibrating", false);
-				editor.putFloat("calibrationFactor", (float) calibrationFactor);
+				editor.putFloat("calibrationFactor", calibrationFactor);
 				editor.putInt("calibrationStatus",
 							calibrationStatus);
 				editor.commit();
@@ -2039,9 +2039,9 @@ public class MedtronicReader {
 				// then I skip this value
 				if (!isSensorRepeatedMessage(readData[firstMeasureByte + 3])
 						|| HexDump
-						.unsignedByte((byte) ((byte) expectedSensorSortNumber & (byte) 0x01)) < 1
+						.unsignedByte((byte) (expectedSensorSortNumber & (byte) 0x01)) < 1
 						&& HexDump
-						.unsignedByte((byte) ((byte) readData[firstMeasureByte + 3] & (byte) 0x01)) == 1) {
+						.unsignedByte((byte) (readData[firstMeasureByte + 3] & (byte) 0x01)) == 1) {
 					byte[] arr = Arrays.copyOfRange(readData,
 							firstMeasureByte + 4, firstMeasureByte + 6);
 					byte[] res = new byte[4];
@@ -2201,7 +2201,7 @@ public class MedtronicReader {
 		}
 
 		SharedPreferences.Editor editor = settings.edit();
-		editor.putFloat("previousValue", (float) previousValue);
+		editor.putFloat("previousValue", previousValue);
 		editor.putString("expectedSensorSortNumber",
 				HexDump.toHexString(expectedSensorSortNumber));
 		editor.putInt("calibrationStatus", calibrationStatus);
@@ -2463,7 +2463,7 @@ public class MedtronicReader {
 				calibrationFactor = lastGlucometerValue / calibrationIsigValue;
 				editor.remove("expectedSensorSortNumberForCalibration0");
 				editor.remove("expectedSensorSortNumberForCalibration1");
-				editor.putFloat("calibrationFactor", (float) calibrationFactor);
+				editor.putFloat("calibrationFactor", calibrationFactor);
 				editor.putInt("calibrationStatus",
 						calibrationStatus);
 				editor.commit();
@@ -2489,7 +2489,7 @@ public class MedtronicReader {
 				calibrationFactor = lastGlucometerValue / calibrationIsigValue;
 				editor.remove("expectedSensorSortNumberForCalibration0");
 				editor.remove("expectedSensorSortNumberForCalibration1");
-				editor.putFloat("calibrationFactor", (float) calibrationFactor);
+				editor.putFloat("calibrationFactor", calibrationFactor);
 				editor.putInt("calibrationStatus",
 						calibrationStatus);
 				editor.commit();
@@ -2615,7 +2615,7 @@ public class MedtronicReader {
 	 */
 	public float calculateISIG(int value, short adjustment) {
 		float isig = (float) value
-				/ (MedtronicConstants.SENSOR_CONVERSION_CONSTANT_VALUE - ((float) value * (float) MedtronicConstants.SENSOR_CONVERSION_CONSTANT_VALUE2));
+				/ (MedtronicConstants.SENSOR_CONVERSION_CONSTANT_VALUE - ((float) value * MedtronicConstants.SENSOR_CONVERSION_CONSTANT_VALUE2));
 		isig += ((float) adjustment * (float) value * (MedtronicConstants.SENSOR_CONVERSION_CONSTANT_VALUE3 + (MedtronicConstants.SENSOR_CONVERSION_CONSTANT_VALUE4
 				* (float) value / (float) MedtronicConstants.SENSOR_CONVERSION_CONSTANT_VALUE5)));
 		return isig;

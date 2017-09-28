@@ -24,7 +24,6 @@ import org.slf4j.LoggerFactory;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
-import android.os.Messenger;
 import android.preference.PreferenceManager;
 import android.util.Log;
 

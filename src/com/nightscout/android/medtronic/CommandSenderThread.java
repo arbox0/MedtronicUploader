@@ -151,9 +151,9 @@ public class CommandSenderThread implements Runnable{
 	        readSystemTime[0] = (byte)0x81;
 	        readSystemTime[1] = (byte)0x06;
 	        readSystemTime[2] = repeat;
-	        readSystemTime[3] = (byte)MedtronicConstants.MEDTRONIC_PUMP;
+	        readSystemTime[3] = MedtronicConstants.MEDTRONIC_PUMP;
 	        for (i=0; i < idPump.length; i++)
-	        	readSystemTime[i+4] = (byte)idPump[i];
+	        	readSystemTime[i+4] = idPump[i];
 	        readSystemTime[idPump.length + 4] = command;
 	        readSystemTime[idPump.length + 5] = (byte)0x00;
 	        log.debug("pump request sent ");//+ HexDump.toHexString(readSystemTime));
@@ -189,15 +189,15 @@ public class CommandSenderThread implements Runnable{
 	        byte[] sizByte = HexDump.hexStringToByteArray(HexDump.toHexString(size));
 	        log.debug("sizByte "+ HexDump.toHexString(sizByte));
 	        readSystemTime[0] = (byte)0x81;
-	        readSystemTime[1] = (byte)sizByte[sizByte.length-1];
+	        readSystemTime[1] = sizByte[sizByte.length-1];
 	        readSystemTime[2] = repeat;
-	        readSystemTime[3] = (byte)MedtronicConstants.MEDTRONIC_PUMP;
+	        readSystemTime[3] = MedtronicConstants.MEDTRONIC_PUMP;
 	        for (i=0; i < idPump.length; i++)
-	        	readSystemTime[i+4] = (byte)idPump[i];
+	        	readSystemTime[i+4] = idPump[i];
 	        readSystemTime[idPump.length + 4] = command;
 	        log.debug("postcommadnLength ");//+ postCommand.length);
 	        for (i=0; i < postCommand.length; i++)
-	        	readSystemTime[idPump.length + 5 + i] = (byte)postCommand[i];
+	        	readSystemTime[idPump.length + 5 + i] = postCommand[i];
 	        log.debug("command sent "+ HexDump.toHexString(readSystemTime));
 	        int resultWrite =  mSerialDevice.write(readSystemTime);
 	        return resultWrite;

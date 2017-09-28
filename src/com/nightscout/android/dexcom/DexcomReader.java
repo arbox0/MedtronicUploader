@@ -431,9 +431,9 @@ public class DexcomReader extends AsyncTask<UsbSerialDriver, Object, Object>{
     public static int toInt(byte[] b, int flag) {
         switch(flag){
             case 0: //BitConverter.FLAG_JAVA:
-                return (int)(((b[0] & 0xff)<<24) | ((b[1] & 0xff)<<16) | ((b[2] & 0xff)<<8) | (b[3] & 0xff));
+                return ((b[0] & 0xff)<<24) | ((b[1] & 0xff)<<16) | ((b[2] & 0xff)<<8) | (b[3] & 0xff);
             case 1: //BitConverter.FLAG_REVERSE:
-                return (int)(((b[3] & 0xff)<<24) | ((b[2] & 0xff)<<16) | ((b[1] & 0xff)<<8) | (b[0] & 0xff));
+                return ((b[3] & 0xff)<<24) | ((b[2] & 0xff)<<16) | ((b[1] & 0xff)<<8) | (b[0] & 0xff);
             default:
                 throw new IllegalArgumentException("BitConverter: toInt");
         }

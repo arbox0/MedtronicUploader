@@ -855,7 +855,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	        	input = new EditText(ctx);
 	        	input.setInputType(InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);
 	        	
-	        	float num = settings.getFloat("lastGlucometerValue", (float) -1f);
+	        	float num = settings.getFloat("lastGlucometerValue", -1f);
 	        	if (num <= 0)
 	        		num = 0;
 	        

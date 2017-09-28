@@ -140,7 +140,7 @@ public class MedtronicCGMService extends Service implements
 					medtronicReader.lastGlucometerDate = d.getTime();
 					medtronicReader.calculateDate(medtronicReader.lastGlucometerRecord, d, 0);
 					SharedPreferences.Editor editor = settings.edit();
-					editor.putFloat("lastGlucometerValue", (float) medtronicReader.lastGlucometerValue);
+					editor.putFloat("lastGlucometerValue", medtronicReader.lastGlucometerValue);
 					editor.putLong("glucometerLastDate", d.getTime());
 					editor.commit();
 				}
@@ -712,11 +712,8 @@ public class MedtronicCGMService extends Service implements
 				boolean hasPermission = false;
 				for (final UsbDevice usbDevice : usbManager.getDeviceList()
 						.values()) {
-					if (!usbManager.hasPermission(usbDevice)) {
-						continue;
-					} else {
+					if (usbManager.hasPermission(usbDevice)) {
 						hasPermission = true;
-						// sendMessageConnectedToUI();
 					}
 				}
 				if (!hasPermission) {
@@ -801,7 +798,6 @@ public class MedtronicCGMService extends Service implements
 						+ e.getCause());
 				for (StackTraceElement st : e.getStackTrace()) {
 					sb1.append(st.toString()).append("\n");
-					;
 				}
 				sendMessageToUI(sb1.toString());
 				log.error("Unable to read from receptor or upload \n"+ e.toString());
@@ -841,7 +837,7 @@ public class MedtronicCGMService extends Service implements
 				}
 			}
 		}
-	};
+	}
 
 	/**
 	 * Process all the parsed messages, checks if there is Records to upload and executes the uploader if necessary.
@@ -1009,7 +1005,7 @@ public class MedtronicCGMService extends Service implements
 			log.debug("Buffered Messages Processed ");
 		}
 
-	};
+	}
 
 	private void doWifiHack() {
 		Handler handler = new Handler();
@@ -1519,7 +1515,6 @@ public class MedtronicCGMService extends Service implements
 			sb1.append("EXCEPTION!!!!!! " + e.getMessage() + " " + e.getCause());
 			for (StackTraceElement st : e.getStackTrace()) {
 				sb1.append(st.toString()).append("\n");
-				;
 			}
 			sendMessageToUI(sb1.toString());
 		}
@@ -1582,7 +1577,6 @@ public class MedtronicCGMService extends Service implements
 						+ e.getCause());
 				for (StackTraceElement st : e.getStackTrace()) {
 					sb1.append(st.toString()).append("\n");
-					;
 				}
 				sendMessageToUI(sb1.toString());
 				synchronized (medtronicReader.processingCommandLock) {
@@ -1731,7 +1725,6 @@ public class MedtronicCGMService extends Service implements
 						+ e.getCause());
 				for (StackTraceElement st : e.getStackTrace()) {
 					sb1.append(st.toString()).append("\n");
-					;
 				}
 				sendMessageToUI(sb1.toString());
 				synchronized (medtronicReader.processingCommandLock) {
@@ -1833,7 +1826,6 @@ public class MedtronicCGMService extends Service implements
 						+ e.getCause());
 				for (StackTraceElement st : e.getStackTrace()) {
 					sb1.append(st.toString()).append("\n");
-					;
 				}
 				sendMessageToUI(sb1.toString());
 				synchronized (medtronicReader.processingCommandLock) {

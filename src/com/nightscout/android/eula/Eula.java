@@ -44,7 +44,7 @@ public class Eula {
     /**
      * callback to let the activity know when the user has accepted the EULA.
      */
-    public static interface OnEulaAgreedTo {
+    public interface OnEulaAgreedTo {
 
         /**
          * Called when the user has accepted the eula and the dialog closes.
