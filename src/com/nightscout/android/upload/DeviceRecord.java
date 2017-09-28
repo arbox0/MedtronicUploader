@@ -16,7 +16,4 @@ public class DeviceRecord extends Record implements Serializable{
 	public String getDeviceName(){
 		return deviceName;
 	}
-	public String setDeviceName(){
-		return deviceName;
-	}
 }

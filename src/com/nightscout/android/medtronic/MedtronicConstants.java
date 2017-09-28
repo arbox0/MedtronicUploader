@@ -31,8 +31,7 @@ public class MedtronicConstants {
     public static final float SENSOR_CONVERSION_CONSTANT_VALUE3 = Float.valueOf("6.25E-6").floatValue();
     public static final float SENSOR_CONVERSION_CONSTANT_VALUE4 = Float.valueOf("1.5E-6").floatValue();
     public static final int SENSOR_CONVERSION_CONSTANT_VALUE5 = 65536;
-    
-    public static final String MONGO_URI = "https://api.mongolab.com/api/1/databases/";
+
     
     public static final int CALIBRATION_SENSOR = 0;
 	public static final int CALIBRATION_GLUCOMETER = 1;

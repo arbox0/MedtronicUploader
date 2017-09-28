@@ -202,36 +202,7 @@ public class MedtronicReader {
 			}
 		}
 		storeKnownDevices();
-		/*long currentTime = System.currentTimeMillis();
-		long diff = currentTime - settings.getLong("lastDestroy", 0);
-		if (diff > (2 * MedtronicConstants.TIME_12_HOURS_IN_MS)) {
-			Log.i("Medtronic", "BORRA TODO");
-			log.debug("REMOVE ALL PREFERENCES TOO MUCH TIME WITHOUT READING; DATA IS OBSOLETE");
-			SharedPreferences.Editor editor = settings.edit();
-			editor.remove("lastGlucometerMessage");
-			editor.remove("previousValue");
-			editor.remove("expectedSensorSortNumber");
-			editor.remove("isCalibrating");
-			if (settings.contains("calibrationStatus"))
-				calibrationStatus = settings.getInt("calibrationStatus",
-						MedtronicConstants.WITHOUT_ANY_CALIBRATION);
-			if (settings.contains("calibrationFactor"))
-				calibrationFactor = (float) settings.getFloat(
-						"calibrationFactor", (float) this.calibrationFactor);
-			if (settings.contains("lastCalibrationDate"))
-				lastCalibrationDate = settings
-				.getLong("lastCalibrationDate", 0);
-			checkCalibrationOutOfTime();
-			editor.remove("lastGlucometerValue");
-			editor.remove("lastGlucometerDate");
-			editor.remove("expectedSensorSortNumber");
-			editor.remove("expectedSensorSortNumberForCalibration0");
-			editor.remove("expectedSensorSortNumberForCalibration1");
-			editor.remove("lastSensorValueDate");
-			editor.remove("last_read");
-			editor.commit();
-			return;
-		}*/
+
 
 		if (settings.contains("lastSensorValueDate"))
 			lastSensorValueDate = settings.getLong("lastSensorValueDate", 0);
@@ -328,43 +299,7 @@ public class MedtronicReader {
 		return false;
 	}
 
-	/**
-	 * Sends a message glucMessage
-	 * message.
-	 * 
-	 * @param valuetosend
-	 * @param clear
-	 *            , if true, the display is cleared before printing
-	 *            "valuetosend"
-	 */
-	private void sendGlucMessageToUI(float valuetosend, boolean calibration, boolean isCalFactorFromPump) {
-		// log.debug("MedtronicReader Sends to UI "+valuetosend);
-		if (mClients != null && mClients.size() > 0) {
-			for (int i = mClients.size() - 1; i >= 0; i--) {
-				try {
-					Message mSend = null;
-					
-					mSend = Message
-							.obtain(null,
-									MedtronicConstants.MSG_MEDTRONIC_GLUCMEASURE_DETECTED);
-					Bundle b = new Bundle();
-					b.putFloat("data", valuetosend);
-					b.putBoolean("calibrating", calibration);
-					b.putBoolean("isCalFactorFromPump", isCalFactorFromPump);
-					mSend.setData(b);
-					mClients.get(i).send(mSend);
 
-				} catch (RemoteException e) {
-					// The client is dead. Remove it from the list; we are going
-					// through the list from back to front so this is safe to do
-					// inside the loop.
-					mClients.remove(i);
-				}
-			}
-		} /*
-		 * else { displayMessage(valuetosend); }
-		 */
-	}
 	private void sendMessageToUI(String valuetosend, boolean clear) {
 		Log.i("medtronicReader", valuetosend);
 		// log.debug("MedtronicReader Sends to UI "+valuetosend);
@@ -643,76 +578,7 @@ public class MedtronicReader {
 										
 										editor.commit();
 									}
-								/*} else if (calibrationSelectedAux == MedtronicConstants.CALIBRATION_SENSOR) {
-									if (lastGlucometerMessage == null
-											|| lastGlucometerMessage.length == 0) {
-										lastGlucometerMessage = Arrays
-												.copyOfRange(readData, 0,
-														readData.length);
-										lastGlucometerMessageDate = System
-												.currentTimeMillis();
-										SharedPreferences.Editor editor = settings
-												.edit();
-										editor.putString(
-												"lastGlucometerMessage",
-												HexDump.toHexString(lastGlucometerMessage));
 
-										editor.commit();
-									} else {
-										boolean isEqual = Arrays
-												.equals(lastGlucometerMessage,
-														readData);
-										if (isEqual
-												&& (System.currentTimeMillis()
-														- lastGlucometerMessageDate < MedtronicConstants.TIME_15_MIN_IN_MS)) {
-											continue;
-										}
-										lastGlucometerMessageDate = System
-												.currentTimeMillis();
-										lastGlucometerMessage = Arrays
-												.copyOfRange(readData, 0,
-														readData.length);
-									}
-									sResponse
-									.append("Glucomenter Deteted!! \n")
-									.append(processGlucometerDataMessage(
-											readData, false));
-								} else {
-									isCalibrating = false;
-									if (lastGlucometerMessage == null
-											|| lastGlucometerMessage.length == 0) {
-										lastGlucometerMessage = Arrays
-												.copyOfRange(readData, 0,
-														readData.length);
-										lastGlucometerMessageDate = System
-												.currentTimeMillis();
-										SharedPreferences.Editor editor = settings
-												.edit();
-										editor.putString(
-												"lastGlucometerMessage",
-												HexDump.toHexString(lastGlucometerMessage));
-
-										editor.commit();
-									} else {
-										boolean isEqual = Arrays
-												.equals(lastGlucometerMessage,
-														readData);
-										if (isEqual
-												&& (System.currentTimeMillis()
-														- lastGlucometerMessageDate < MedtronicConstants.TIME_15_MIN_IN_MS)) {
-											continue;
-										}
-										lastGlucometerMessageDate = System
-												.currentTimeMillis();
-										lastGlucometerMessage = Arrays
-												.copyOfRange(readData, 0,
-														readData.length);
-									}
-									sResponse
-									.append("Glucomenter Deteted!! \n")
-									.append(processGlucometerDataMessage(
-											readData, false));
-								}*/
 								break;
 							}
 							case MedtronicConstants.MEDTRONIC_SENSOR1: {
