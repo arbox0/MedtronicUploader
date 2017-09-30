@@ -45,7 +45,6 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
     Context context;
     private int cgmSelected = DexcomG4Activity.DEXCOMG4;
 
-    private List<JSONObject> recordsNotUploadedList = new ArrayList<JSONObject>();
     private List<JSONObject> recordsNotUploadedListJson = new ArrayList<JSONObject>();
 
     public static Object isModifyingRecordsLock = new Object();
@@ -65,22 +64,10 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 	    		if (diff != currentTime && diff > (6*MedtronicConstants.TIME_60_MIN_IN_MS)) {
 	    			log.debug("Remove older records");
 	    			SharedPreferences.Editor editor = settings.edit();
-	    			if (settings.contains("recordsNotUploaded"))
-	    				editor.remove("recordsNotUploaded");
 	    			if (settings.contains("recordsNotUploadedJson"))
 	    				editor.remove("recordsNotUploadedJson");
 	            	editor.commit();
 	    		}
-	        	if (settings.contains("recordsNotUploaded")){
-	        		JSONArray recordsNotUploaded = new JSONArray(settings.getString("recordsNotUploaded","[]"));
-	        		for (int i = 0; i < recordsNotUploaded.length(); i++){
-	        			recordsNotUploadedList.add(recordsNotUploaded.getJSONObject(i));
-	        		}
-	        		log.debug("retrieve older json records -->" +recordsNotUploaded.length());
-	            	SharedPreferences.Editor editor = settings.edit();
-	            	editor.remove("recordsNotUploaded");
-	            	editor.commit();
-	            }	
 	        	if (settings.contains("recordsNotUploadedJson")){
 	        		JSONArray recordsNotUploadedJson = new JSONArray(settings.getString("recordsNotUploadedJson","[]"));
 	        		for (int i = 0; i < recordsNotUploadedJson.length(); i++){
@@ -93,11 +80,8 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 	            }	
 			} catch (Exception e) {
 				log.debug("ERROR Retrieving older list, I have lost them");
-				recordsNotUploadedList = new ArrayList<JSONObject>();
 				recordsNotUploadedListJson = new ArrayList<JSONObject>();
 				SharedPreferences.Editor editor = settings.edit();
-				if (settings.contains("recordsNotUploaded"))
-					editor.remove("recordsNotUploaded");
 				if (settings.contains("recordsNotUploadedJson"))
 					editor.remove("recordsNotUploadedJson");
 	        	editor.commit();
@@ -175,33 +159,31 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
         }
     }
     @SuppressWarnings({ "rawtypes", "unchecked" })
-    private void doRESTUploadTo(String baseURI, Record[] records) {
-    	Integer typeSaved = null;
+    private void doRESTUploadTo(String baseURI, Record[] records) throws Exception {
+        int apiVersion = 1;
+        if (!baseURI.endsWith("/v1/"))
+            throw new Exception("REST API URL must start end with /v1/");
+
+        Integer typeSaved = null;
         try {
-            int apiVersion = 0;
-            if (baseURI.endsWith("/v1/")) apiVersion = 1;
 
             String baseURL = null;
             String secret = null;
             String[] uriParts = baseURI.split("@");
 
-            if (uriParts.length == 1 && apiVersion == 0) {
-                baseURL = uriParts[0];
-            } else if (uriParts.length == 1) {
+            if (uriParts.length == 1) {
             	if (recordsNotUploadedListJson.size() > 0){
                  	JSONArray jsonArray = new JSONArray(recordsNotUploadedListJson);
                  	SharedPreferences.Editor editor = settings.edit();
-                 	editor.putString("recordsNotUploaded", jsonArray.toString());
+                 	editor.putString("recordsNotUploadedJson", jsonArray.toString());
                  	editor.commit();
                  }
-                throw new Exception("Starting with API v1, a pass phase is required");
-            } else if (uriParts.length == 2 && apiVersion > 0) {
-                secret = uriParts[0];
+                throw new Exception("Passphrase is required in REST API URL");
+            } else if (uriParts.length == 2) {
+                secret = uriParts[0]; // Allows for https://PASS@website.azurewe.../api/v1/ AND for PASS@https://website.azurewe.../api/v1/
                 baseURL = uriParts[1];
 
-                // new format URL!
-
-                if (secret.contains("http")) {
+                if (secret.contains("http")) { // fix up if it is https://PASS@
                     if (secret.contains("https")) {
                         baseURL = "https://" + baseURL;
                     } else {
@@ -210,19 +192,23 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                     String[] uriParts2 = secret.split("//");
                     secret = uriParts2[1];
                 }
-
-
             } else {
-            	if (recordsNotUploadedListJson.size() > 0){
+
+
+
+
+                if (recordsNotUploadedListJson.size() > 0){
+
+
                  	JSONArray jsonArray = new JSONArray(recordsNotUploadedListJson);
                  	SharedPreferences.Editor editor = settings.edit();
                  	editor.putString("recordsNotUploadedJson", jsonArray.toString());
                  	editor.commit();
                  }
-                throw new Exception(String.format("Unexpected baseURI: %s, uriParts.length: %s, apiVersion: %s", baseURI, uriParts.length, apiVersion));
+                throw new Exception(String.format("Unexpected baseURI: %s, uriParts.length: %s", baseURI, uriParts.length));
             }
 
-            
+
 
             HttpParams params = new BasicHttpParams();
             HttpConnectionParams.setSoTimeout(params, SOCKET_TIMEOUT);
@@ -243,27 +229,25 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 
                     HttpPost post = new HttpPost(postURL);
 
-                    if (apiVersion > 0) {
-                        if (secret == null || secret.isEmpty()) {
-                        	 if (auxList.size() > 0){
-                             	JSONArray jsonArray = new JSONArray(auxList);
-                             	SharedPreferences.Editor editor = settings.edit();
-                             	editor.putString("recordsNotUploaded", jsonArray.toString());
-                             	editor.commit();
-                             }
-                            throw new Exception("Starting with API v1, a pass phase is required");
-                        } else {
-                            MessageDigest digest = MessageDigest.getInstance("SHA-1");
-                            byte[] bytes = secret.getBytes("UTF-8");
-                            digest.update(bytes, 0, bytes.length);
-                            bytes = digest.digest();
-                            StringBuilder sb = new StringBuilder(bytes.length * 2);
-                            for (byte b: bytes) {
-                                sb.append(String.format("%02x", b & 0xff));
-                            }
-                            String token = sb.toString();
-                            post.setHeader("api-secret", token);
+                    if (secret == null || secret.isEmpty()) {
+                        if (auxList.size() > 0){
+                            JSONArray jsonArray = new JSONArray(auxList);
+                            SharedPreferences.Editor editor = settings.edit();
+                            editor.putString("recordsNotUploadedJson", jsonArray.toString());
+                            editor.commit();
                         }
+                        throw new Exception("A passphrase is required");
+                    } else {
+                        MessageDigest digest = MessageDigest.getInstance("SHA-1");
+                        byte[] bytes = secret.getBytes("UTF-8");
+                        digest.update(bytes, 0, bytes.length);
+                        bytes = digest.digest();
+                        StringBuilder sb = new StringBuilder(bytes.length * 2);
+                        for (byte b: bytes) {
+                            sb.append(String.format("%02x", b & 0xff));
+                        }
+                        String token = sb.toString();
+                        post.setHeader("api-secret", token);
                     }
 
                     String jsonString = json.toString();
@@ -303,36 +287,34 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 
                 HttpPost post = new HttpPost(postURL);
 
-                if (apiVersion > 0) {
-                    if (secret == null || secret.isEmpty()) {
-                    	 if (recordsNotUploadedListJson.size() > 0){
-                          	JSONArray jsonArray = new JSONArray(recordsNotUploadedListJson);
-                          	SharedPreferences.Editor editor = settings.edit();
-                          	editor.putString("recordsNotUploadedJson", jsonArray.toString());
-                          	editor.commit();
-                          }
-                        throw new Exception("Starting with API v1, a pass phase is required");
-                    } else {
-                        MessageDigest digest = MessageDigest.getInstance("SHA-1");
-                        byte[] bytes = secret.getBytes("UTF-8");
-                        digest.update(bytes, 0, bytes.length);
-                        bytes = digest.digest();
-                        StringBuilder sb = new StringBuilder(bytes.length * 2);
-                        for (byte b: bytes) {
-                            sb.append(String.format("%02x", b & 0xff));
-                        }
-                        String token = sb.toString();
-                        post.setHeader("api-secret", token);
+
+                if (secret == null || secret.isEmpty()) {
+                    if (recordsNotUploadedListJson.size() > 0){
+                        JSONArray jsonArray = new JSONArray(recordsNotUploadedListJson);
+                        SharedPreferences.Editor editor = settings.edit();
+                        editor.putString("recordsNotUploadedJson", jsonArray.toString());
+                        editor.commit();
                     }
+                    throw new Exception("Starting with API v1, a pass phase is required");
+                } else {
+                    MessageDigest digest = MessageDigest.getInstance("SHA-1");
+                    byte[] bytes = secret.getBytes("UTF-8");
+                    digest.update(bytes, 0, bytes.length);
+                    bytes = digest.digest();
+                    StringBuilder sb = new StringBuilder(bytes.length * 2);
+                    for (byte b: bytes) {
+                        sb.append(String.format("%02x", b & 0xff));
+                    }
+                    String token = sb.toString();
+                    post.setHeader("api-secret", token);
                 }
+
 
                 JSONObject json = new JSONObject();
 
                 try {
-                    if (apiVersion >= 1)
-                        populateV1APIEntry(json, record);
-                    else
-                        populateLegacyAPIEntry(json, record);
+                    populateV1APIEntry(json, record);
+
                 } catch (Exception e) {
                     Log.w(TAG, "Unable to populate entry, apiVersion: " + apiVersion, e);
                     log.warn("Unable to populate entry, apiVersion: " + apiVersion, e);
@@ -470,38 +452,6 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
     		json.put("isWarmingUp", pumpRecord.isWarmingUp);
     	}
         
-    }
-
-    private void populateLegacyAPIEntry(JSONObject json, Record oRecord) throws Exception {
-    	Date date = DATE_FORMAT.parse(oRecord.displayTime);
-    	json.put("timestamp", date.getTime());
-    	
-    	if (oRecord instanceof GlucometerRecord){
-    		 json.put("gdValue", ((GlucometerRecord)oRecord).numGlucometerValue);
-    	}else if (oRecord instanceof EGVRecord){
-    		EGVRecord record = (EGVRecord) oRecord;
-    		json.put("device", getSelectedDeviceName());
-            json.put("sgv", Integer.parseInt(record.bGValue));
-            json.put("direction", record.trend);
-            if (cgmSelected == DexcomG4Activity.MEDTRONIC_CGM && (oRecord instanceof MedtronicSensorRecord)){
-            	json.put("isig", ((MedtronicSensorRecord)record).isig);
-            	json.put("calibrationFactor", ((MedtronicSensorRecord)record).calibrationFactor);
-            	json.put("calibrationStatus", ((MedtronicSensorRecord)record).calibrationStatus);
-            	json.put("unfilteredGlucose", ((MedtronicSensorRecord)record).unfilteredGlucose);
-            	json.put("isCalibrating", ((MedtronicSensorRecord)record).isCalibrating);
-            }
-    	}else if (oRecord instanceof MedtronicPumpRecord){
-    		MedtronicPumpRecord pumpRecord = (MedtronicPumpRecord) oRecord;
-    		json.put("name", pumpRecord.getDeviceName());
-    		json.put("deviceId", pumpRecord.deviceId);
-    		json.put("insulinLeft", pumpRecord.insulinLeft);
-    		json.put("alarm", pumpRecord.alarm);
-    		json.put("status", pumpRecord.status);
-    		json.put("temporaryBasal", pumpRecord.temporaryBasal);
-    		json.put("batteryStatus", pumpRecord.batteryStatus);
-    		json.put("batteryVoltage", pumpRecord.batteryVoltage);
-    		json.put("isWarmingUp", pumpRecord.isWarmingUp);
-    	}
     }
 
 }

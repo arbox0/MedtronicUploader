@@ -888,14 +888,13 @@ public class MedtronicCGMService extends Service implements
 			log.debug("Reloading Lost Records from medtronic service");
 
     		JSONArray recordsNotUploadedJson;
-    		JSONArray recordsNotUploaded;
+
 			try {
-	        	recordsNotUploaded = new JSONArray(settings.getString("recordsNotUploaded","[]"));	
 				recordsNotUploadedJson = new JSONArray(settings.getString("recordsNotUploadedJson","[]"));
 				synchronized (reloadLostLock) {
 					if (isOnline()){
-						log.debug("reloadnotupload is online "+recordsNotUploaded.length() +" -> "+recordsNotUploadedJson.length() +" "+ !isDestroying);
-						if ((recordsNotUploaded.length() > 0 || recordsNotUploadedJson.length() > 0) && !isDestroying) {
+						log.debug("reloadnotuploaded is online -> "+recordsNotUploadedJson.length() +" "+ !isDestroying);
+						if (recordsNotUploadedJson.length() > 0 && !isDestroying) {
 							log.debug("to upload old records");
 							uploader = new UploadHelper(getApplicationContext(),
 									DexcomG4Activity.MEDTRONIC_CGM);
