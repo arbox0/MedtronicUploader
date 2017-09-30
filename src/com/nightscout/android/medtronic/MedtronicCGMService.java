@@ -452,7 +452,7 @@ public class MedtronicCGMService extends Service implements
 
 		mSerial = new Physicaloid(this);
 		medtronicReader = new MedtronicReader(mSerial, getBaseContext(),
-				mClients, null);
+				mClients);
 		
 		Record auxRecord =  MedtronicCGMService.this.loadClassFile(new File(getBaseContext().getFilesDir(), "save.bin"));
 
@@ -1392,7 +1392,7 @@ public class MedtronicCGMService extends Service implements
 
 						}
 						medtronicReader = new MedtronicReader(mSerial,
-								getBaseContext(), mClients, null);
+								getBaseContext(), mClients);
 						medtronicReader.idPump = newIdPump;
 						synchronized (checkSerialLock) {
 							mHandlerCheckSerial.post(readAndUpload);

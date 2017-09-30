@@ -56,9 +56,6 @@ public class MedtronicReader {
 	protected byte[] idSensor = null;
 	protected byte[] notFinishedRead = null;
 
-	public String bGValue;
-	public String displayTime;
-	public String trend;
 	public MedtronicPumpRecord lastMedtronicPumpRecord = null;// last medtronic
 	// pump info
 	// received
@@ -69,10 +66,8 @@ public class MedtronicReader {
 	public float calibrationFactor = -1f;
 	public long lastCalibrationDate = 0;
 	public long lastGlucometerDate = 0;
-	public long lastGlucometerMessageDate = 0;
 	public long lastSensorValueDate = 0;
 	public float lastGlucometerValue = -1f;
-	public float[] glucoseFilter = { 0.3f, 0.6f, 0.1f };
 	public byte[] expectedSensorSortNumberForCalibration = { (byte) 0xff,
 			(byte) 0xff }; // expected indexes of the next sensor reading for
 	// correct calibration
@@ -134,12 +129,12 @@ public class MedtronicReader {
 	 * @param context
 	 */
 	public MedtronicReader(Physicaloid device, Context context,
-			ArrayList<Messenger> mClients, HistoricGetterThread hGetter) {
+			ArrayList<Messenger> mClients) {
 		this.settings = context.getSharedPreferences(
 				MedtronicConstants.PREFS_NAME, 0);
 		this.context = context;
 		this.mClients = mClients;
-		this.hGetter = hGetter;
+
 		knownDevices = new ArrayList<String>();
 		mSerialDevice = device;
 		prefs = PreferenceManager.getDefaultSharedPreferences(context);

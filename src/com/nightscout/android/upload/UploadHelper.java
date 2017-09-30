@@ -170,15 +170,10 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
             String baseURL = null;
             String secret = null;
             String[] uriParts = baseURI.split("@");
+            String error = null;
 
             if (uriParts.length == 1) {
-            	if (recordsNotUploadedListJson.size() > 0){
-                 	JSONArray jsonArray = new JSONArray(recordsNotUploadedListJson);
-                 	SharedPreferences.Editor editor = settings.edit();
-                 	editor.putString("recordsNotUploadedJson", jsonArray.toString());
-                 	editor.commit();
-                 }
-                throw new Exception("Passphrase is required in REST API URL");
+            	error = "Passphrase is required in REST API URL";
             } else if (uriParts.length == 2) {
                 secret = uriParts[0]; // Allows for https://PASS@website.azurewe.../api/v1/ AND for PASS@https://website.azurewe.../api/v1/
                 baseURL = uriParts[1];
@@ -192,23 +187,20 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                     String[] uriParts2 = secret.split("//");
                     secret = uriParts2[1];
                 }
-            } else {
 
-
-
-
-                if (recordsNotUploadedListJson.size() > 0){
-
-
-                 	JSONArray jsonArray = new JSONArray(recordsNotUploadedListJson);
-                 	SharedPreferences.Editor editor = settings.edit();
-                 	editor.putString("recordsNotUploadedJson", jsonArray.toString());
-                 	editor.commit();
-                 }
-                throw new Exception(String.format("Unexpected baseURI: %s, uriParts.length: %s", baseURI, uriParts.length));
+                if (secret.isEmpty()) error = "Secret not read correctly from URL " + baseURI;
+            }
+            else {
+                error = String.format("Unexpected baseURI: %s, uriParts.length: %s", baseURI, uriParts.length);
             }
 
-
+            if (!error.isEmpty()) {
+                JSONArray jsonArray = new JSONArray(recordsNotUploadedListJson);
+                SharedPreferences.Editor editor = settings.edit();
+                editor.putString("recordsNotUploadedJson", jsonArray.toString());
+                editor.commit();
+                throw new Exception(error);
+            }
 
             HttpParams params = new BasicHttpParams();
             HttpConnectionParams.setSoTimeout(params, SOCKET_TIMEOUT);
@@ -229,26 +221,18 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 
                     HttpPost post = new HttpPost(postURL);
 
-                    if (secret == null || secret.isEmpty()) {
-                        if (auxList.size() > 0){
-                            JSONArray jsonArray = new JSONArray(auxList);
-                            SharedPreferences.Editor editor = settings.edit();
-                            editor.putString("recordsNotUploadedJson", jsonArray.toString());
-                            editor.commit();
-                        }
-                        throw new Exception("A passphrase is required");
-                    } else {
-                        MessageDigest digest = MessageDigest.getInstance("SHA-1");
-                        byte[] bytes = secret.getBytes("UTF-8");
-                        digest.update(bytes, 0, bytes.length);
-                        bytes = digest.digest();
-                        StringBuilder sb = new StringBuilder(bytes.length * 2);
-                        for (byte b: bytes) {
-                            sb.append(String.format("%02x", b & 0xff));
-                        }
-                        String token = sb.toString();
-                        post.setHeader("api-secret", token);
+
+                    MessageDigest digest = MessageDigest.getInstance("SHA-1");
+                    byte[] bytes = secret.getBytes("UTF-8");
+                    digest.update(bytes, 0, bytes.length);
+                    bytes = digest.digest();
+                    StringBuilder sb = new StringBuilder(bytes.length * 2);
+                    for (byte b: bytes) {
+                        sb.append(String.format("%02x", b & 0xff));
                     }
+                    String token = sb.toString();
+                    post.setHeader("api-secret", token);
+
 
                     String jsonString = json.toString();
 
@@ -287,28 +271,16 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 
                 HttpPost post = new HttpPost(postURL);
 
-
-                if (secret == null || secret.isEmpty()) {
-                    if (recordsNotUploadedListJson.size() > 0){
-                        JSONArray jsonArray = new JSONArray(recordsNotUploadedListJson);
-                        SharedPreferences.Editor editor = settings.edit();
-                        editor.putString("recordsNotUploadedJson", jsonArray.toString());
-                        editor.commit();
-                    }
-                    throw new Exception("Starting with API v1, a pass phase is required");
-                } else {
-                    MessageDigest digest = MessageDigest.getInstance("SHA-1");
-                    byte[] bytes = secret.getBytes("UTF-8");
-                    digest.update(bytes, 0, bytes.length);
-                    bytes = digest.digest();
-                    StringBuilder sb = new StringBuilder(bytes.length * 2);
-                    for (byte b: bytes) {
-                        sb.append(String.format("%02x", b & 0xff));
-                    }
-                    String token = sb.toString();
-                    post.setHeader("api-secret", token);
+                MessageDigest digest = MessageDigest.getInstance("SHA-1");
+                byte[] bytes = secret.getBytes("UTF-8");
+                digest.update(bytes, 0, bytes.length);
+                bytes = digest.digest();
+                StringBuilder sb = new StringBuilder(bytes.length * 2);
+                for (byte b: bytes) {
+                    sb.append(String.format("%02x", b & 0xff));
                 }
-
+                String token = sb.toString();
+                post.setHeader("api-secret", token);
 
                 JSONObject json = new JSONObject();
 
