@@ -426,7 +426,7 @@ public class MedtronicReader {
 	 * @param context
 	 * @return String, for debug or notification purposes
 	 */
-	public ArrayList<byte[]> readFromReceiver(Context context, int size) {
+	public ArrayList<byte[]> readFromReceiver(int size) {
 		ArrayList<byte[]> bufferedMessages = null;
 		byte[] readFromDevice = new byte[1024];
 		int read = 0;
@@ -538,9 +538,7 @@ public class MedtronicReader {
 														readData.length);
 									}
 									sResponse.append(
-											processGlucometerDataMessage(
-													readData, false)).append(
-															"\n"); // Cambiado a false
+											processGlucometerDataMessage(readData)).append("\n"); // Cambiado a false
 									if (lastGlucometerValue > 0) {
 											isCalibrating = calibrationSelectedAux == MedtronicConstants.CALIBRATION_GLUCOMETER;
 										if (previousRecord == null) {
@@ -1665,8 +1663,7 @@ public class MedtronicReader {
 	 * @param readData
 	 * @return String, for debug or notification purposes
 	 */
-	public String processGlucometerDataMessage(byte[] readData,
-			boolean calibrate) {
+	public String processGlucometerDataMessage(byte[] readData) {
 		int firstMeasureByte = firstByteAfterDeviceId(readData);
 		if (firstMeasureByte < 0)
 			return "Error, I can not identify the initial byte of the glucometer measure";
@@ -1691,7 +1688,7 @@ public class MedtronicReader {
 		if (num < 0 || num > 1535)
 			return "Glucometer value under 0 or over 0x5ff. Possible ACK or malfunction.";
 		
-		processManualCalibrationDataMessage(num, true, calibrate);
+		processManualCalibrationDataMessage(num, true, false);
 		//int calibrationSelectedAux = 0;
 		//synchronized (calibrationSelectedLock) {
 			//calibrationSelectedAux = calibrationSelected;
@@ -1703,8 +1700,9 @@ public class MedtronicReader {
 	
 	
 	public void approveGlucValueForCalibration(float num, boolean calibrate, boolean isSensorFactorFromPump){
-		if (!isSensorFactorFromPump)
+		if (!isSensorFactorFromPump) {
 			processManualCalibrationDataMessage(num, false, calibrate);
+		}
 		else{
 			sendMessageToUI(
 					"Glucometer Detected!!..Waiting 15 min. to retrieve calibration factor...");

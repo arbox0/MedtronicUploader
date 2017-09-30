@@ -849,7 +849,7 @@ public class MedtronicCGMService extends Service implements
 
 					log.debug("doREadAndUpload");
 					ArrayList<byte[]> bufferedMessages = medtronicReader
-							.readFromReceiver(getApplicationContext(), size);
+							.readFromReceiver(size);
 					log.debug("Stream Received--> READED");
 					if (bufferedMessages != null && bufferedMessages.size() > 0) {
 						log.debug("Stream Received--> There are "+bufferedMessages.size()+" to process ");
