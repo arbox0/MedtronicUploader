@@ -45,6 +45,7 @@ import android.widget.TextView;
 import android.widget.TextView.BufferType;
 import ch.qos.logback.classic.Logger;
 
+import com.nightscout.android.BuildConfig;
 import com.nightscout.android.R;
 import com.nightscout.android.eula.Eula;
 import com.nightscout.android.eula.Eula.OnEulaAgreedTo;
@@ -477,7 +478,10 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 
 		Button b3 = new Button(this);
 		b3.setText("Send test data");
-		lnr.addView(b3);
+
+		if (BuildConfig.DEBUG) {
+			lnr.addView(b3);
+		}
        // b4 = new Button(this);
        // b4.setText("Calibrate");
        // b4.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT,1.0f));

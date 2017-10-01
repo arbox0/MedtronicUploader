@@ -698,8 +698,8 @@ public class MedtronicReader {
 					switch (getAnswerType(readData[0])) {
 					case MedtronicConstants.DATA_ANSWER:
 						processDataAnswer(readData, sResponse);
-								break;
-							case MedtronicConstants.COMMAND_ANSWER:
+						break;
+					case MedtronicConstants.COMMAND_ANSWER:
 						log.debug("ACK Received");
 						synchronized (sendingCommandLock) {
 							sendingCommand = false;
@@ -2118,7 +2118,6 @@ public class MedtronicReader {
 						int ub = readData[firstMeasureByte + 4 + i] & 0xff;
 						int lb = readData[firstMeasureByte + 5 + i] & 0xff;
 						int num = lb + (ub << 8);
-						int num = wrapped.getInt(); // 1
 						MedtronicSensorRecord record = new MedtronicSensorRecord();
 						record.isCalibrating = isCalibrating;
 						isig = calculateISIG(num, adjustement);
@@ -2143,7 +2142,7 @@ public class MedtronicReader {
 
 					int ub = readData[firstMeasureByte + 4] & 0xff;
 					int lb = readData[firstMeasureByte + 5] & 0xff;
-					int num = lb + (ub << 8);	
+					int num = lb + (ub << 8);
 
 					MedtronicSensorRecord record = new MedtronicSensorRecord();
 					isig = calculateISIG(num, adjustement);

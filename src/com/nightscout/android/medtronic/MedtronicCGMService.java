@@ -846,13 +846,13 @@ public class MedtronicCGMService extends Service implements
 			faking = true;
 			sendMessageConnectedToUI();
 
+
 			ArrayList<byte[]> bufferedMessages = new ArrayList<>();
-			for (short[] s : TestUSBData.packets) {
-				byte b[] = new byte[s.length];
-				for (int i = 0; i < s.length; ++i)
-					b[i] = (byte) s[i];
-				bufferedMessages.add(b);
-			}
+
+			byte deviceData[] = {(byte) 0x21, (byte) 0x22, (byte) 0x23};
+			bufferedMessages.add(TestUSBData.fakeSensorData(deviceData,5500));
+
+
 			log.debug("Stream Received");
 			if (bufferedMessages.size() > 0) {
 				log.debug("Stream Received--> There are " + bufferedMessages.size() + " to process ");
