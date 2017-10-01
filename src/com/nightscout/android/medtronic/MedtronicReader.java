@@ -1995,7 +1995,7 @@ public class MedtronicReader {
 				int ub = readData[firstMeasureByte + 4 + i] & 0xff;
 				int lb = readData[firstMeasureByte + 5 + i] & 0xff;
 				int num = lb + (ub << 8);
-				
+
 				MedtronicSensorRecord record = new MedtronicSensorRecord();
 				record.isCalibrating = isCalibrating;
 				isig = calculateISIG(num, adjustement);
@@ -2114,19 +2114,10 @@ public class MedtronicReader {
 							continue;
 						}
 						lastElementsAdded++;
-						byte[] arr = Arrays.copyOfRange(readData,
-								firstMeasureByte + 4 + i, firstMeasureByte + 6
-								+ i);
-						byte[] res = new byte[4];
-						if (arr.length < 4) {
-							for (int j = 0; j < 4; j++) {
-								res[j] = (byte) 0x00;
-								if (j >= 4 - arr.length)
-									res[j] = arr[Math.abs(4 - j - arr.length)];
-							}
-						} else
-							res = arr;
-						ByteBuffer wrapped = ByteBuffer.wrap(res);
+
+						int ub = readData[firstMeasureByte + 4 + i] & 0xff;
+						int lb = readData[firstMeasureByte + 5 + i] & 0xff;
+						int num = lb + (ub << 8);
 						int num = wrapped.getInt(); // 1
 						MedtronicSensorRecord record = new MedtronicSensorRecord();
 						record.isCalibrating = isCalibrating;
@@ -2149,19 +2140,11 @@ public class MedtronicReader {
 						.append("): ").append(num);
 					}
 				} else {
-					byte[] arr = Arrays.copyOfRange(readData,
-							firstMeasureByte + 4, firstMeasureByte + 6);
-					byte[] res = new byte[4];
-					if (arr.length < 4) {
-						for (int j = 0; j < 4; j++) {
-							res[j] = (byte) 0x00;
-							if (j >= 4 - arr.length)
-								res[j] = arr[Math.abs(4 - j - arr.length)];
-						}
-					} else
-						res = arr;
-					ByteBuffer wrapped = ByteBuffer.wrap(res);
-					int num = wrapped.getInt(); // 1
+
+					int ub = readData[firstMeasureByte + 4] & 0xff;
+					int lb = readData[firstMeasureByte + 5] & 0xff;
+					int num = lb + (ub << 8);	
+
 					MedtronicSensorRecord record = new MedtronicSensorRecord();
 					isig = calculateISIG(num, adjustement);
 					record.setIsig(isig);
