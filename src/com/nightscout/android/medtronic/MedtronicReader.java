@@ -2233,77 +2233,27 @@ public class MedtronicReader {
 	}
 
 	/**
-	 * The messages emitted from the sensor are sorted following the pattern:
-	 * order byte - content ================================= 00 - message 01 -
-	 * same message as 00 10 - message2 11 - same message2 as 10 20 - message3
-	 * 21 - same message3 as 20 ... ... 60 - message6 61 - same message6 as 60
-	 * 70 - message7 71 - same message7 as 70 00 - message8 01 - same message8
-	 * as 00 ... ...
-	 * 
+	 * Sensor messages are 1 byte - cycling through 16 values
+	 * 00, 01, 10, 11, 20, 21 .. 70, 71
+	 * The payload of message {n}0 is repeated in message {n}1 - eg. 20 and 21 are same data
 	 * @return next order to be expected
 	 */
 	private byte calculateNextSensorSortNameFrom(int shift,
 			byte expectedSensorSortNumber) {
 		// sendMessageToUI("calculating FROM "+HexDump.toHexString(expectedSensorSortNumber),
 		// false);
-		byte aux = expectedSensorSortNumber;
-		String sExpected = HexDump.toHexString(aux);
-		if (sExpected != null && sExpected.length() >= 2) {
+		if (expectedSensorSortNumber < 0) return (byte) 0xff;
 
-			while (shift > 0) {
-				sExpected = HexDump.toHexString(aux);
-				char sort1 = sExpected.charAt(0);
-
-				boolean repeated = sExpected.charAt(1) == '1';
-				switch (sort1) {
-				case '0':
-					aux = (byte) 0x10;
-					if (!repeated)
-						aux = (byte) 0x01;
-					break;
-				case '1':
-					aux = (byte) 0x20;
-					if (!repeated)
-						aux = (byte) 0x11;
-					break;
-				case '2':
-					aux = (byte) 0x30;
-					if (!repeated)
-						aux = (byte) 0x21;
-					break;
-				case '3':
-					aux = (byte) 0x40;
-					if (!repeated)
-						aux = (byte) 0x31;
-					break;
-				case '4':
-					aux = (byte) 0x50;
-					if (!repeated)
-						aux = (byte) 0x41;
-					break;
-				case '5':
-					aux = (byte) 0x60;
-					if (!repeated)
-						aux = (byte) 0x51;
-					break;
-				case '6':
-					aux = (byte) 0x70;
-					if (!repeated)
-						aux = (byte) 0x61;
-					break;
-				case '7':
-					aux = (byte) 0x00;
-					if (!repeated)
-						aux = (byte) 0x71;
-					break;
-				default:
-					aux = (byte) 0xff;
-				}
-				shift--;
+		while (shift > 0) {
+			if ((expectedSensorSortNumber & (byte) 1) != 0) {
+				expectedSensorSortNumber += (byte) 0x10;
+				expectedSensorSortNumber &= 0x70;
+			} else {
+				expectedSensorSortNumber |= 0x01;
 			}
-			return aux;
-		} else
-			return (byte) 0xff;
+			--shift;
+		}
+		return expectedSensorSortNumber;
 	}
 
 	private int transformSequenceToIndex(byte aux) {
