@@ -194,7 +194,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                 error = String.format("Unexpected baseURI: %s, uriParts.length: %s", baseURI, uriParts.length);
             }
 
-            if (!error.isEmpty()) {
+            if (error != null) {
                 JSONArray jsonArray = new JSONArray(recordsNotUploadedListJson);
                 SharedPreferences.Editor editor = settings.edit();
                 editor.putString("recordsNotUploadedJson", jsonArray.toString());

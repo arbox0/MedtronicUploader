@@ -74,7 +74,6 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
     private TextView mTitleTextView;
     private TextView mDumpTextView;
     private Button b1;
-   // private Button b4;
     private TextView display;
     private Menu menu = null;
     private Intent service = null;
@@ -152,6 +151,11 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
             	mHandler.removeCallbacks(updateDataView);
  	        	mHandler.post(updateDataView);
                 break;
+			case MedtronicConstants.MSG_MEDTRONIC_FAKE:
+				Log.e("MedtronicCGMMessageReceived",  MedtronicConstants.MSG_MEDTRONIC_FAKE+"\n");
+				mHandler.removeCallbacks(updateDataView);
+				mHandler.post(updateDataView);
+				break;
 
             default:
                 super.handleMessage(msg);
@@ -464,11 +468,16 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 
         b1.setText("Stop Uploading CGM Data");
         lnr.addView(b1);
-        lnr2.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+
+		lnr2.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
         lnr3.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
         Button b2 = new Button(this);
         b2.setText("Clear Log");
         b2.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT,1.0f));
+
+		Button b3 = new Button(this);
+		b3.setText("Send test data");
+		lnr.addView(b3);
        // b4 = new Button(this);
        // b4.setText("Calibrate");
        // b4.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT,1.0f));
@@ -507,7 +516,24 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
             	msgsDisplayed = 0;
             }
         });
-      
+
+
+		b3.setOnClickListener(new OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				try {
+					if (mService == null) mService = new Messenger(bService);
+					Message msg = Message.obtain(null, MedtronicConstants.MSG_MEDTRONIC_FAKE, 0, 0);
+					msg.replyTo = mMessenger;
+					mService.send(msg);
+				}
+				catch (RemoteException re) {
+
+
+				}
+			}
+		});
+
         b1.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {

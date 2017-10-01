@@ -1,20 +1,5 @@
 package com.nightscout.android.medtronic;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.ObjectInputStream;
-import java.text.DecimalFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.slf4j.LoggerFactory;
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-
 import android.app.NotificationManager;
 import android.app.Service;
 import android.content.BroadcastReceiver;
@@ -43,10 +28,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-
 import com.nightscout.android.dexcom.DexcomG4Activity;
 import com.nightscout.android.dexcom.USB.HexDump;
-
 import com.nightscout.android.upload.GlucometerRecord;
 import com.nightscout.android.upload.MedtronicSensorRecord;
 import com.nightscout.android.upload.Record;
@@ -54,6 +37,22 @@ import com.nightscout.android.upload.UploadHelper;
 import com.physicaloid.lib.Physicaloid;
 import com.physicaloid.lib.usb.driver.uart.ReadLisener;
 import com.physicaloid.lib.usb.driver.uart.UartConfig;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.ObjectInputStream;
+import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 /**
  * This class is the service responsible of manage correctly the interface with the enlite.
  * @author lmmarguenda
@@ -101,7 +100,7 @@ public class MedtronicCGMService extends Service implements
 	private Object readByListenerSizeLock = new Object();
 	private Object buffMessagesLock = new Object();
 	private Object mSerialLock = new Object();
-
+	private boolean faking = false;
 	private HistoricGetterThread hGetter = null;//Medtronic Historic Log retriever
 	private long historicLogPeriod = 0;
 	private ReadByListener readByListener = new ReadByListener();//Listener to read data
@@ -122,6 +121,10 @@ public class MedtronicCGMService extends Service implements
 		@Override
 		public void handleMessage(Message msg) {
 			switch (msg.what) {
+			case MedtronicConstants.MSG_MEDTRONIC_FAKE:
+				doFakeReadAndUpload();
+				break;
+
 			case MedtronicConstants.MSG_REGISTER_CLIENT:
 				mClients.add(msg.replyTo);
 				break;
@@ -150,7 +153,7 @@ public class MedtronicCGMService extends Service implements
 				String value = msg.getData().getString("sgv");
 				if (value == null || value.equals("")){
 					value = prefs.getString("manual_sgv", "");
-					if (value != null && value.indexOf(",") >= 0)
+					if (value.indexOf(",") >= 0)
 						value = value.replace(",", ".");
 				}
 				log.debug("Manual Calibration Received SGV "+value);
@@ -199,7 +202,7 @@ public class MedtronicCGMService extends Service implements
 				value = msg.getData().getString("sgv");
 				if (value == null || value.equals("")){
 					value = prefs.getString("instant_sgv", "");
-					if (value != null && value.indexOf(",") >= 0)
+					if (value.indexOf(",") >= 0)
 						value = value.replace(",", ".");
 				}
 				log.debug("Instant Calibration received SGV "+value);
@@ -466,7 +469,7 @@ public class MedtronicCGMService extends Service implements
      		df = new DecimalFormat("#.##");
      	else
      		df = new DecimalFormat("#.#");
-     	if (auxRecord instanceof MedtronicSensorRecord && auxRecord != null){
+     	if (auxRecord instanceof MedtronicSensorRecord){
             	
     	    	MedtronicSensorRecord record = (MedtronicSensorRecord) auxRecord;
      		
@@ -709,7 +712,7 @@ public class MedtronicCGMService extends Service implements
 			log.debug("run readAndUpload");
 			try {
 				UsbManager usbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
-				boolean hasPermission = false;
+				boolean hasPermission = false || faking;
 				for (final UsbDevice usbDevice : usbManager.getDeviceList()
 						.values()) {
 					if (usbManager.hasPermission(usbDevice)) {
@@ -776,9 +779,7 @@ public class MedtronicCGMService extends Service implements
 					}
 
 				} else {
-
-					if (!connected)
-						openUsbSerial(false);
+					openUsbSerial(false);
 					connected = isConnected();
 
 					if (!connected)
@@ -836,6 +837,44 @@ public class MedtronicCGMService extends Service implements
 					medtronicReader.mSerialDevice = mSerial;
 				}
 			}
+		}
+	}
+
+
+	public void doFakeReadAndUpload() {
+		try {
+			faking = true;
+			sendMessageConnectedToUI();
+
+			ArrayList<byte[]> bufferedMessages = new ArrayList<>();
+			for (short[] s : TestUSBData.packets) {
+				byte b[] = new byte[s.length];
+				for (int i = 0; i < s.length; ++i)
+					b[i] = (byte) s[i];
+				bufferedMessages.add(b);
+			}
+			log.debug("Stream Received");
+			if (bufferedMessages.size() > 0) {
+				log.debug("Stream Received--> There are " + bufferedMessages.size() + " to process ");
+				synchronized (buffMessagesLock) {
+					processBufferedMessages.bufferedMessages
+							.addAll(bufferedMessages);
+				}
+				if (!isDestroying) {
+					log.debug("Stream Received--> order process bufferedMessages ");
+					mHandlerProcessRead.post(processBufferedMessages);
+				}
+			} else {
+				log.debug("NULL doReadAndUpload");
+			}
+
+		} catch (Exception e) {
+			StringBuffer sb1 = new StringBuffer("");
+			sb1.append("EXCEPTION!!!!!! " + e.getMessage() + " " + e.getCause());
+			for (StackTraceElement st : e.getStackTrace()) {
+				sb1.append(st.toString());
+			}
+			sendMessageToUI(sb1.toString());
 		}
 	}
 
@@ -1043,16 +1082,15 @@ public class MedtronicCGMService extends Service implements
 	}
 
 	private boolean isConnected() {
-		return mSerial.isOpened();
+		return mSerial.isOpened() || faking;
 	}
 
 	private boolean isOnline() {
 		ConnectivityManager connectivity = (ConnectivityManager) getBaseContext().getSystemService(Context.CONNECTIVITY_SERVICE);
-		boolean isOnline = false;
         if (connectivity != null) {
             NetworkInfo[] info = connectivity.getAllNetworkInfo();
             if (info != null) {
-                for (int i = 0; (i < info.length) && !isOnline; i++) {
+                for (int i = 0; (i < info.length); i++) {
                     log.debug("INTERNET: "+String.valueOf(i));
                     if (info[i].getState() == NetworkInfo.State.CONNECTED) {
                         log.debug("INTERNET: connected!");
@@ -1060,9 +1098,8 @@ public class MedtronicCGMService extends Service implements
                     }
                 }
             }
-        }else
-        	return false;
-		return isOnline; 
+        }
+        return false;
 	}
 
 	/**
@@ -1085,8 +1122,9 @@ public class MedtronicCGMService extends Service implements
 	}
 
 	private void openUsbSerial(boolean reload) {
+		if (faking) return;
 		if (mSerial == null) {
-			Toast.makeText(this, "cannot open", Toast.LENGTH_SHORT).show();
+			Toast.makeText(this, "cannot open / null device", Toast.LENGTH_SHORT).show();
 			return;
 		}
 		if (mSerial.isOpened() && reload){
@@ -1098,7 +1136,7 @@ public class MedtronicCGMService extends Service implements
 		synchronized (mSerialLock) {
 			if (!mSerial.isOpened()) {
 				if (!mSerial.open()) {
-					Toast.makeText(this, "cannot open", Toast.LENGTH_SHORT)
+					Toast.makeText(this, "cannot open / will not open", Toast.LENGTH_SHORT)
 							.show();
 					return;
 				} else {
@@ -1366,7 +1404,7 @@ public class MedtronicCGMService extends Service implements
 
 			if (key.equals("medtronic_cgm_id") || key.equals("glucometer_cgm_id") || key.equals("sensor_cgm_id")) {
 				String newID = sharedPreferences.getString("medtronic_cgm_id", "");
-				if (newID != null && !"".equals(newID.replaceAll(" ", ""))) {
+				if (!"".equals(newID.replaceAll(" ", ""))) {
 					mHandlerCheckSerial.removeCallbacks(readAndUpload);
 					byte[] newIdPump = HexDump.hexStringToByteArray(newID);
 					if (key.equals("medtronic_cgm_id") && !Arrays.equals(newIdPump, medtronicReader.idPump)) {
@@ -1533,16 +1571,12 @@ public class MedtronicCGMService extends Service implements
 					if (mSerial.isOpened()) {
 						synchronized (medtronicReader.processingCommandLock) {
 							if (medtronicReader.processingCommand){
-								while (medtronicReader.processingCommand) {
-									if (medtronicReader.processingCommand) {
-										//if (pumpPeriod > -1){
-											mHandler3ActivatePump.postDelayed(activateNewPump,
+								mHandler3ActivatePump.postDelayed(activateNewPump,
 													MedtronicConstants.TIMEOUT);
-										//}
-										return;
-									}
-									medtronicReader.processingCommand = true;
-								}
+
+								return;
+
+
 							}else{
 								medtronicReader.processingCommand = true;
 							}

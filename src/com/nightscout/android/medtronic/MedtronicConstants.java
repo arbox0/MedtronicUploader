@@ -96,8 +96,10 @@ public class MedtronicConstants {
 	public static final int MSG_MEDTRONIC_CALIBRATION_DONE = 14;
 	public static final int MSG_MEDTRONIC_GLUCMEASURE_DETECTED = 15;
 	public static final int MSG_MEDTRONIC_GLUCMEASURE_APPROVED = 16;
-	
-	
+	public static final int MSG_MEDTRONIC_FAKE = 17;
+
+
+
 	public static String getCalibrationStrValue(int val){
 		switch(val){
 		case CALIBRATED:
