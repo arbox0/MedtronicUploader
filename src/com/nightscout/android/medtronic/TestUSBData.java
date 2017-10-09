@@ -1,6 +1,5 @@
 package com.nightscout.android.medtronic;
 
-import java.lang.reflect.Array;
 import java.util.LinkedList;
 
 /**

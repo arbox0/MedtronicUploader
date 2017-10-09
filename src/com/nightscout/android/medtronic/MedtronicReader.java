@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
+import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -291,8 +292,15 @@ public class MedtronicReader {
 
 
 	private void sendMessageToUI(String valuetosend) {
+
+		DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss - ");
+		//get current date time with Date()
+		Date date = new Date();
+		valuetosend = dateFormat.format(date) + valuetosend;
 		Log.i("medtronicReader", valuetosend);
 		// log.debug("MedtronicReader Sends to UI "+valuetosend);
+
+
 		if (mClients != null && mClients.size() > 0) {
 			for (int i = mClients.size() - 1; i >= 0; i--) {
 				try {

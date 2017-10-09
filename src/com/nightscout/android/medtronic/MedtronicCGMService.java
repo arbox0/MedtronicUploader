@@ -27,7 +27,8 @@ import android.view.Gravity;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
-
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import com.nightscout.android.dexcom.DexcomG4Activity;
 import com.nightscout.android.dexcom.USB.HexDump;
 import com.nightscout.android.upload.GlucometerRecord;
@@ -278,6 +279,11 @@ public class MedtronicCGMService extends Service implements
      */
 	private void sendMessageToUI(String valuetosend) {
 		Log.i("medtronicCGMService", valuetosend);
+		DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss - ");
+		//get current date time with Date()
+		Date date = new Date();
+		valuetosend = dateFormat.format(date) + valuetosend;
+
 		log.debug("send Message To UI -> "+valuetosend);
 		if (mClients != null && mClients.size() > 0) {
 			for (int i = mClients.size() - 1; i >= 0; i--) {
@@ -712,7 +718,7 @@ public class MedtronicCGMService extends Service implements
 			log.debug("run readAndUpload");
 			try {
 				UsbManager usbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
-				boolean hasPermission = false || faking;
+				boolean hasPermission = faking;
 				for (final UsbDevice usbDevice : usbManager.getDeviceList()
 						.values()) {
 					if (usbManager.hasPermission(usbDevice)) {
@@ -1638,20 +1644,16 @@ public class MedtronicCGMService extends Service implements
 					if (mSerial.isOpened()) {
 						log.debug("mserial open");
 						synchronized (medtronicReader.processingCommandLock) {
-							if (medtronicReader.processingCommand){
-								while (medtronicReader.processingCommand) {
-									if (medtronicReader.processingCommand) {
-										if (!prefs.getString("glucSrcTypes","1").equals("1")){
-											mHandlerReadFromHistoric.postDelayed(readDataFromHistoric,
-													MedtronicConstants.TIMEOUT);
-											log.debug("TIMEOUT");
-										}
-										bAfterPeriod = true;
-										return;
-										
-									}
-									medtronicReader.processingCommand = true;
+							if (medtronicReader.processingCommand) {
+
+								if (!prefs.getString("glucSrcTypes","1").equals("1")){
+									mHandlerReadFromHistoric.postDelayed(readDataFromHistoric,
+											MedtronicConstants.TIMEOUT);
+									log.debug("TIMEOUT");
 								}
+								bAfterPeriod = true;
+								return;
+
 							}else{
 								medtronicReader.processingCommand = true;
 							}
@@ -1818,15 +1820,12 @@ public class MedtronicCGMService extends Service implements
 						if (calibrationSelected == MedtronicConstants.CALIBRATION_SENSOR) {
 							synchronized (medtronicReader.processingCommandLock) {
 								if (medtronicReader.processingCommand){
-									while (medtronicReader.processingCommand) {
-										if (medtronicReader.processingCommand) {
-											log.debug("is processing other commands wait 3 secs.");
-											mHandlerSensorCalibration.postDelayed(getCalibrationFromSensor,
-													MedtronicConstants.TIMEOUT);
-											return;
-										}
-										medtronicReader.processingCommand = true;
-									}
+
+									log.debug("is processing other commands wait 3 secs.");
+									mHandlerSensorCalibration.postDelayed(getCalibrationFromSensor,
+											MedtronicConstants.TIMEOUT);
+									return;
+
 								}else{
 									medtronicReader.processingCommand = true;
 								}
