@@ -410,7 +410,7 @@ public class MedtronicCGMService extends Service implements
 		//Debug.startMethodTracing();
 		log.debug("medCGM onCreate!");
 		super.onCreate();
-		if (android.os.Build.VERSION.SDK_INT > 9) 
+		if (android.os.Build.VERSION.SDK_INT > 9)
 		{
 		    StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
 		    StrictMode.setThreadPolicy(policy);
@@ -1097,12 +1097,13 @@ public class MedtronicCGMService extends Service implements
             NetworkInfo[] info = connectivity.getAllNetworkInfo();
             if (info != null) {
                 for (int i = 0; (i < info.length); i++) {
-                    log.debug("INTERNET: "+String.valueOf(i));
+
                     if (info[i].getState() == NetworkInfo.State.CONNECTED) {
                         log.debug("INTERNET: connected!");
                         return true; 
                     }
                 }
+				log.debug("INTERNET nothing connected of "+String.valueOf(info.length));
             }
         }
         return false;
