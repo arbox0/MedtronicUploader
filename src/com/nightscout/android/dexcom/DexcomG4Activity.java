@@ -55,6 +55,9 @@ import com.nightscout.android.settings.SettingsActivity;
 import com.nightscout.android.upload.MedtronicSensorRecord;
 import com.nightscout.android.upload.Record;
 
+
+import com.bugfender.sdk.Bugfender;
+
 /* Main activity for the DexcomG4Activity program */
 public class DexcomG4Activity extends Activity implements OnSharedPreferenceChangeListener, OnEulaAgreedTo{
 	private Logger log = (Logger)LoggerFactory.getLogger(DexcomG4Activity.class.getName());
@@ -408,7 +411,9 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
     	Log.i(TAG, "onCreate called");
     	keepServiceAlive = Eula.show(this);
         super.onCreate(savedInstanceState);
-
+		Bugfender.init(this, "p4P5PsYG5exRw24b37y0tbH7GUUlOtnc", BuildConfig.DEBUG);
+		Bugfender.enableLogcatLogging();
+		Bugfender.enableUIEventLogging(this.getApplication());
 		if (android.os.Build.VERSION.SDK_INT > 9) 
 		{
 		    StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();

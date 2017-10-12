@@ -158,7 +158,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
             }
         }
     }
-    @SuppressWarnings({ "rawtypes", "unchecked" })
+
     private void doRESTUploadTo(String baseURI, Record[] records) throws Exception {
         int apiVersion = 1;
         if (!baseURI.endsWith("/v1/"))
