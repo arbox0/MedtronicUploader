@@ -472,7 +472,7 @@ public class MedtronicReader {
 		return bufferedMessages;
 	}
 
-	private void processDataAnswer(byte[] readData, StringBuffer sResponse)
+	private void processDataAnswer(byte[] readData)
 	{
 		int calibrationSelectedAux = 0;
 		log.debug("processDataAnswer");
@@ -485,10 +485,9 @@ public class MedtronicReader {
 			switch (readData[2]) {
 				case MedtronicConstants.MEDTRONIC_PUMP:
 					log.debug("IS A PUMP MESSAGE");
-					sResponse.append(
-							processPumpDataMessage(readData,
-									calibrationSelectedAux))
-							.append("\n");
+
+					processPumpDataMessage(readData,
+									calibrationSelectedAux);
 					if (lastMedtronicPumpRecord == null) {
 						lastMedtronicPumpRecord = new MedtronicPumpRecord();
 						calculateDate(lastMedtronicPumpRecord,
@@ -528,8 +527,8 @@ public class MedtronicReader {
 								.copyOfRange(readData, 0,
 										readData.length);
 					}
-					sResponse.append(
-							processGlucometerDataMessage(readData)).append("\n"); // Cambiado a false
+
+					processGlucometerDataMessage(readData);
 					if (lastGlucometerValue > 0) {
 						isCalibrating = calibrationSelectedAux == MedtronicConstants.CALIBRATION_GLUCOMETER;
 						if (previousRecord == null) {
@@ -659,9 +658,9 @@ public class MedtronicReader {
 					if (isCalibrating) {
 						calculateCalibration = true;
 					}
-					sResponse.append(
-							processSensorDataMessage(readData))
-							.append("\n");
+
+					processSensorDataMessage(readData);
+
 					if (calculateCalibration && !isCalibrating) {
 						SharedPreferences.Editor editor = settings
 								.edit();
@@ -673,18 +672,13 @@ public class MedtronicReader {
 				default:
 					Log.i("MEdtronic", "No Match");
 					log.debug("I can't understand this message");
-					sResponse
-							.append("I can't process this message, no device match.")
-							.append("\n");
 					break;
 			}
 		} else {
 			Log.i("Medtronic",
 					"I dont have to listen to this. This message comes from another source.");
 			log.debug("I don't have to listen to this message. This message comes from another source.");
-			sResponse
-					.append("I don't have to listen to this. This message comes from another source.")
-					.append("\n");
+
 		}
 
 
@@ -696,8 +690,8 @@ public class MedtronicReader {
                      * @param bufferedMessages
                      *            , List of parsed messages.
                      */
-	public String processBufferedMessages(ArrayList<byte[]> bufferedMessages) {
-		StringBuffer sResponse = new StringBuffer("");
+	public void processBufferedMessages(ArrayList<byte[]> bufferedMessages) {
+
 		log.debug("processBufferedMessages");
 
 		try {
@@ -705,7 +699,7 @@ public class MedtronicReader {
 				if (checkFirstByte(readData[0])) {
 					switch (getAnswerType(readData[0])) {
 					case MedtronicConstants.DATA_ANSWER:
-						processDataAnswer(readData, sResponse);
+						processDataAnswer(readData);
 						break;
 					case MedtronicConstants.COMMAND_ANSWER:
 						log.debug("ACK Received");
@@ -715,20 +709,17 @@ public class MedtronicReader {
 						break;
 					case MedtronicConstants.FILTER_COMMAND:
 						if (readData[0] == (byte) 0x13)
-							sResponse.append("FILTER DEACTIVATED").append("\n");
+							; // FILTER DEACTIVATED
 						else
-							sResponse.append("FILTER ACTIVATED").append("\n");
+							; // FILTER ACTIVATED
 						break;
 					default: {
 						log.debug("I don't understand this message "
 								+ HexDump.toHexString(readData));
-						sResponse.append(
-								"I don't understand the received message ")
-								.append("\n");
+
 					}
 					}
 				} else {
-					sResponse.append("CRC Error ").append("\n");
 					log.debug("CRC ERROR!!! " + HexDump.dumpHexString(readData));
 				}
 			}
@@ -744,7 +735,6 @@ public class MedtronicReader {
 		SharedPreferences.Editor editor = settings.edit();
 		editor.remove("last_read");
 		editor.commit();
-		return sResponse.toString();
 	}
 
 	/**

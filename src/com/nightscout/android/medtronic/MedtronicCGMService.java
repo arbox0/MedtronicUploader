@@ -95,7 +95,6 @@ public class MedtronicCGMService extends Service implements
 	private boolean connectedSent = false;
 	private boolean isDestroying = false;
 	private Object reloadLostLock = new Object();
-	private Object resultLock = new Object();
 	private Object checkSerialLock = new Object();
 	private Object isUploadingLock = new Object();
 	private Object readByListenerSizeLock = new Object();
@@ -731,7 +730,7 @@ public class MedtronicCGMService extends Service implements
 					}
 				} else
 					sendMessageConnectedToUI();
-				boolean connected = false;
+				boolean connected;
 				synchronized (mSerialLock) {
 					connected = isConnected();
 				}
@@ -938,7 +937,6 @@ public class MedtronicCGMService extends Service implements
 	 */
 	private class BufferedMessagesProcessor implements Runnable {
 		public ArrayList<byte[]> bufferedMessages = new ArrayList<byte[]>();
-		public String sResult = "";
 		public void run() {
 			log.debug("Processing bufferedMessages ");
 			synchronized (isUploadingLock) {
@@ -946,21 +944,15 @@ public class MedtronicCGMService extends Service implements
 				
 				try {
 					ArrayList<byte[]> bufferedMessages2Process = new ArrayList<byte[]>();
-					synchronized (resultLock) {
-						sResult = "";
-					}
+
 					synchronized (buffMessagesLock) {
 						bufferedMessages2Process.addAll(bufferedMessages);
 						bufferedMessages.clear();
 					}
 					log.debug("I am going to process "+ bufferedMessages2Process.size()+" Messages");
-					synchronized (resultLock) {
-						sResult = medtronicReader
-								.processBufferedMessages(bufferedMessages2Process);
-					}
-					// ONLY FOR DEBUG PURPOUSES
-					// if (!"".equals(sResult))
-					// sendMessageToUI(sResult,false);
+
+					medtronicReader.processBufferedMessages(bufferedMessages2Process);
+
 					// execute uploader
 					List<Record> listToUpload = new ArrayList<Record>();
 					// upload sensor values if available
@@ -1011,7 +1003,7 @@ public class MedtronicCGMService extends Service implements
 					for (StackTraceElement st : e.getStackTrace()) {
 						sb1.append(st.toString()).append("\n");
 					}
-					sendMessageToUI(sb1.toString() + "\n " + sResult);
+					sendMessageToUI(sb1.toString() + "\n");
 				}
 			}
 			log.debug("Buffered Messages Processed ");
