@@ -561,28 +561,16 @@ public class MedtronicCGMService extends Service implements
 			medtronicReader.checkLastRead = checkLastRead;
 	
         	String type = prefs.getString("historicMixPeriod", "1");
-        	if ("2".equalsIgnoreCase(type))
-        		historicLogPeriod = MedtronicConstants.TIME_15_MIN_IN_MS;
-        	else if ("3".equalsIgnoreCase(type))
-        		historicLogPeriod = MedtronicConstants.TIME_20_MIN_IN_MS;
-        	else  if ("4".equalsIgnoreCase(type))
-        		historicLogPeriod = MedtronicConstants.TIME_20_MIN_IN_MS + MedtronicConstants.TIME_5_MIN_IN_MS;
-        	else if ("5".equalsIgnoreCase(type))
-        		historicLogPeriod = MedtronicConstants.TIME_30_MIN_IN_MS;
-        	else  if ("6".equalsIgnoreCase(type))
-        		historicLogPeriod = MedtronicConstants.TIME_30_MIN_IN_MS + MedtronicConstants.TIME_5_MIN_IN_MS;
-        	else if ("7".equalsIgnoreCase(type))
-        		historicLogPeriod = MedtronicConstants.TIME_30_MIN_IN_MS + MedtronicConstants.TIME_10_MIN_IN_MS;
-        	else  if ("8".equalsIgnoreCase(type))
-        		historicLogPeriod = MedtronicConstants.TIME_30_MIN_IN_MS + MedtronicConstants.TIME_15_MIN_IN_MS;
-        	else if ("9".equalsIgnoreCase(type))
-        		historicLogPeriod = MedtronicConstants.TIME_30_MIN_IN_MS + MedtronicConstants.TIME_20_MIN_IN_MS;
-        	else  if ("10".equalsIgnoreCase(type))
-        		historicLogPeriod = MedtronicConstants.TIME_60_MIN_IN_MS - MedtronicConstants.TIME_5_MIN_IN_MS;
-        	else  if ("11".equalsIgnoreCase(type))
-        		historicLogPeriod = MedtronicConstants.TIME_60_MIN_IN_MS;
-        	else
-        		historicLogPeriod = MedtronicConstants.TIME_10_MIN_IN_MS;
+			int t;
+			try {
+				t = Integer.parseInt(type);
+				t = (t > 11 || t < 1) ? 1 : t;
+			}
+			catch (NumberFormatException ne) {
+				t = 1;
+			}
+
+			historicLogPeriod = MedtronicConstants.TIME_5_MIN_IN_MS * (t + 1);
 	        mHandlerCheckLastRead.post(checkLastRead);
 	        
 		}
