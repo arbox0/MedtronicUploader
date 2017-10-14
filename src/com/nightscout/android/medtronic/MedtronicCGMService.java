@@ -637,29 +637,18 @@ public class MedtronicCGMService extends Service implements
 			if (prefs.getString("glucSrcTypes","1").equals("3")){
 				
 	        	String type = prefs.getString("historicMixPeriod", "1");
-	        	if ("2".equalsIgnoreCase(type))
-	        		historicLogPeriod = MedtronicConstants.TIME_15_MIN_IN_MS;
-	        	else if ("3".equalsIgnoreCase(type))
-	        		historicLogPeriod = MedtronicConstants.TIME_20_MIN_IN_MS;
-	        	else  if ("4".equalsIgnoreCase(type))
-	        		historicLogPeriod = MedtronicConstants.TIME_20_MIN_IN_MS + MedtronicConstants.TIME_5_MIN_IN_MS;
-	        	else if ("5".equalsIgnoreCase(type))
-	        		historicLogPeriod = MedtronicConstants.TIME_30_MIN_IN_MS;
-	        	else  if ("6".equalsIgnoreCase(type))
-	        		historicLogPeriod = MedtronicConstants.TIME_30_MIN_IN_MS + MedtronicConstants.TIME_5_MIN_IN_MS;
-	        	else if ("7".equalsIgnoreCase(type))
-	        		historicLogPeriod = MedtronicConstants.TIME_30_MIN_IN_MS + MedtronicConstants.TIME_10_MIN_IN_MS;
-	        	else  if ("8".equalsIgnoreCase(type))
-	        		historicLogPeriod = MedtronicConstants.TIME_30_MIN_IN_MS + MedtronicConstants.TIME_15_MIN_IN_MS;
-	        	else if ("9".equalsIgnoreCase(type))
-	        		historicLogPeriod = MedtronicConstants.TIME_30_MIN_IN_MS + MedtronicConstants.TIME_20_MIN_IN_MS;
-	        	else  if ("10".equalsIgnoreCase(type))
-	        		historicLogPeriod = MedtronicConstants.TIME_60_MIN_IN_MS - MedtronicConstants.TIME_5_MIN_IN_MS;
-	        	else  if ("11".equalsIgnoreCase(type))
-	        		historicLogPeriod = MedtronicConstants.TIME_60_MIN_IN_MS;
-	        	else
-	        		historicLogPeriod = MedtronicConstants.TIME_10_MIN_IN_MS;
-	        	
+	        	int t;
+				try {
+					t = Integer.parseInt(type);
+					t = (t > 11 || t < 1) ? 1 : t;
+				}
+				catch (NumberFormatException ne) {
+					t = 1;
+				}
+
+				historicLogPeriod = MedtronicConstants.TIME_5_MIN_IN_MS * (t + 1);
+
+
 	        	if (medtronicReader != null && medtronicReader.lastSensorValueDate >  0){
 					if ((System.currentTimeMillis() - medtronicReader.lastSensorValueDate) >= historicLogPeriod ){
 						if (settings.getLong("lastHistoricRead", 0) != 0 ){
@@ -761,27 +750,6 @@ public class MedtronicCGMService extends Service implements
 							mHandlerSensorCalibration.removeCallbacks(getCalibrationFromSensor);
 							mHandlerSensorCalibration.postDelayed(getCalibrationFromSensor, MedtronicConstants.FIVE_SECONDS__MS);
 						}
-						/*long timeToAwake = pumpPeriod;
-						if (timeToAwake > -1){
-							if (prefs != null){
-								if (prefs.contains("wasProcessing") && prefs.getBoolean("wasProcessing", true))
-									timeToAwake = 6*MedtronicConstants.FIVE_SECONDS__MS;
-								else if (prefs.contains("lastPumpAwake")){
-									long diff = System.currentTimeMillis() - prefs.getLong("lastPumpAwake", 0);
-									if (diff >= pumpPeriod)
-										timeToAwake = 6*MedtronicConstants.FIVE_SECONDS__MS;
-									else
-										timeToAwake = diff;
-								}else
-									timeToAwake = 6*MedtronicConstants.FIVE_SECONDS__MS;
-							}else
-								timeToAwake = 2*MedtronicConstants.FIVE_SECONDS__MS;
-							if (timeToAwake < 0)
-								timeToAwake = 2*MedtronicConstants.FIVE_SECONDS__MS;
-							mHandler3ActivatePump.removeCallbacks(activateNewPump);
-							mHandler3ActivatePump.postDelayed(activateNewPump, timeToAwake);
-						}else
-							mHandler3ActivatePump.post(activateNewPump);*/
 					}
 
 				} else {
