@@ -444,12 +444,8 @@ public class MedtronicReader {
 			}
 		}
 		if (read > 0) {
-			Log.d("medtronic", "READ " + read);
+			Log.d(TAG, "READ " + read + " bytes: " + HexDump.dumpHexString(readFromDevice, 0, read));
 
-			log.debug("Stream Received; bytes read: " + read);// +"  "+HexDump.toHexString(Arrays.copyOfRange(readFromDevice,0,read)));
-		} else
-			log.debug("NOTHING TO READ");
-		if (read > 0) {
 			SharedPreferences.Editor editor = settings.edit();
 			editor.putLong("lastDestroy", System.currentTimeMillis());
 			editor.commit();
@@ -475,16 +471,16 @@ public class MedtronicReader {
 	private void processDataAnswer(byte[] readData)
 	{
 		int calibrationSelectedAux = 0;
-		log.debug("processDataAnswer");
+		Log.d(TAG, "processDataAnswer");
 		synchronized (calibrationSelectedLock) {
 			calibrationSelectedAux = calibrationSelected;
 		}
-		log.debug("IS DATA ANSWER");
+		Log.d(TAG, "IS DATA ANSWER");
 		if (isMessageFromMyDevices(readData)) {
-			log.debug("IS FROM MY DEVICES");
+			Log.d(TAG, "IS FROM MY DEVICES");
 			switch (readData[2]) {
 				case MedtronicConstants.MEDTRONIC_PUMP:
-					log.debug("IS A PUMP MESSAGE");
+					Log.d(TAG, "IS A PUMP MESSAGE");
 
 					processPumpDataMessage(readData,
 									calibrationSelectedAux);
@@ -500,7 +496,7 @@ public class MedtronicReader {
 					break;
 				case MedtronicConstants.MEDTRONIC_GL: {
 					//if (calibrationSelectedAux == MedtronicConstants.CALIBRATION_GLUCOMETER) {
-					log.debug("GLUCOMETER DATA RECEIVED");
+					Log.d(TAG, "GLUCOMETER DATA RECEIVED");
 					if (lastGlucometerMessage == null
 							|| lastGlucometerMessage.length == 0) {
 						lastGlucometerMessage = Arrays
@@ -557,6 +553,7 @@ public class MedtronicReader {
 				}
 				break;
 				case MedtronicConstants.MEDTRONIC_SENSOR1: {
+					Log.d(TAG, "SENSOR1 DATA RECEIVED");
 					if (prefs.getString("glucSrcTypes", "1")
 							.equals("2")) {
 						log.debug("Sensor value received, but value is took only by pump logs");
@@ -612,7 +609,7 @@ public class MedtronicReader {
 					break;
 				}
 				case MedtronicConstants.MEDTRONIC_SENSOR2:
-
+					Log.d(TAG, "SENSOR2 DATA RECEIVED");
 					if (lastMedtronicPumpRecord != null)
 						lastMedtronicPumpRecord.isWarmingUp = false;
 					if (prefs.getString("glucSrcTypes", "1")
@@ -675,8 +672,8 @@ public class MedtronicReader {
 					break;
 			}
 		} else {
-			Log.i("Medtronic",
-					"I dont have to listen to this. This message comes from another source.");
+			Log.i(TAG,
+					"I dont have to listen to this. This message comes from another source: " + HexDump.dumpHexString(readData));
 			log.debug("I don't have to listen to this message. This message comes from another source.");
 
 		}

@@ -409,12 +409,9 @@ public class MedtronicCGMService extends Service implements
 		//Debug.startMethodTracing();
 		log.debug("medCGM onCreate!");
 		super.onCreate();
-		if (android.os.Build.VERSION.SDK_INT > 9)
-		{
-		    StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
-		    StrictMode.setThreadPolicy(policy);
-		}
-		
+		StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+		StrictMode.setThreadPolicy(policy);
+
 		settings = getSharedPreferences(MedtronicConstants.PREFS_NAME, 0);
 		prefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
 		prefs.edit().remove("isCheckedWUP").commit();
@@ -788,11 +785,11 @@ public class MedtronicCGMService extends Service implements
 				size = -1;
 			}
 			if (auxSize >= 0){
-				log.debug("Quiero leer "+auxSize+" bytes");
+				Log.d(TAG, "Read "+auxSize+" bytes");
 				doReadAndUpload(auxSize);
 				isReloaded = false;
 			}else{
-				log.debug("ReadByListener NO TIENE NADA QUE SUBIR");
+				Log.d(TAG, "ReadByListener - nothing to read");
 				if (!isReloaded){
 					openUsbSerial(true);
 					medtronicReader.mSerialDevice = mSerial;
@@ -885,7 +882,7 @@ public class MedtronicCGMService extends Service implements
 	 */
 	private Runnable reloadLostRecords = new Runnable() {
 		public void run() {
-			log.debug("Reloading Lost Records from medtronic service");
+			Log.d(TAG, "Reloading Lost Records from medtronic service");
 
     		JSONArray recordsNotUploadedJson;
 
@@ -1311,28 +1308,17 @@ public class MedtronicCGMService extends Service implements
 						medtronicReader.checkLastRead = checkLastRead;
 						 mHandlerCheckLastRead.removeCallbacks(checkLastRead);
 			        	String type = prefs.getString("historicMixPeriod", "1");
-			        	if ("2".equalsIgnoreCase(type))
-			        		historicLogPeriod = MedtronicConstants.TIME_15_MIN_IN_MS;
-			        	else if ("3".equalsIgnoreCase(type))
-			        		historicLogPeriod = MedtronicConstants.TIME_20_MIN_IN_MS;
-			        	else  if ("4".equalsIgnoreCase(type))
-			        		historicLogPeriod = MedtronicConstants.TIME_20_MIN_IN_MS + MedtronicConstants.TIME_5_MIN_IN_MS;
-			        	else if ("5".equalsIgnoreCase(type))
-			        		historicLogPeriod = MedtronicConstants.TIME_30_MIN_IN_MS;
-			        	else  if ("6".equalsIgnoreCase(type))
-			        		historicLogPeriod = MedtronicConstants.TIME_30_MIN_IN_MS + MedtronicConstants.TIME_5_MIN_IN_MS;
-			        	else if ("7".equalsIgnoreCase(type))
-			        		historicLogPeriod = MedtronicConstants.TIME_30_MIN_IN_MS + MedtronicConstants.TIME_10_MIN_IN_MS;
-			        	else  if ("8".equalsIgnoreCase(type))
-			        		historicLogPeriod = MedtronicConstants.TIME_30_MIN_IN_MS + MedtronicConstants.TIME_15_MIN_IN_MS;
-			        	else if ("9".equalsIgnoreCase(type))
-			        		historicLogPeriod = MedtronicConstants.TIME_30_MIN_IN_MS + MedtronicConstants.TIME_20_MIN_IN_MS;
-			        	else  if ("10".equalsIgnoreCase(type))
-			        		historicLogPeriod = MedtronicConstants.TIME_60_MIN_IN_MS - MedtronicConstants.TIME_5_MIN_IN_MS;
-			        	else  if ("11".equalsIgnoreCase(type))
-			        		historicLogPeriod = MedtronicConstants.TIME_60_MIN_IN_MS;
-			        	else
-			        		historicLogPeriod = MedtronicConstants.TIME_10_MIN_IN_MS;
+						int t;
+						try {
+							t = Integer.parseInt(type);
+							t = (t > 11 || t < 1) ? 1 : t;
+						}
+						catch (NumberFormatException ne) {
+							t = 1;
+						}
+
+						historicLogPeriod = MedtronicConstants.TIME_5_MIN_IN_MS * (t + 1);
+
 				        mHandlerCheckLastRead.post(checkLastRead);
 				        
 					}
@@ -1443,28 +1429,17 @@ public class MedtronicCGMService extends Service implements
 										medtronicReader.checkLastRead = checkLastRead;
 										mHandlerCheckLastRead.removeCallbacks(checkLastRead);
 							        	String type = prefs.getString("historicMixPeriod", "1");
-							        	if ("2".equalsIgnoreCase(type))
-							        		historicLogPeriod = MedtronicConstants.TIME_15_MIN_IN_MS;
-							        	else if ("3".equalsIgnoreCase(type))
-							        		historicLogPeriod = MedtronicConstants.TIME_20_MIN_IN_MS;
-							        	else  if ("4".equalsIgnoreCase(type))
-							        		historicLogPeriod = MedtronicConstants.TIME_20_MIN_IN_MS + MedtronicConstants.TIME_5_MIN_IN_MS;
-							        	else if ("5".equalsIgnoreCase(type))
-							        		historicLogPeriod = MedtronicConstants.TIME_30_MIN_IN_MS;
-							        	else  if ("6".equalsIgnoreCase(type))
-							        		historicLogPeriod = MedtronicConstants.TIME_30_MIN_IN_MS + MedtronicConstants.TIME_5_MIN_IN_MS;
-							        	else if ("7".equalsIgnoreCase(type))
-							        		historicLogPeriod = MedtronicConstants.TIME_30_MIN_IN_MS + MedtronicConstants.TIME_10_MIN_IN_MS;
-							        	else  if ("8".equalsIgnoreCase(type))
-							        		historicLogPeriod = MedtronicConstants.TIME_30_MIN_IN_MS + MedtronicConstants.TIME_15_MIN_IN_MS;
-							        	else if ("9".equalsIgnoreCase(type))
-							        		historicLogPeriod = MedtronicConstants.TIME_30_MIN_IN_MS + MedtronicConstants.TIME_20_MIN_IN_MS;
-							        	else  if ("10".equalsIgnoreCase(type))
-							        		historicLogPeriod = MedtronicConstants.TIME_60_MIN_IN_MS - MedtronicConstants.TIME_5_MIN_IN_MS;
-							        	else  if ("11".equalsIgnoreCase(type))
-							        		historicLogPeriod = MedtronicConstants.TIME_60_MIN_IN_MS;
-							        	else
-							        		historicLogPeriod = MedtronicConstants.TIME_10_MIN_IN_MS;
+										int t;
+										try {
+											t = Integer.parseInt(type);
+											t = (t > 11 || t < 1) ? 1 : t;
+										}
+										catch (NumberFormatException ne) {
+											t = 1;
+										}
+
+										historicLogPeriod = MedtronicConstants.TIME_5_MIN_IN_MS * (t + 1);
+										
 								        mHandlerCheckLastRead.post(checkLastRead);
 								        
 									}
