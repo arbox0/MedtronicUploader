@@ -76,7 +76,9 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
     EditText input ;
 
     private TextView mTitleTextView;
-    private TextView mDumpTextView;
+	private TextView mSensorValue;
+
+	private TextView mDumpTextView;
     private Button b1;
     private TextView display;
     private Menu menu = null;
@@ -307,52 +309,11 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 			            	else
 			            		df = new DecimalFormat("#.#");
 			            	if (cgmSelected == MEDTRONIC_CGM && auxRecord instanceof MedtronicSensorRecord && auxRecord != null){
-				            	
-				    	    	MedtronicSensorRecord record = (MedtronicSensorRecord) auxRecord;
-			            		
-			            		if (prefs.getBoolean("mmolxl", false)){
-			            			Float fBgValue = null;
-				            		try{
-				            			fBgValue =  (float)Integer.parseInt(record.bGValue);
-				            			log.info("mmolxl true --> "+record.bGValue);
-				            				record.bGValue = df.format(fBgValue/18f);
-				            				log.info("mmolxl/18 true --> "+record.bGValue);
-				            		}catch (Exception e){
-				            			
-				            		}
-			            		}else
-			            			log.info("mmolxl false --> "+record.bGValue);
-				    	    	boolean isCalibrating = record.isCalibrating;
-				    	    	String calib = "---";
-				    	    	if (isCalibrating){
-				    	    		calib = MedtronicConstants.CALIBRATING_STR;
-				    	    	}else{
-				    	    		calib = MedtronicConstants.getCalibrationStrValue(record.calibrationStatus);
-				    	    	}
-				    	    	calib += "\nlast cal. ";
-								calib += new Date(calDate) + "\n";
-								String tail = " min. ago";
-				    	    	int lastCal = 0;
-				    	    	if (calDate > 0){
-				    	    		lastCal = (int)((System.currentTimeMillis() - calDate)/60000); 
-				    	    		if (lastCal >= 180){
-				    	    			lastCal = lastCal / 60;
-				    	    			tail = " hour(s) ago";
-				    	    		}
-				    	    	}
-				    	    	calib+= ""+ lastCal + tail;
-				    	    	if (prefs.getBoolean("isWarmingUp",false)){
-				    	    		calib = "";
-				    	    		record.bGValue = "W_Up";
-				    	    		record.trendArrow="---";
-				    	    	}
-				    	    	mDumpTextView.setTextColor(Color.WHITE);
-				    	    	if (record.displayDateTime == 0){
-				    	    		mDumpTextView.setText("\n" +record.displayTime + "\n" + record.bGValue + "  " + record.trendArrow + "\n" +calib+ "\n");	
-				    	    	}else
-				    	    		mDumpTextView.setText("Last record received:\n" + (new Date(record.displayDateTime)) + "\n" +(System.currentTimeMillis() - record.displayDateTime)/60000 + " min. ago\n" + record.bGValue + "  " + record.trendArrow + "\n" +calib+ "\n");
-				            	
-				            }else if (auxRecord instanceof EGVRecord){
+
+								MedtronicSensorRecord record = (MedtronicSensorRecord) auxRecord;
+								displaySensor(record, calDate,df);
+
+			                }else if (auxRecord instanceof EGVRecord){
 				            	EGVRecord record = (EGVRecord)auxRecord;
 				            	if (prefs.getBoolean("mmolxl", false)){
 			            			Float fBgValue = null;
@@ -391,10 +352,63 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	        	mHandler.postDelayed(updateDataView, 60000);
 	        }
         }
-    };
-    
 
-    private class  BatteryReceiver extends BroadcastReceiver {
+	};
+
+
+		private void displaySensor(MedtronicSensorRecord record, long calDate, DecimalFormat df) {
+			if (prefs.getBoolean("mmolxl", false)) {
+				Float fBgValue = null;
+				try {
+					fBgValue = (float) Integer.parseInt(record.bGValue);
+					log.info("mmolxl true --> " + record.bGValue);
+					record.bGValue = df.format(fBgValue / 18f);
+					log.info("mmolxl/18 true --> " + record.bGValue);
+				} catch (Exception e) {
+
+				}
+			} else
+				log.info("mmolxl false --> " + record.bGValue);
+			boolean isCalibrating = record.isCalibrating;
+			String calib = "---";
+			if (isCalibrating) {
+				calib = MedtronicConstants.CALIBRATING_STR;
+			} else {
+				calib = MedtronicConstants.getCalibrationStrValue(record.calibrationStatus);
+			}
+			calib += "\nlast cal. ";
+			calib += new Date(calDate) + "\n";
+			String tail = " min. ago";
+			int lastCal = 0;
+			if (calDate > 0) {
+				lastCal = (int) ((System.currentTimeMillis() - calDate) / 60000);
+				if (lastCal >= 180) {
+					lastCal = lastCal / 60;
+					tail = " hour(s) ago";
+				}
+			}
+			calib += "" + lastCal + tail;
+			if (prefs.getBoolean("isWarmingUp", false)) {
+				calib = "";
+				record.bGValue = "W_Up";
+				record.trendArrow = "---";
+			}
+
+			mDumpTextView.setTextColor(Color.WHITE);
+			mSensorValue.setTextColor(Color.WHITE);
+			if (record.displayDateTime == 0) {
+				mDumpTextView.setText("\n" + record.displayTime + "\n" + calib + "\n");
+				mSensorValue.setText(record.bGValue + "  " + record.trendArrow + "\n");
+			} else {
+				mDumpTextView.setText("Last record received:\n" + (new Date(record.displayDateTime)) + "\n" + (System.currentTimeMillis() - record.displayDateTime) / 60000 + " min. ago\n" +
+						calib + "\n");
+				mSensorValue.setText(record.bGValue + "  " + record.trendArrow + "\n");
+
+
+			}
+		}
+
+	private class  BatteryReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context arg0, Intent arg1) {
            if (arg1.getAction().equalsIgnoreCase(Intent.ACTION_BATTERY_LOW)
@@ -452,7 +466,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
         manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
         mTitleTextView = (TextView) findViewById(R.id.demoTitle);
         mDumpTextView = (TextView) findViewById(R.id.demoText);
-
+		mSensorValue = (TextView) findViewById(R.id.sensorValue);
         LinearLayout lnr = (LinearLayout) findViewById(R.id.container);
         LinearLayout lnr2 = new LinearLayout(this);
         LinearLayout lnr3 = new LinearLayout(this);
@@ -616,55 +630,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 					&& auxRecord != null) {
 
 				MedtronicSensorRecord record = (MedtronicSensorRecord) auxRecord;
-
-				if (prefs.getBoolean("mmolxl", false)){
-        			Float fBgValue = null;
-            		try{
-            			fBgValue =  (float)Integer.parseInt(record.bGValue);
-            			log.info("mmolxl true --> "+record.bGValue);
-            				record.bGValue = df.format(fBgValue/18f);
-            				log.info("mmolxl/18 true --> "+record.bGValue);
-            		}catch (Exception e){
-            			
-            		}
-        		}else
-        			log.info("mmolxl false --> "+record.bGValue);
-				boolean isCalibrating = record.isCalibrating;
-				String calib = "---";
-				if (isCalibrating) {
-					calib = MedtronicConstants.CALIBRATING_STR;
-				} else {
-					calib = MedtronicConstants
-							.getCalibrationStrValue(record.calibrationStatus);
-				}
-				calib += "\nlast cal. ";
-				String tail = " min. ago";
-				int lastCal = 0;
-				if (calDate > 0) {
-					lastCal = (int) ((System.currentTimeMillis() - calDate) / 60000);
-					if (lastCal >= 60) {
-						lastCal = lastCal / 60;
-						tail = " hour(s) ago";
-					}
-				}
-				calib += "" + lastCal + tail;
-				if (prefs.getBoolean("isWarmingUp", false)) {
-					calib = "";
-					record.bGValue = "W_Up";
-					record.trendArrow = "---";
-				}
-				mDumpTextView.setTextColor(Color.WHITE);
-				if (record.displayDateTime == 0) {
-					mDumpTextView.setText("\n" + record.displayTime + "\n"
-							+ record.bGValue + "  " + record.trendArrow + "\n"
-							+ calib + "\n");
-				} else
-					mDumpTextView
-							.setText("\n"
-									+ (System.currentTimeMillis() - record.displayDateTime)
-									/ 60000 + " min. ago\n" + record.bGValue
-									+ "  " + record.trendArrow + "\n" + calib
-									+ "\n");
+				displaySensor(record, calDate,df);
 
 			} else if (auxRecord instanceof EGVRecord) {
 				EGVRecord record = (EGVRecord) auxRecord;
