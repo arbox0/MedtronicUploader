@@ -670,6 +670,7 @@ public class MedtronicCGMService extends Service implements
 
 		@Override
 		public void onRead(int size) {
+			Log.d(TAG, "On read received " + size);
 			synchronized (readByListenerSizeLock) {
 				if (readByListener.size > -1)
 					readByListener.size += size;
@@ -688,7 +689,7 @@ public class MedtronicCGMService extends Service implements
 	 */
 	private Runnable readAndUpload = new Runnable() {
 		public void run() {
-			log.debug("run readAndUpload");
+			Log.d(TAG, "run readAndUpload");
 			try {
 				UsbManager usbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
 				boolean hasPermission = faking;
@@ -700,7 +701,7 @@ public class MedtronicCGMService extends Service implements
 				}
 				if (!hasPermission) {
 					synchronized (checkSerialLock) {
-						log.debug("I have lost usb permission changing listener attached to false...");
+						Log.d(TAG, "I have lost usb permission changing listener attached to false...");
 						listenerAttached = false;
 						mSerial.clearReadListener();
 						mHandlerRead.removeCallbacks(readByListener);
@@ -710,7 +711,7 @@ public class MedtronicCGMService extends Service implements
 							return;
 						}
 						mHandlerCheckSerial.removeCallbacks(readAndUpload);
-						mHandlerCheckSerial.postDelayed(readAndUpload, MedtronicConstants.FIVE_SECONDS__MS);
+						mHandlerCheckSerial.postDelayed(readAndUpload, 2 * MedtronicConstants.FIVE_SECONDS__MS);
 						return;
 					}
 				} else
@@ -723,7 +724,7 @@ public class MedtronicCGMService extends Service implements
 					if (!isOnline())
 						sendErrorMessageToUI("NET connection error");
 					if (!listenerAttached) {
-						log.debug("!listener attached readByListener triggered");
+						Log.d(TAG, "!listener attached readByListener triggered");
 						mSerial.clearReadListener();
 						mHandlerRead.removeCallbacks(readByListener);
 						mSerial.addReadListener(readListener);
@@ -767,7 +768,7 @@ public class MedtronicCGMService extends Service implements
 					return;
 				}
 				mHandlerCheckSerial.removeCallbacks(readAndUpload);
-				mHandlerCheckSerial.postDelayed(readAndUpload, MedtronicConstants.FIVE_SECONDS__MS);
+				mHandlerCheckSerial.postDelayed(readAndUpload, 2 * MedtronicConstants.FIVE_SECONDS__MS);
 			}
 		}
 	};
@@ -789,7 +790,7 @@ public class MedtronicCGMService extends Service implements
 				doReadAndUpload(auxSize);
 				isReloaded = false;
 			}else{
-				Log.d(TAG, "ReadByListener - nothing to read");
+//				Log.d(TAG, "ReadByListener - nothing to read");
 				if (!isReloaded){
 					openUsbSerial(true);
 					medtronicReader.mSerialDevice = mSerial;
@@ -866,6 +867,7 @@ public class MedtronicCGMService extends Service implements
 
 			}
 		} catch (Exception e) {
+			Log.e(TAG, e.getMessage() + " " + e.getCause());
 			StringBuffer sb1 = new StringBuffer("");
 			sb1.append("EXCEPTION!!!!!! " + e.getMessage() + " " + e.getCause());
 			for (StackTraceElement st : e.getStackTrace()) {
@@ -1439,7 +1441,7 @@ public class MedtronicCGMService extends Service implements
 										}
 
 										historicLogPeriod = MedtronicConstants.TIME_5_MIN_IN_MS * (t + 1);
-										
+
 								        mHandlerCheckLastRead.post(checkLastRead);
 								        
 									}
@@ -1563,7 +1565,7 @@ public class MedtronicCGMService extends Service implements
 		public void run() {
 			boolean bAfterPeriod = false;
 			try {
-				log.debug("Read data from Historic");
+				Log.d(TAG, "Read data from Historic");
 				synchronized (mSerialLock) {
 					if (mSerial.isOpened()) {
 						log.debug("mserial open");
@@ -1689,7 +1691,7 @@ public class MedtronicCGMService extends Service implements
 				synchronized (medtronicReader.processingCommandLock) {
 					medtronicReader.processingCommand = false;
 				}
-			}finally{
+			} finally {
 				log.debug("Executing read_Historic finally");
 				if (prefs.getString("glucSrcTypes","1").equals("2")){
 					
@@ -1736,7 +1738,7 @@ public class MedtronicCGMService extends Service implements
 	private Runnable getCalibrationFromSensor = new Runnable() {
 		public void run() {
 			try {
-				log.debug("getting Calibration factor!!");
+				Log.d(TAG, "getting Calibration factor!!");
 				synchronized (mSerialLock) {
 					log.debug("mSerial synchronized!");
 					if (mSerial.isOpened()) {

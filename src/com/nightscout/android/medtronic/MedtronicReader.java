@@ -25,6 +25,7 @@ import android.os.Messenger;
 import android.os.RemoteException;
 import android.preference.PreferenceManager;
 
+import android.text.TextUtils;
 import android.util.Log;
 
 import ch.qos.logback.classic.Logger;
@@ -287,6 +288,7 @@ public class MedtronicReader {
 			else
 				log.error("Current Known Device "+knownDevice+" Message Received From "+deviceCode);
 		}
+		Log.i(TAG, "Message received from unknown device: " + HexDump.dumpHexString(readData) + " I am expecting any of: " + TextUtils.join(", ", knownDevices));
 		return false;
 	}
 

@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.ObjectInputStream;
 import java.text.DecimalFormat;
-
+import java.util.Date;
 import org.slf4j.LoggerFactory;
 
 import android.app.Activity;
@@ -330,11 +330,12 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 				    	    		calib = MedtronicConstants.getCalibrationStrValue(record.calibrationStatus);
 				    	    	}
 				    	    	calib += "\nlast cal. ";
-				    	    	String tail = " min. ago";
+								calib += new Date(calDate) + "\n";
+								String tail = " min. ago";
 				    	    	int lastCal = 0;
 				    	    	if (calDate > 0){
 				    	    		lastCal = (int)((System.currentTimeMillis() - calDate)/60000); 
-				    	    		if (lastCal >= 60){
+				    	    		if (lastCal >= 180){
 				    	    			lastCal = lastCal / 60;
 				    	    			tail = " hour(s) ago";
 				    	    		}
@@ -349,7 +350,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 				    	    	if (record.displayDateTime == 0){
 				    	    		mDumpTextView.setText("\n" +record.displayTime + "\n" + record.bGValue + "  " + record.trendArrow + "\n" +calib+ "\n");	
 				    	    	}else
-				    	    		mDumpTextView.setText("\n" +(System.currentTimeMillis() - record.displayDateTime)/60000 + " min. ago\n" + record.bGValue + "  " + record.trendArrow + "\n" +calib+ "\n");
+				    	    		mDumpTextView.setText("Last record received:\n" + (new Date(record.displayDateTime)) + "\n" +(System.currentTimeMillis() - record.displayDateTime)/60000 + " min. ago\n" + record.bGValue + "  " + record.trendArrow + "\n" +calib+ "\n");
 				            	
 				            }else if (auxRecord instanceof EGVRecord){
 				            	EGVRecord record = (EGVRecord)auxRecord;
