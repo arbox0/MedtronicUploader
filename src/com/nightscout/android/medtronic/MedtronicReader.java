@@ -1948,7 +1948,7 @@ public class MedtronicReader {
 	 * @param readData
 	 * @return String, for debug or notification purposes
 	 */
-	public String processSensorDataMessage(byte[] readData) {
+	public void processSensorDataMessage(byte[] readData) {
 		Date d = new Date();
 		long difference = 0;
 		if (isCalibrating && lastGlucometerDate > 0) {
@@ -1959,13 +1959,13 @@ public class MedtronicReader {
 		int firstMeasureByte = firstByteAfterDeviceId(readData);
 		int currentMeasure = -1;
 		float isig = 0;
-		StringBuffer sResult = new StringBuffer("");
+
 		if (firstMeasureByte < 0)
-			return "Error, I can not identify the initial byte of the sensor measure";
+			return;
 		int numBytes = HexDump.unsignedByte(readData[1]);/* length is of payload after first two bytes */
 		if (firstMeasureByte > readData.length || numBytes > readData.length + 2
 				|| numBytes <= 0)
-			return "Error, I have detected an error in sensor message size";
+			return;
 		int previousCalibrationStatus = calibrationStatus;
 		float previousCalibrationFactor = calibrationFactor;
 		short adjustement = (short) readData[firstMeasureByte + 2];
@@ -2008,8 +2008,7 @@ public class MedtronicReader {
 				added--;
 				lastRecordsInMemory.add(record);
 				calculateTrendAndArrow(record, lastRecordsInMemory);
-				sResult.append("Measure(").append(((i + 2) / 2)).append("): ")
-				.append(num);
+
 			}
 
 		} else {
@@ -2046,7 +2045,7 @@ public class MedtronicReader {
 							firstMeasureByte + 3, record, num, d);
 					lastRecordsInMemory.add(record);
 					calculateTrendAndArrow(record, lastRecordsInMemory);
-					sResult.append("last measure: ").append(num);
+
 					lastElementsAdded++;
 				} else {
 					// sendMessageToUI("ES REPETIDO NO LO EVALUO ", false);
@@ -2054,7 +2053,7 @@ public class MedtronicReader {
 						expectedSensorSortNumber = calculateNextSensorSortNameFrom(
 								1, expectedSensorSortNumber);
 					}
-					return sResult.toString();
+					return;
 				}
 			} else {
 				Log.i("Medtronic", "NOT Expected sensor number received!!");
@@ -2132,8 +2131,7 @@ public class MedtronicReader {
 						added--;
 						lastRecordsInMemory.add(record);
 						calculateTrendAndArrow(record, lastRecordsInMemory);
-						sResult.append("Measure(").append(((i + 2) / 2))
-						.append("): ").append(num);
+
 					}
 				} else {
 
@@ -2150,7 +2148,7 @@ public class MedtronicReader {
 							firstMeasureByte + 3, record, num, d);
 					lastRecordsInMemory.add(record);
 					calculateTrendAndArrow(record, lastRecordsInMemory);
-					sResult.append("last measure: ").append(num);
+
 					lastElementsAdded++;
 				}
 			}
@@ -2177,7 +2175,7 @@ public class MedtronicReader {
 		Log.i("Medtronic", "BYE!!!!");
 		log.debug("sensorprocessed end expected "
 				+ HexDump.toHexString(expectedSensorSortNumber));
-		return sResult.toString();
+
 	}
 
 	/**
@@ -2218,15 +2216,7 @@ public class MedtronicReader {
 	 * @return true, if is the redundant message
 	 */
 	private boolean isSensorRepeatedMessage(byte sortID) {
-		String sExpected = HexDump.toHexString(expectedSensorSortNumber);
-		String sSortId = HexDump.toHexString(sortID);
-		if (sExpected != null && sSortId != null
-				&& sExpected.length() == sSortId.length()
-				&& sExpected.length() >= 2) {
-			return (sExpected.charAt(0) == sSortId.charAt(0))
-					&& (sSortId.charAt(1) == '1');
-		} else
-			return false;
+		return sortID == (expectedSensorSortNumber | 0x1);
 	}
 
 	/**

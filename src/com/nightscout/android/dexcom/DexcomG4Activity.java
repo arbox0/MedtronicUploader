@@ -3,7 +3,9 @@ package com.nightscout.android.dexcom;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.ObjectInputStream;
+import java.text.DateFormat;
 import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import org.slf4j.LoggerFactory;
 
@@ -112,7 +114,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
             	}*/
             	Log.i("MedtronicCGMMessageReceived",  msg.getData().getString("data")+"\n");
             	if (ISDEBUG){
-	                display.setText(display.getText()+"Medtronic CGM Message: " + msg.getData().getString("data")+"\n", BufferType.EDITABLE);
+	                display.append(msg.getData().getString("data")+"\n");
 	                msgsDisplayed++;
             	}
             	mHandler.removeCallbacks(updateDataView);
@@ -357,6 +359,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 
 
 		private void displaySensor(MedtronicSensorRecord record, long calDate, DecimalFormat df) {
+			DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss - ");
 			if (prefs.getBoolean("mmolxl", false)) {
 				Float fBgValue = null;
 				try {
@@ -377,7 +380,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 				calib = MedtronicConstants.getCalibrationStrValue(record.calibrationStatus);
 			}
 			calib += "\nlast cal. ";
-			calib += new Date(calDate) + "\n";
+			calib += dateFormat.format(new Date(calDate)) + "\n";
 			String tail = " min. ago";
 			int lastCal = 0;
 			if (calDate > 0) {
@@ -400,7 +403,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 				mDumpTextView.setText("\n" + record.displayTime + "\n" + calib + "\n");
 				mSensorValue.setText(record.bGValue + "  " + record.trendArrow + "\n");
 			} else {
-				mDumpTextView.setText("Last record received:\n" + (new Date(record.displayDateTime)) + "\n" + (System.currentTimeMillis() - record.displayDateTime) / 60000 + " min. ago\n" +
+				mDumpTextView.setText("Last record received:\n" + dateFormat.format(new Date(record.displayDateTime)) + "\n" + (System.currentTimeMillis() - record.displayDateTime) / 60000 + " min. ago\n" +
 						calib + "\n");
 				mSensorValue.setText(record.bGValue + "  " + record.trendArrow + "\n");
 
@@ -429,11 +432,10 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 		Bugfender.init(this, "p4P5PsYG5exRw24b37y0tbH7GUUlOtnc", BuildConfig.DEBUG);
 		Bugfender.enableLogcatLogging();
 		Bugfender.enableUIEventLogging(this.getApplication());
-		if (android.os.Build.VERSION.SDK_INT > 9) 
-		{
-		    StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
-		    StrictMode.setThreadPolicy(policy);
-		}
+
+	 	StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+		StrictMode.setThreadPolicy(policy);
+
 		
         this.settings = getBaseContext().getSharedPreferences(
 				MedtronicConstants.PREFS_NAME, 0);
