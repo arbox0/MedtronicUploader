@@ -62,7 +62,7 @@ import ch.qos.logback.classic.Logger;
 public class MedtronicCGMService extends Service implements
 		OnSharedPreferenceChangeListener {
 
-	private Logger log = (Logger)LoggerFactory.getLogger(MedtronicReader.class.getName());
+	private Logger log = (Logger) LoggerFactory.getLogger(MedtronicReader.class.getName());
 	private static final String TAG = MedtronicCGMService.class.getSimpleName();
 	private NotificationManager NM;
 
@@ -109,168 +109,156 @@ public class MedtronicCGMService extends Service implements
 	@Override
 	public IBinder onBind(Intent intent) {
 		return mMessenger.getBinder();
-		
+
 	}
-	
+
 	/**
 	 * Handler of incoming messages from clients.
-	 * @author lmmarguenda
 	 *
+	 * @author lmmarguenda
 	 */
-	class IncomingHandler extends Handler { 
+	class IncomingHandler extends Handler {
 		@Override
 		public void handleMessage(Message msg) {
 			switch (msg.what) {
-			case MedtronicConstants.MSG_MEDTRONIC_FAKE:
-				doFakeReadAndUpload();
-				break;
+				case MedtronicConstants.MSG_MEDTRONIC_FAKE:
+					doFakeReadAndUpload();
+					break;
 
-			case MedtronicConstants.MSG_REGISTER_CLIENT:
-				mClients.add(msg.replyTo);
-				break;
-			case MedtronicConstants.MSG_UNREGISTER_CLIENT:
-				mClients.remove(msg.replyTo);
-				break;
-			case MedtronicConstants.MSG_MEDTRONIC_GLUCMEASURE_APPROVED:
-				if (msg.getData().getBoolean("approved"))
-					medtronicReader.approveGlucValueForCalibration(msg.getData().getFloat("data"), msg.getData().getBoolean("calibrating"), msg.getData().getBoolean("isCalFactorFromPump"));
-				else{
-					medtronicReader.lastGlucometerRecord = new GlucometerRecord();
-					medtronicReader.lastGlucometerRecord.numGlucometerValue = msg.getData().getFloat("data");
-					medtronicReader.lastGlucometerValue = msg.getData().getFloat("data");
-					Date d = new Date();
-					medtronicReader.lastGlucometerRecord.lastDate = d.getTime();
-					medtronicReader.lastGlucometerDate = d.getTime();
-					medtronicReader.calculateDate(medtronicReader.lastGlucometerRecord, d, 0);
-					SharedPreferences.Editor editor = settings.edit();
-					editor.putFloat("lastGlucometerValue", medtronicReader.lastGlucometerValue);
-					editor.putLong("glucometerLastDate", d.getTime());
-					editor.commit();
-				}
-					
-				break;
-			case MedtronicConstants.MSG_MEDTRONIC_SEND_MANUAL_CALIB_VALUE:
-				String value = msg.getData().getString("sgv");
-				if (value == null || value.equals("")){
-					value = prefs.getString("manual_sgv", "");
-					if (value.indexOf(",") >= 0)
-						value = value.replace(",", ".");
-				}
-				log.debug("Manual Calibration Received SGV "+value);
-				try{
-					Float val = null;
-					if (medtronicReader != null && value != null && !value.equals("")){
-						if (prefs.getBoolean("mmolxl", false)){
-							try {
-								if (value.indexOf(".") > -1){
+				case MedtronicConstants.MSG_REGISTER_CLIENT:
+					mClients.add(msg.replyTo);
+					break;
+				case MedtronicConstants.MSG_UNREGISTER_CLIENT:
+					mClients.remove(msg.replyTo);
+					break;
+				case MedtronicConstants.MSG_MEDTRONIC_GLUCMEASURE_APPROVED:
+					if (msg.getData().getBoolean("approved"))
+						medtronicReader.approveGlucValueForCalibration(msg.getData().getFloat("data"), msg.getData().getBoolean("calibrating"), msg.getData().getBoolean("isCalFactorFromPump"));
+					else {
+						medtronicReader.lastGlucometerRecord = new GlucometerRecord();
+						medtronicReader.lastGlucometerRecord.numGlucometerValue = msg.getData().getFloat("data");
+						medtronicReader.lastGlucometerValue = msg.getData().getFloat("data");
+						Date d = new Date();
+						medtronicReader.lastGlucometerRecord.lastDate = d.getTime();
+						medtronicReader.lastGlucometerDate = d.getTime();
+						medtronicReader.calculateDate(medtronicReader.lastGlucometerRecord, d, 0);
+						SharedPreferences.Editor editor = settings.edit();
+						editor.putFloat("lastGlucometerValue", medtronicReader.lastGlucometerValue);
+						editor.putLong("glucometerLastDate", d.getTime());
+						editor.commit();
+					}
+
+					break;
+				case MedtronicConstants.MSG_MEDTRONIC_SEND_MANUAL_CALIB_VALUE:
+					String value = msg.getData().getString("sgv");
+					if (value == null || value.equals("")) {
+						value = prefs.getString("manual_sgv", "");
+						if (value.indexOf(",") >= 0)
+							value = value.replace(",", ".");
+					}
+					log.debug("Manual Calibration Received SGV " + value);
+					try {
+						Float val = null;
+						if (medtronicReader != null && value != null && !value.equals("")) {
+							if (prefs.getBoolean("mmolxl", false)) {
+								try {
+									if (value.indexOf(".") > -1) {
+										val = Float.parseFloat(value);
+										medtronicReader.processManualCalibrationDataMessage(val, false, true);
+									} else {
+										medtronicReader.processManualCalibrationDataMessage(Integer.parseInt(value), false, true);
+									}
+									sendMessageCalibrationDoneToUI();
+								} catch (Exception e) {
+									sendExceptionToUI("Error parsing Calibration", e);
+								}
+							} else {
+								if (value.indexOf(".") > -1) {
 									val = Float.parseFloat(value);
-									medtronicReader.processManualCalibrationDataMessage(val, false, true);
-								}else{
+									medtronicReader.processManualCalibrationDataMessage(val.intValue(), false, true);
+								} else {
 									medtronicReader.processManualCalibrationDataMessage(Integer.parseInt(value), false, true);
 								}
 								sendMessageCalibrationDoneToUI();
-							} catch (Exception e) {
-								sendErrorMessageToUI("Error parsing Calibration");	
-								StringBuffer sb1 = new StringBuffer("");
-								sb1.append("EXCEPTION!!!!!! " + e.getMessage() + " " + e.getCause());
-								for (StackTraceElement st : e.getStackTrace()) {
-									sb1.append(st.toString());
-								}
-								sendMessageToUI(sb1.toString());
 							}
-						}else{
-							if (value.indexOf(".") > -1){
-								val = Float.parseFloat(value);
-								medtronicReader.processManualCalibrationDataMessage(val.intValue(), false, true);
-							}else{
-								medtronicReader.processManualCalibrationDataMessage(Integer.parseInt(value), false, true);
-							}
-							sendMessageCalibrationDoneToUI();
 						}
+					} catch (Exception e) {
+						sendExceptionToUI("Error parsing Calibration", e);
 					}
-				}catch(Exception e){
-					sendErrorMessageToUI("Error parsing Calibration");	
-					StringBuffer sb1 = new StringBuffer("");
-					sb1.append("EXCEPTION!!!!!! " + e.getMessage() + " " + e.getCause());
-					for (StackTraceElement st : e.getStackTrace()) {
-						sb1.append(st.toString());
+					break;
+				case MedtronicConstants.MSG_MEDTRONIC_SEND_INSTANT_CALIB_VALUE:  // manually entered calibration.
+					value = msg.getData().getString("sgv");
+					if (value == null || value.equals("")) {
+						value = prefs.getString("instant_sgv", "");
+						if (value.indexOf(",") >= 0)
+							value = value.replace(",", ".");
 					}
-					sendMessageToUI(sb1.toString());
-				}
-				break;
-			case MedtronicConstants.MSG_MEDTRONIC_SEND_INSTANT_CALIB_VALUE:
-				value = msg.getData().getString("sgv");
-				if (value == null || value.equals("")){
-					value = prefs.getString("instant_sgv", "");
-					if (value.indexOf(",") >= 0)
-						value = value.replace(",", ".");
-				}
-				log.debug("Instant Calibration received SGV "+value);
-				try{
-					Float val = null;
-					if (medtronicReader != null && value != null  && !value.equals("")){
-						if (prefs.getBoolean("mmolxl", false)){
-							try {
-								if (value.indexOf(".") > -1){
+					Log.d(TAG, "Instant Calibration received SGV " + value);
+					try {
+						Float val = null;
+						if (medtronicReader != null && !value.equals("")) {
+							if (prefs.getBoolean("mmolxl", false)) {
+								try {
+									if (value.indexOf(".") > -1) {
+										val = Float.parseFloat(value);
+										medtronicReader.calculateInstantCalibration(val * 18f);
+									} else {
+										medtronicReader.calculateInstantCalibration(Integer.parseInt(value) * 18f);
+									}
+									sendMessageCalibrationDoneToUI();
+								} catch (Exception e) {
+									sendExceptionToUI("Error parsing Calibration", e);
+								}
+							} else {
+								if (value.indexOf(".") > -1) {
 									val = Float.parseFloat(value);
-									medtronicReader.calculateInstantCalibration(val*18f);
-								}else{
-									medtronicReader.calculateInstantCalibration(Integer.parseInt(value)*18f);
+									medtronicReader.calculateInstantCalibration(val.intValue());
+								} else {
+									medtronicReader.calculateInstantCalibration(Integer.parseInt(value));
 								}
 								sendMessageCalibrationDoneToUI();
-							} catch (Exception e) {
-								sendErrorMessageToUI("Error parsing Calibration");	
-								StringBuffer sb1 = new StringBuffer("");
-								sb1.append("EXCEPTION!!!!!! " + e.getMessage() + " " + e.getCause());
-								for (StackTraceElement st : e.getStackTrace()) {
-									sb1.append(st.toString());
-								}
-								sendMessageToUI(sb1.toString());
 							}
-						}else{
-							if (value.indexOf(".") > -1){
-								val = Float.parseFloat(value);
-								medtronicReader.calculateInstantCalibration(val.intValue());
-							}else{
-								medtronicReader.calculateInstantCalibration(Integer.parseInt(value));
-							}
-							sendMessageCalibrationDoneToUI();
+						} else {
+							sendErrorMessageToUI("Error parsing Calibration");
 						}
-					}else{
-						sendErrorMessageToUI("Error parsing Calibration");
+					} catch (Exception e) {
+						sendExceptionToUI("Error parsing Calibration", e);
 					}
-				}catch(Exception e){
-					sendErrorMessageToUI("Error parsing Calibration");	
-					StringBuffer sb1 = new StringBuffer("");
-					sb1.append("EXCEPTION!!!!!! " + e.getMessage() + " " + e.getCause());
-					for (StackTraceElement st : e.getStackTrace()) {
-						sb1.append(st.toString());
-					}
-					sendMessageToUI(sb1.toString());
-				}
-				break;
-			case MedtronicConstants.MSG_MEDTRONIC_SEND_GET_PUMP_INFO:
-				sendMessageToUI("Retrieving Pump info...");
-				log.debug("Retrieving Pump info...");
-				mHandler3ActivatePump.removeCallbacks(activateNewPump);
-				mHandler3ActivatePump.post(activateNewPump);
-				break;
-			case MedtronicConstants.MSG_MEDTRONIC_SEND_GET_SENSORCAL_FACTOR:
-				sendMessageToUI("Retrieve calibration factor...Now!");
-				log.debug("Retrieve calibration factor...Now!");
-				mHandlerSensorCalibration.removeCallbacks(getCalibrationFromSensor);
-				mHandlerSensorCalibration.post(getCalibrationFromSensor);
-				break;
-			case MedtronicConstants.MSG_MEDTRONIC_CGM_REQUEST_PERMISSION:
-				openUsbSerial(false);
-				break;
-			default:
-				super.handleMessage(msg);
+					break;
+				case MedtronicConstants.MSG_MEDTRONIC_SEND_GET_PUMP_INFO:
+					sendMessageToUI("Retrieving Pump info...");
+					log.debug("Retrieving Pump info...");
+					mHandler3ActivatePump.removeCallbacks(activateNewPump);
+					mHandler3ActivatePump.post(activateNewPump);
+					break;
+				case MedtronicConstants.MSG_MEDTRONIC_SEND_GET_SENSORCAL_FACTOR:
+					sendMessageToUI("Retrieve calibration factor...Now!");
+					log.debug("Retrieve calibration factor...Now!");
+					mHandlerSensorCalibration.removeCallbacks(getCalibrationFromSensor);
+					mHandlerSensorCalibration.post(getCalibrationFromSensor);
+					break;
+				case MedtronicConstants.MSG_MEDTRONIC_CGM_REQUEST_PERMISSION:
+					openUsbSerial(false);
+					break;
+				default:
+					super.handleMessage(msg);
 			}
 		}
 	}
 
-	
+
+	void sendExceptionToUI(String message, Exception e) {
+		Log.e(TAG, message);
+		sendErrorMessageToUI(message);
+		StringBuffer sb1 = new StringBuffer("");
+		sb1.append("EXCEPTION: " + e.getMessage() + " " + e.getCause());
+		for (StackTraceElement st : e.getStackTrace())
+		{
+			sb1.append(st.toString());
+		}
+		sendErrorMessageToUI(sb1.toString());
+		Log.e(TAG, sb1.toString());
+	}
 	/**
      * Sends a message to be printed in the display (DEBUG) or launches a pop-up message.
      * @param valuetosend
@@ -752,15 +740,7 @@ public class MedtronicCGMService extends Service implements
 				}
 
 			} catch (Exception e) {
-				Log.e(TAG, "Unable to read from receptor or upload", e);
-				StringBuffer sb1 = new StringBuffer("");
-				sb1.append("EXCEPTION!!!!!! " + e.getMessage() + " "
-						+ e.getCause());
-				for (StackTraceElement st : e.getStackTrace()) {
-					sb1.append(st.toString()).append("\n");
-				}
-				sendMessageToUI(sb1.toString());
-				log.error("Unable to read from receptor or upload \n"+ e.toString());
+				sendExceptionToUI("Unable to read from receptor or upload", e);
 			}
 			synchronized (checkSerialLock) {
 				if (!mHandlerActive || isDestroying){
@@ -828,12 +808,8 @@ public class MedtronicCGMService extends Service implements
 			}
 
 		} catch (Exception e) {
-			StringBuffer sb1 = new StringBuffer("");
-			sb1.append("EXCEPTION!!!!!! " + e.getMessage() + " " + e.getCause());
-			for (StackTraceElement st : e.getStackTrace()) {
-				sb1.append(st.toString());
-			}
-			sendMessageToUI(sb1.toString());
+
+			sendExceptionToUI("FakeUpload Exception", e);
 		}
 	}
 
@@ -867,13 +843,7 @@ public class MedtronicCGMService extends Service implements
 
 			}
 		} catch (Exception e) {
-			Log.e(TAG, e.getMessage() + " " + e.getCause());
-			StringBuffer sb1 = new StringBuffer("");
-			sb1.append("EXCEPTION!!!!!! " + e.getMessage() + " " + e.getCause());
-			for (StackTraceElement st : e.getStackTrace()) {
-				sb1.append(st.toString());
-			}
-			sendMessageToUI(sb1.toString());
+			sendExceptionToUI("doReadAndUpload exception", e);
 		}
 	}
 
@@ -984,13 +954,7 @@ public class MedtronicCGMService extends Service implements
 						doWifiHack();
 					}
 				} catch (Exception e) {
-					StringBuffer sb1 = new StringBuffer("");
-					sb1.append("EXCEPTION!!!!!! " + e.getMessage() + " "
-							+ e.getCause());
-					for (StackTraceElement st : e.getStackTrace()) {
-						sb1.append(st.toString()).append("\n");
-					}
-					sendMessageToUI(sb1.toString() + "\n");
+					sendExceptionToUI("BufferedMessagesProcessor", e);
 				}
 			}
 			log.debug("Buffered Messages Processed ");
@@ -1480,12 +1444,7 @@ public class MedtronicCGMService extends Service implements
 			}
 			
 		} catch (Exception e) {
-			StringBuffer sb1 = new StringBuffer("");
-			sb1.append("EXCEPTION!!!!!! " + e.getMessage() + " " + e.getCause());
-			for (StackTraceElement st : e.getStackTrace()) {
-				sb1.append(st.toString()).append("\n");
-			}
-			sendMessageToUI(sb1.toString());
+			sendExceptionToUI("", e);
 		}
 	}
 	
@@ -1537,13 +1496,8 @@ public class MedtronicCGMService extends Service implements
 					}
 				}
 			} catch (Exception e) {
-				StringBuffer sb1 = new StringBuffer("");
-				sb1.append("EXCEPTION!!!!!! " + e.getMessage() + " "
-						+ e.getCause());
-				for (StackTraceElement st : e.getStackTrace()) {
-					sb1.append(st.toString()).append("\n");
-				}
-				sendMessageToUI(sb1.toString());
+
+				sendExceptionToUI("", e);
 				synchronized (medtronicReader.processingCommandLock) {
 					medtronicReader.processingCommand = false;
 				}
@@ -1681,13 +1635,7 @@ public class MedtronicCGMService extends Service implements
 					}
 				}
 			} catch (Exception e) {
-				StringBuffer sb1 = new StringBuffer("");
-				sb1.append("EXCEPTION!!!!!! " + e.getMessage() + " "
-						+ e.getCause());
-				for (StackTraceElement st : e.getStackTrace()) {
-					sb1.append(st.toString()).append("\n");
-				}
-				sendMessageToUI(sb1.toString());
+				sendExceptionToUI("", e);
 				synchronized (medtronicReader.processingCommandLock) {
 					medtronicReader.processingCommand = false;
 				}
@@ -1779,13 +1727,7 @@ public class MedtronicCGMService extends Service implements
 					}
 				}
 			} catch (Exception e) {
-				StringBuffer sb1 = new StringBuffer("");
-				sb1.append("EXCEPTION!!!!!! " + e.getMessage() + " "
-						+ e.getCause());
-				for (StackTraceElement st : e.getStackTrace()) {
-					sb1.append(st.toString()).append("\n");
-				}
-				sendMessageToUI(sb1.toString());
+				sendExceptionToUI("", e);
 				synchronized (medtronicReader.processingCommandLock) {
 					medtronicReader.processingCommand = false;
 				}
