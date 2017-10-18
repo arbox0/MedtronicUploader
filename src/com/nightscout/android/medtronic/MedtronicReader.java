@@ -2244,12 +2244,8 @@ public class MedtronicReader {
 	}
 
 	private int transformSequenceToIndex(byte aux) {
-		String sExpected = HexDump.toHexString(aux);
-		char sort1 = sExpected.charAt(0);
-		int result = Integer.parseInt("" + sort1);
-		if (result == 0)
-			result = 8;
-		return result;
+		int seq = aux >> 4;
+		return (seq == 0) ? 8 : seq;
 	}
 
 	/**
