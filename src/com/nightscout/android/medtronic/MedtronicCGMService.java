@@ -658,7 +658,8 @@ public class MedtronicCGMService extends Service implements
 
 		@Override
 		public void onRead(int size) {
-			Log.d(TAG, "On read received " + size);
+			if (size <= 0) return;
+            Log.d(TAG, "On read received " + size);
 			synchronized (readByListenerSizeLock) {
 				if (readByListener.size > -1)
 					readByListener.size += size;

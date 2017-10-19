@@ -283,7 +283,7 @@ public class MedtronicReader {
 			}
 			String deviceCode = HexDump.toHexString(readData, initByte, nBytes);
 			
-			if (knownDevice.equals(deviceCode))
+			if (knownDevice.toLowerCase().equals(deviceCode.toLowerCase()))
 				return true;
 			else
 				log.error("Current Known Device "+knownDevice+" Message Received From "+deviceCode);
