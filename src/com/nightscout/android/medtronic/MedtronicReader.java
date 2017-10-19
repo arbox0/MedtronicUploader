@@ -1663,38 +1663,29 @@ public class MedtronicReader {
 	 * @param readData
 	 * @return String, for debug or notification purposes
 	 */
-	public String processGlucometerDataMessage(byte[] readData) {
+	public void processGlucometerDataMessage(byte[] readData) {
 		int firstMeasureByte = firstByteAfterDeviceId(readData);
-		if (firstMeasureByte < 0)
-			return "Error, I can not identify the initial byte of the glucometer measure";
-		int numBytes = ByteBuffer.wrap(
-				new byte[] { (byte) 0x00, (byte) 0x00, (byte) 0x00,
-                        readData[1]}).getInt();
-		if (firstMeasureByte > readData.length || numBytes > readData.length)
-			return "Error, I have detected an error in glucometer message size";
-		byte[] arr = Arrays.copyOfRange(readData, firstMeasureByte,
-				numBytes + 1);
-		byte[] res = new byte[4];
-		if (arr.length < 4) {
-			for (int j = 0; j < 4; j++) {
-				res[j] = (byte) 0x00;
-				if (j >= 4 - arr.length)
-					res[j] = arr[Math.abs(4 - j - arr.length)];
-			}
-		} else
-			res = arr;
-		ByteBuffer wrapped = ByteBuffer.wrap(res);
-		int num = wrapped.getInt(); // 1
-		if (num < 0 || num > 1535)
-			return "Glucometer value under 0 or over 0x5ff. Possible ACK or malfunction.";
-		
+		if (firstMeasureByte < 0) {
+            Log.e(TAG, "Error, I can not identify the initial byte of the glucometer measure");
+            return;
+        }
+		int numBytes = (int) readData[1];
+        if (firstMeasureByte > readData.length || numBytes > readData.length) {
+            Log.e(TAG, "Error, I have detected an error in glucometer message size");
+            return;
+        }
+
+        int ub = readData[firstMeasureByte]  & 0xff;
+        int lb = readData[firstMeasureByte + 1]  & 0xff;
+        int num = lb + (ub << 8);
+
+        if (num < 0 || num > 1535) {
+            Log.e(TAG, "Glucometer value under 0 or over 0x5ff. Possible ACK or malfunction.");
+            return;
+        }
 		processManualCalibrationDataMessage(num, true, false);
-		//int calibrationSelectedAux = 0;
-		//synchronized (calibrationSelectedLock) {
-			//calibrationSelectedAux = calibrationSelected;
-		//}
-		//sendGlucMessageToUI(num, calibrate, calibrationSelectedAux == MedtronicConstants.CALIBRATION_SENSOR);
-		return "Measure received " + num + " mg/dl";
+
+		return;
 	}
 
 	
