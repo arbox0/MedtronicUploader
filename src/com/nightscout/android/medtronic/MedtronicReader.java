@@ -5,7 +5,10 @@ import java.io.FileOutputStream;
 import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
 import java.text.DateFormat;
+import java.text.FieldPosition;
+import java.text.NumberFormat;
 import java.text.ParseException;
+import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -436,12 +439,11 @@ public class MedtronicReader {
 		byte[] readFromDevice = new byte[1024];
 		int read = 0;
 		if (size >= 0) {
-			log.debug("readFromReceiver!! a leer " + size + " bytes!!");
+			Log.d(TAG, "readFromReceiver: " + size + " bytes!!");
 			try {
 				read = mSerialDevice.read(readFromDevice);
 			} catch (Exception e) {
 				Log.e(TAG, "Unable to read from serial device", e);
-				log.error("Unable to read from serial device", e);
 				return null;
 			}
 		}
@@ -670,7 +672,6 @@ public class MedtronicReader {
 					break;
 				default:
 					Log.i("MEdtronic", "No Match");
-					log.debug("I can't understand this message");
 					break;
 			}
 		} else {
@@ -1050,7 +1051,7 @@ public class MedtronicReader {
 			}
 			return sResult;
 		case MedtronicConstants.MEDTRONIC_GET_BATTERY_STATUS:
-			log.debug("Pump Battery Status Received");
+			Log.d(TAG, "Pump Battery Status Received");
 			sendMessageToUI("Pump Battery Status Received...");
 			if (lastMedtronicPumpRecord == null) {
 				lastMedtronicPumpRecord = new MedtronicPumpRecord();
@@ -1139,7 +1140,7 @@ public class MedtronicReader {
 			}
 			return sResult;
 		case MedtronicConstants.MEDTRONIC_GET_PARADIGM_LINK_IDS:
-			log.debug("Pump Paradigm Link Ids Received");
+			Log.i(TAG, "Pump Paradigm Link Ids Received");
 			sendMessageToUI("Pump Paradigm Link Ids Received...");
 			if (lastCommandSend != null) {
 				synchronized (waitingCommandLock) {
@@ -1307,16 +1308,7 @@ public class MedtronicReader {
 			hGetter.wThread.isRequest = true;
 			hGetter.firstReadPage = false;
 			hGetter.withoutConfirmation = 0;
-			/*
-			 * byte[] lastHistoricPage = HexDump.toByteArray(historicPageIndex -
-			 * historicPageShift); hGetter.wThread.postCommandBytes = new
-			 * byte[64]; Arrays.fill(hGetter.wThread.postCommandBytes,
-			 * (byte)0x00); hGetter.wThread.postCommandBytes[0] = 0x04;
-			 * hGetter.wThread.postCommandBytes[1] = lastHistoricPage[0];
-			 * hGetter.wThread.postCommandBytes[2] = lastHistoricPage[1];
-			 * hGetter.wThread.postCommandBytes[3] = lastHistoricPage[2];
-			 * hGetter.wThread.postCommandBytes[4] = lastHistoricPage[3];
-			 */
+
 			hGetter.isWaitingNextLine = true;
 			hGetter.currentLine = -1;
 			hGetter.historicPage.clear();
@@ -1604,17 +1596,7 @@ public class MedtronicReader {
 				hGetter.wThread.isRequest = true;
 				hGetter.firstReadPage = true;
 				hGetter.withoutConfirmation = 1;
-				/*
-				 * byte[] lastHistoricPage =
-				 * HexDump.toByteArray(historicPageIndex - historicPageShift);
-				 * hGetter.wThread.postCommandBytes = new byte[64];
-				 * Arrays.fill(hGetter.wThread.postCommandBytes, (byte)0x00);
-				 * hGetter.wThread.postCommandBytes[0] = 0x04;
-				 * hGetter.wThread.postCommandBytes[1] = lastHistoricPage[0];
-				 * hGetter.wThread.postCommandBytes[2] = lastHistoricPage[1];
-				 * hGetter.wThread.postCommandBytes[3] = lastHistoricPage[2];
-				 * hGetter.wThread.postCommandBytes[4] = lastHistoricPage[3];
-				 */
+
 				hGetter.isWaitingNextLine = true;
 				hGetter.currentLine = -1;
 				hGetter.historicPage.clear();
@@ -1678,6 +1660,8 @@ public class MedtronicReader {
         int ub = readData[firstMeasureByte]  & 0xff;
         int lb = readData[firstMeasureByte + 1]  & 0xff;
         int num = lb + (ub << 8);
+		float numf = num;
+		sendMessageToUI(String.format("Glucometer reading seen: %d  / %.2f", num, (numf /18.0)));
 
         if (num < 0 || num > 1535) {
             Log.e(TAG, "Glucometer value under 0 or over 0x5ff. Possible ACK or malfunction.");
@@ -1748,8 +1732,7 @@ public class MedtronicReader {
 			} else {
 				synchronized (expectedSensorSortNumberLock) {
 					byte expectedAux = expectedSensorSortNumber;
-					if (HexDump
-							.unsignedByte((byte) (expectedSensorSortNumber & (byte) 0x01)) > 0)
+					if ((expectedSensorSortNumber & (byte) 0x01) > 0)
 						expectedAux = (byte) (expectedSensorSortNumber & (byte) 0xFE);
 					expectedSensorSortNumberForCalibration[0] = calculateNextSensorSortNameFrom(
 							6, expectedAux);
@@ -1961,13 +1944,12 @@ public class MedtronicReader {
 		float previousCalibrationFactor = calibrationFactor;
 		short adjustement = (short) readData[firstMeasureByte + 2];
 		long firstTimeOut = d.getTime() - lastSensorValueDate;
-		if (HexDump.unsignedByte(expectedSensorSortNumber) == HexDump
-				.unsignedByte((byte) 0xff)
-				|| firstTimeOut == d.getTime()
-				|| (firstTimeOut > MedtronicConstants.TIME_10_MIN_IN_MS
-						+ MedtronicConstants.TIME_30_MIN_IN_MS)) {
-			Log.i("Medtronic", "First");
-			log.debug("SENSOR MEASURE, First Time, retrieving all previous measures");
+		if (expectedSensorSortNumber == (byte) 0xff
+				|| lastSensorValueDate == 0
+				|| (firstTimeOut >= MedtronicConstants.TIME_10_MIN_IN_MS)) {
+			Log.i("Medtronic", "First reading - or missed last 40 minutes - Backfilling old data");
+			int elementsMissing = (int) (firstTimeOut / MedtronicConstants.TIME_5_MIN_IN_MS);
+
 			lastElementsAdded = 0;
 			// I must read ALL THE MEASURES
 			synchronized (expectedSensorSortNumberLock) {
@@ -2003,17 +1985,11 @@ public class MedtronicReader {
 			}
 
 		} else {
-			log.debug("Estoy Esperando "
-					+ HexDump.toHexString(expectedSensorSortNumber)
-					+ " He recibido "
-					+ HexDump.toHexString(readData[firstMeasureByte + 3]));
-			if (HexDump.unsignedByte(expectedSensorSortNumber) == HexDump
-					.unsignedByte(readData[firstMeasureByte + 3])
-					|| HexDump.unsignedByte(calculateNextSensorSortNameFrom(1,
-							expectedSensorSortNumber)) == HexDump
-							.unsignedByte(readData[firstMeasureByte + 3])) {
+
+			if (expectedSensorSortNumber == readData[firstMeasureByte + 3]
+					||calculateNextSensorSortNameFrom(1, expectedSensorSortNumber) == readData[firstMeasureByte + 3]) {
 				Log.i("Medtronic", "Expected sensor number received!!");
-				log.debug("SENSOR MEASURE, Expected sensor measure received!!");
+
 				lastElementsAdded = 0;
 				// I must read only the first value except if byte ends in "1"
 				// then I skip this value
