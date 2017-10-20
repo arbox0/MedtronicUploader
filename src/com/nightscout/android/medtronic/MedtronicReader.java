@@ -357,24 +357,7 @@ public class MedtronicReader {
 		int initByte = firstByteOfDeviceId(readData);
 		if (initByte < 0 || readData.length < initByte)
 			return -1;
-		for (String knownDevice : knownDevices) {
-			if (knownDevice == null
-					|| knownDevice.replaceAll(" ", "").length() == 0)
-				continue;
-
-			int nBytes = knownDevice.length() / 2;
-			if (knownDevice.length() % 2 > 0 && knownDevice.length() > 2) {
-				nBytes++;
-			}
-
-			if (readData.length < (nBytes + initByte))
-				return -1;
-			String deviceCode = HexDump.toHexString(readData, initByte, nBytes);
-
-			if (knownDevice.equals(deviceCode))
-				return (nBytes + initByte);
-		}
-		return -1;
+		return 3 + initByte; // IDs are always 3 bytes..
 	}
 
 	/**
