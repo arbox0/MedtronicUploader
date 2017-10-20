@@ -404,25 +404,23 @@ public class MedtronicCGMService extends Service implements
 		prefs.edit().remove("isCheckedWUP").commit();
 		prefs.registerOnSharedPreferenceChangeListener(this);
 		
-		String level = prefs.getString("logLevel", "1");
-		if ("2".equalsIgnoreCase(level))
-			log.setLevel(Level.INFO);
-    	else if ("3".equalsIgnoreCase(level))
-    		log.setLevel(Level.DEBUG);
-    	else  
-    		log.setLevel(Level.ERROR);
-		
+		int level = Integer.parseInt(prefs.getString("logLevel", "1"));
+		switch (level) {
+			case 2:
+				log.setLevel(Level.INFO);
+				break;
+			case 3:
+				log.setLevel(Level.DEBUG);
+				break;
+			default
+				log.setLevel(Level.ERROR);
+				break;
+		}
 	    if (prefs.contains("pumpPeriod")){
-        	String type = prefs.getString("pumpPeriod", "1");
-        	if ("2".equalsIgnoreCase(type))
-        		pumpPeriod = MedtronicConstants.TIME_60_MIN_IN_MS;
-        	else if ("3".equalsIgnoreCase(type))
-        		pumpPeriod = MedtronicConstants.TIME_90_MIN_IN_MS;
-        	else  if ("4".equalsIgnoreCase(type))
-        		pumpPeriod = MedtronicConstants.TIME_60_MIN_IN_MS + MedtronicConstants.TIME_60_MIN_IN_MS;
-        	else
-        		pumpPeriod = MedtronicConstants.TIME_30_MIN_IN_MS;
-        }
+        	int type = Integer.parseInt(prefs.getString("pumpPeriod", "1"));
+        	type = (type < 1 || type > 4) ? 1 : type;
+			pumpPeriod = type * MedtronicConstants.TIME_30_MIN_IN_MS;
+		}
         if (prefs.contains("monitor_type")){
         	String type = prefs.getString("monitor_type", "1");
         	if ("2".equalsIgnoreCase(type)){
@@ -450,8 +448,6 @@ public class MedtronicCGMService extends Service implements
 
      	SharedPreferences prefs = PreferenceManager
  				.getDefaultSharedPreferences(getBaseContext());
-     	
-     	
      
      	DecimalFormat df;
      	if (prefs.getBoolean("mmolDecimals", false))
