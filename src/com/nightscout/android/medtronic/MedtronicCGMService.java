@@ -64,7 +64,6 @@ public class MedtronicCGMService extends Service implements
 
 	private Logger log = (Logger) LoggerFactory.getLogger(MedtronicReader.class.getName());
 	private static final String TAG = MedtronicCGMService.class.getSimpleName();
-	private NotificationManager NM;
 
 	private boolean listenerAttached = false;
 	private UploadHelper uploader;
@@ -582,10 +581,6 @@ public class MedtronicCGMService extends Service implements
 			log.debug("Medtronic Service onDestroy called");
 			mHandlerCheckSerial.removeCallbacks(readAndUpload);
 
-			if (NM != null) {
-				NM.cancelAll();
-				NM = null;
-			}
 			SharedPreferences.Editor editor = settings.edit();
 			editor.putLong("lastDestroy", System.currentTimeMillis());
 			editor.commit();
