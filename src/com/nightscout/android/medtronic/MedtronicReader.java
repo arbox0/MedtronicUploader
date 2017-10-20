@@ -442,13 +442,7 @@ public class MedtronicReader {
 						Arrays.copyOfRange(readFromDevice, 0, read), read);
 				checkCalibrationOutOfTime();
 			} catch (Exception e) {
-				StringBuffer sb1 = new StringBuffer("");
-				sb1.append("EXCEPTION!!!!!! " + e.getMessage() + " "
-						+ e.getCause());
-				for (StackTraceElement st : e.getStackTrace()) {
-					sb1.append(st.toString());
-				}
-				sendMessageToUI(sb1.toString());
+				sendErrorMessageToUI(e.toString());
 				bufferedMessages = new ArrayList<byte[]>();
 			}
 		}
@@ -707,13 +701,7 @@ public class MedtronicReader {
 				}
 			}
 		} catch (Exception ex2) {
-			StringBuffer sb1 = new StringBuffer("");
-			sb1.append("EXCEPTION!!!!!! " + ex2.getMessage() + " "
-					+ ex2.getCause());
-			for (StackTraceElement st : ex2.getStackTrace()) {
-				sb1.append(st.toString());
-			}
-			sendMessageToUI(sb1.toString());
+			sendErrorMessageToUI(ex2.toString());
 		}
 		SharedPreferences.Editor editor = settings.edit();
 		editor.remove("last_read");
@@ -1643,16 +1631,13 @@ public class MedtronicReader {
         int ub = readData[firstMeasureByte]  & 0xff;
         int lb = readData[firstMeasureByte + 1]  & 0xff;
         int num = lb + (ub << 8);
-		float numf = num;
-		sendMessageToUI(String.format("Glucometer reading seen: %d  / %.2f", num, (numf /18.0)));
+		sendMessageToUI(String.format("Glucometer reading seen: %d  / %.2f", num, ((float)num )/18.0));
 
         if (num < 0 || num > 1535) {
             Log.e(TAG, "Glucometer value under 0 or over 0x5ff. Possible ACK or malfunction.");
             return;
         }
 		processManualCalibrationDataMessage(num, true, false);
-
-		return;
 	}
 
 	
@@ -2262,9 +2247,8 @@ public class MedtronicReader {
 	 *            Each increment subtracts 5 minutes to "initTime"
 	 */
 	public void calculateDate(Record record, Date initTime, int subtract) {
-		Date d = initTime;
 
-		long milliseconds = d.getTime();
+		long milliseconds = initTime.getTime();
 
 		if (subtract > 0) {
 			milliseconds -= subtract * MedtronicConstants.TIME_5_MIN_IN_MS;// record
@@ -2284,9 +2268,8 @@ public class MedtronicReader {
 		 * if (!tz.inDaylightTime(new Date())) timeAdd = timeAdd - 3600000L;
 		 */
 		Date display = new Date(timeAdd);
-		String displayTime = new SimpleDateFormat("MM/dd/yyy hh:mm:ss aa",
+		record.displayTime = new SimpleDateFormat("MM/dd/yyy hh:mm:ss aa",
 				Locale.getDefault()).format(display);
-		record.displayTime = displayTime;
 		if (record instanceof MedtronicSensorRecord) {
 			((MedtronicSensorRecord) record).displayDateTime = display
 					.getTime();
@@ -2617,7 +2600,7 @@ public class MedtronicReader {
      */
 	private void sendErrorMessageToUI(String valuetosend) {
 		Log.e("medtronicCGMService", valuetosend);
-		log.error("Send Error Message to UI "+ valuetosend);
+
 		if (mClients != null && mClients.size() > 0) {
 			for (int i = mClients.size() - 1; i >= 0; i--) {
 				try {

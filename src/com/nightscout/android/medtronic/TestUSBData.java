@@ -2,10 +2,6 @@ package com.nightscout.android.medtronic;
 
 import java.util.LinkedList;
 
-/**
- * Created by david on 30/09/17.
- */
-
 public class TestUSBData {
 
     /*  Sensor Data

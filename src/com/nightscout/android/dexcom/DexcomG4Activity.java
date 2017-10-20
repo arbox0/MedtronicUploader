@@ -112,7 +112,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
             		display.setText("", BufferType.EDITABLE);
             		msgsDisplayed = 0;
             	}*/
-            	Log.i("MedtronicCGMMessageReceived",  msg.getData().getString("data")+"\n");
+            	Log.i(TAG,  msg.getData().getString("data")+"\n");
             	if (ISDEBUG){
 	                display.append(msg.getData().getString("data")+"\n");
 	                msgsDisplayed++;
@@ -140,7 +140,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	        	mHandler.post(updateDataView);
                 break;
             case MedtronicConstants.MSG_MEDTRONIC_CGM_ERROR_RECEIVED:
-            	Log.e("MedtronicCGMMessageReceived",  msg.getData().getString("data")+"\n");
+            	Log.i(TAG,  msg.getData().getString("data")+"\n");
             	if (ISDEBUG){
 	            	if (msgsDisplayed > 8){
 	            		display.setText("", BufferType.EDITABLE);
@@ -155,12 +155,12 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
             	}
                 break;
             case MedtronicConstants.MSG_MEDTRONIC_CALIBRATION_DONE:
-            	Log.e("MedtronicCGMMessageReceived",  MedtronicConstants.MSG_MEDTRONIC_CALIBRATION_DONE+"\n");
+            	Log.i(TAG,  MedtronicConstants.MSG_MEDTRONIC_CALIBRATION_DONE+"\n");
             	mHandler.removeCallbacks(updateDataView);
  	        	mHandler.post(updateDataView);
                 break;
 			case MedtronicConstants.MSG_MEDTRONIC_FAKE:
-				Log.e("MedtronicCGMMessageReceived",  MedtronicConstants.MSG_MEDTRONIC_FAKE+"\n");
+				Log.i(TAG,  MedtronicConstants.MSG_MEDTRONIC_FAKE+"\n");
 				mHandler.removeCallbacks(updateDataView);
 				mHandler.post(updateDataView);
 				break;
@@ -194,7 +194,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	            		 for (StackTraceElement st : e.getStackTrace()){
 	            			 sb1.append(st.toString()).append("\n");
 	            		 }
-	            		 Log.e("ApprovingGlucValReceived", "Error approving gluc. value \n "+sb1.toString());
+	            		 Log.e(TAG, "Error approving gluc. value \n "+sb1.toString());
 	                	 if (ISDEBUG){
 	                		 display.setText(display.getText()+"Error approving gluc. value\n", BufferType.EDITABLE);
 	                	 }
@@ -248,7 +248,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
         		 for (StackTraceElement st : e.getStackTrace()){
         			 sb1.append(st.toString()).append("\n");
         		 }
-        		 Log.e("DXCG4_MEDTRONICSERVICE_ONSERVICECONNECTED","Error Registering Client Service Connection\n"+sb1.toString());
+        		 Log.e(TAG,"Error Registering Client Service Connection\n"+sb1.toString());
             	if (ISDEBUG){
             		display.setText(display.getText()+"Error Registering Client Service Connection\n", BufferType.EDITABLE);
             	}
@@ -824,7 +824,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 		            		 for (StackTraceElement st : e.getStackTrace()){
 		            			 sb1.append(st.toString()).append("\n");
 		            		 }
-		            		 Log.e("medtronicManualCalibration", "Error sending Manual Calibration\n "+sb1.toString());
+		            		 Log.e(TAG, "Error sending Manual Calibration\n "+sb1.toString());
 		                	 if (ISDEBUG){
 		                		 display.setText(display.getText()+"Error sending Manual Calibration\n", BufferType.EDITABLE);
 		                	 }
@@ -1129,7 +1129,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
     		 for (StackTraceElement st : e.getStackTrace()){
     			 sb1.append(st.toString()).append("\n");
     		 }
-    		 Log.e("DexcomG4Activity_onSharedPreferenceChanged", sb1.toString());
+    		 Log.e(TAG, sb1.toString());
     		 if (ISDEBUG){
     			 display.append(sb1.toString());
     		 }
