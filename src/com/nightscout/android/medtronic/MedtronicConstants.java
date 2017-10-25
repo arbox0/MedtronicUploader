@@ -10,9 +10,8 @@ public class MedtronicConstants {
     public static final int CRC_ERROR = 4;
     
     //General constants
-    public static final int DEVICE_ID_LENGTH = 3;
     public static final int NUMBER_OF_RETRIES = 5;
-    public static final int NUMBER_OF_EGVRECORDS = 20;
+
     public static final int TIMEOUT = 3000; 
     public static final int WAIT_ANSWER = 5000;
     public static final int FIVE_SECONDS__MS = 5000;
@@ -20,7 +19,6 @@ public class MedtronicConstants {
     public static final int TIME_15_MIN_IN_MS = 900000;
     public static final int TIME_10_MIN_IN_MS = 600000;
     public static final int TIME_20_MIN_IN_MS = 1200000;
-    public static final int TIME_23_MIN_IN_MS = 1380000;
     public static final int TIME_30_MIN_IN_MS = 1800000;
     public static final int TIME_60_MIN_IN_MS = 3600000;
     public static final int TIME_90_MIN_IN_MS = 5400000;
