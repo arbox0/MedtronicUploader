@@ -412,7 +412,7 @@ public class MedtronicCGMService extends Service implements
 			case 3:
 				log.setLevel(Level.DEBUG);
 				break;
-			default
+			default:
 				log.setLevel(Level.ERROR);
 				break;
 		}
