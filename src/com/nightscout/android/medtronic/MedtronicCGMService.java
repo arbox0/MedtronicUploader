@@ -857,8 +857,7 @@ public class MedtronicCGMService extends Service implements
 						log.debug("reloadnotuploaded is online -> "+recordsNotUploadedJson.length() +" "+ !isDestroying);
 						if (recordsNotUploadedJson.length() > 0 && !isDestroying) {
 							log.debug("to upload old records");
-							uploader = new UploadHelper(getApplicationContext(),
-									DexcomG4Activity.MEDTRONIC_CGM);
+							uploader = new UploadHelper(getApplicationContext());
 							if (!isDestroying)
 								mHandlerReloadLost.postDelayed(reloadLostRecords, 60000);
 							return;
@@ -934,8 +933,7 @@ public class MedtronicCGMService extends Service implements
 					}
 					if (params.length > 0) {
 						synchronized (reloadLostLock) {
-							uploader = new UploadHelper(getApplicationContext(),
-									DexcomG4Activity.MEDTRONIC_CGM);
+							uploader = new UploadHelper(getApplicationContext());
 							
 							uploader.execute(params);
 						}

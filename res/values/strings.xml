@@ -28,7 +28,6 @@
     <item name="android:shadowRadius">2</item>
 	</style>
 	<string-array name="types">
-     <item>Dexcom G4</item>
      <item>Medtronic CGM</item>
     </string-array>
     <string-array name="types_values">

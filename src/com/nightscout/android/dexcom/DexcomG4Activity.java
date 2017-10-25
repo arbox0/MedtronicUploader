@@ -64,11 +64,10 @@ import com.bugfender.sdk.Bugfender;
 public class DexcomG4Activity extends Activity implements OnSharedPreferenceChangeListener, OnEulaAgreedTo{
 	private Logger log = (Logger)LoggerFactory.getLogger(DexcomG4Activity.class.getName());
 	//CGMs supported
-	public static final int DEXCOMG4 = 0; 
 	public static final int MEDTRONIC_CGM = 1;
 	
     private static final String TAG = DexcomG4Activity.class.getSimpleName();
-    private int cgmSelected = DEXCOMG4;
+
     private int calibrationSelected = MedtronicConstants.CALIBRATION_GLUCOMETER;
 
     private Handler mHandler = new Handler();
@@ -310,7 +309,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 			            		df = new DecimalFormat("#.##");
 			            	else
 			            		df = new DecimalFormat("#.#");
-			            	if (cgmSelected == MEDTRONIC_CGM && auxRecord instanceof MedtronicSensorRecord && auxRecord != null){
+			            	if (auxRecord instanceof MedtronicSensorRecord && auxRecord != null){
 
 								MedtronicSensorRecord record = (MedtronicSensorRecord) auxRecord;
 								displaySensor(record, calDate,df);
@@ -441,23 +440,18 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 				MedtronicConstants.PREFS_NAME, 0);
         PreferenceManager.getDefaultSharedPreferences(getBaseContext()).registerOnSharedPreferenceChangeListener(this);
         prefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
-        if (prefs.contains("monitor_type")){
-        	String type = prefs.getString("monitor_type", "1");
-        	if ("2".equalsIgnoreCase(type)){
-        		cgmSelected = MEDTRONIC_CGM;
-        		if (prefs.contains("calibrationType")){
-        			type = prefs.getString("calibrationType", "3");
-        			if ("3".equalsIgnoreCase(type))
-        				calibrationSelected = MedtronicConstants.CALIBRATION_MANUAL;
-        			else if ("2".equalsIgnoreCase(type)){
-        				calibrationSelected = MedtronicConstants.CALIBRATION_SENSOR;
-        			}else
-        				calibrationSelected = MedtronicConstants.CALIBRATION_GLUCOMETER;
-        		}
-        	}else{
-        		cgmSelected = DEXCOMG4;
-        	}
-        }
+        String type;
+
+			if (prefs.contains("calibrationType")){
+				type = prefs.getString("calibrationType", "3");
+				if ("3".equalsIgnoreCase(type))
+					calibrationSelected = MedtronicConstants.CALIBRATION_MANUAL;
+				else if ("2".equalsIgnoreCase(type)){
+					calibrationSelected = MedtronicConstants.CALIBRATION_SENSOR;
+				}else
+					calibrationSelected = MedtronicConstants.CALIBRATION_GLUCOMETER;
+			}
+
         mArrow = new BatteryReceiver();
         IntentFilter mIntentFilter = new IntentFilter();
         mIntentFilter.addAction(Intent.ACTION_BATTERY_LOW);
@@ -478,7 +472,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
         if (!prefs.getBoolean("IUNDERSTAND", false)){
 			 stopCGMServices();
 		 }else{
-			 if (isMyServiceRunning() && cgmSelected == MEDTRONIC_CGM) {
+			 if (isMyServiceRunning()) {
 		        	doBindService();
 		     }
 	        mHandler.post(updateDataView);
@@ -627,8 +621,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 				df = new DecimalFormat("#.##");
 			else
 				df = new DecimalFormat("#.#");
-			if (cgmSelected == MEDTRONIC_CGM
-					&& auxRecord instanceof MedtronicSensorRecord
+			if (auxRecord instanceof MedtronicSensorRecord
 					&& auxRecord != null) {
 
 				MedtronicSensorRecord record = (MedtronicSensorRecord) auxRecord;
@@ -700,32 +693,27 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
         MenuInflater inflater = getMenuInflater();
         this.menu = menu;
         inflater.inflate(R.menu.menu, menu);
-        if (cgmSelected == MEDTRONIC_CGM){
-        	SharedPreferences prefs = PreferenceManager
-    				.getDefaultSharedPreferences(getBaseContext());
-			if (prefs.contains("calibrationType")) {
-				String type = prefs.getString("calibrationType", "3");
-				if ("3".equalsIgnoreCase(type))
-					menu.getItem(2).setVisible(false);
-				else if ("2".equalsIgnoreCase(type)) {
-					menu.getItem(2).setVisible(true);
-				} else
-					menu.getItem(2).setVisible(false);
-			}
-        	menu.getItem(1).setVisible(true);
-        	if (calibrationSelected == MedtronicConstants.CALIBRATION_MANUAL){
-	        	menu.getItem(3).setVisible(false);
-	        	menu.getItem(4).setVisible(true);
-	        } else{
-	        	menu.getItem(3).setVisible(false);
-	        	menu.getItem(4).setVisible(false);
-	        }
-        }else{
-        	menu.getItem(2).setVisible(false);
-        	menu.getItem(1).setVisible(false);
-        	menu.getItem(3).setVisible(false);
-        	menu.getItem(4).setVisible(false);
-        }
+
+		SharedPreferences prefs = PreferenceManager
+				.getDefaultSharedPreferences(getBaseContext());
+		if (prefs.contains("calibrationType")) {
+			String type = prefs.getString("calibrationType", "3");
+			if ("3".equalsIgnoreCase(type))
+				menu.getItem(2).setVisible(false);
+			else if ("2".equalsIgnoreCase(type)) {
+				menu.getItem(2).setVisible(true);
+			} else
+				menu.getItem(2).setVisible(false);
+		}
+		menu.getItem(1).setVisible(true);
+		if (calibrationSelected == MedtronicConstants.CALIBRATION_MANUAL){
+			menu.getItem(3).setVisible(false);
+			menu.getItem(4).setVisible(true);
+		} else{
+			menu.getItem(3).setVisible(false);
+			menu.getItem(4).setVisible(false);
+		}
+
         return true;
     }
 
@@ -913,41 +901,27 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
         }
         return super.onOptionsItemSelected(item);
     }
-    
-    private void startCGMServices(){
-    	switch (cgmSelected){
-	    	case MEDTRONIC_CGM:
-	    		if (service != null || isMyServiceRunning())
-	    			stopCGMServices();
-	    		doBindService();
-	    		return;
-	    	default:
-	    		startService(new Intent(DexcomG4Activity.this, DexcomG4Service.class));
-    	}
-    	return;
-    }
-    
-    private void stopCGMServices(){
-    	switch (cgmSelected){
-	    	case MEDTRONIC_CGM:
-	    		if (service != null){
-	    			doUnbindService();
-	    			killService();
-	    		}
-	    		return;
-	    	default:
-	    		stopService(new Intent(DexcomG4Activity.this, DexcomG4Service.class));
-    	}        
-    	return;
-    }
-    
-    private boolean isServiceAlive(String name){
-    	switch (cgmSelected){
-    		case MEDTRONIC_CGM:
-    			return MedtronicCGMService.class.getName().equals(name);
-    		default:
-    			return DexcomG4Service.class.getName().equals(name);
-	    }
+
+	private void startCGMServices() {
+
+		if (service != null || isMyServiceRunning())
+			stopCGMServices();
+		doBindService();
+
+
+	}
+
+	private void stopCGMServices() {
+
+		if (service != null) {
+			doUnbindService();
+			killService();
+		}
+
+	}
+
+	private boolean isServiceAlive(String name){
+		return MedtronicCGMService.class.getName().equals(name);
     }
     
     @Override
@@ -1009,130 +983,90 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	@Override
 	public void onSharedPreferenceChanged(SharedPreferences sharedPreferences,
 			String key) {
-		 try {
-			if (sharedPreferences.contains("monitor_type")){
-				String type = sharedPreferences.getString("monitor_type", "1");
-	         	if ("2".equalsIgnoreCase(type)){
-	         		cgmSelected = MEDTRONIC_CGM;
-	         		if (sharedPreferences.contains("calibrationType")){
-	         			type = sharedPreferences.getString("calibrationType", "3");
-	         			if ("3".equalsIgnoreCase(type))
-	         				calibrationSelected = MedtronicConstants.CALIBRATION_MANUAL;
-	         			else if ("2".equalsIgnoreCase(type)){
-	         				calibrationSelected = MedtronicConstants.CALIBRATION_SENSOR;
-	         			}else
-	         				calibrationSelected = MedtronicConstants.CALIBRATION_GLUCOMETER;
-	         		}
-	         	}else{
-	         		cgmSelected = DEXCOMG4;
-	         	}
-	         	/*if (calibrationSelected == MedtronicConstants.CALIBRATION_MANUAL)
-	         		b4.setVisibility(View.VISIBLE);
-	             else
-	             	b4.setVisibility(View.GONE);*/
-	         	if (menu != null){
-	    	        if (calibrationSelected == MedtronicConstants.CALIBRATION_MANUAL){
-	    	        	menu.getItem(3).setVisible(false);
-	    	        	menu.getItem(4).setVisible(true);
-	    	        } else{
-	    	        	menu.getItem(3).setVisible(false);
-	    	        	menu.getItem(4).setVisible(false);
-	    	        }
-	            }
+		try {
+
+			if (sharedPreferences.contains("calibrationType")) {
+				String type = sharedPreferences.getString("calibrationType", "3");
+				if ("3".equalsIgnoreCase(type))
+					calibrationSelected = MedtronicConstants.CALIBRATION_MANUAL;
+				else if ("2".equalsIgnoreCase(type)) {
+					calibrationSelected = MedtronicConstants.CALIBRATION_SENSOR;
+				} else
+					calibrationSelected = MedtronicConstants.CALIBRATION_GLUCOMETER;
 			}
-			 if (cgmSelected == MEDTRONIC_CGM){
-		        	SharedPreferences prefs = PreferenceManager
-		    				.getDefaultSharedPreferences(getBaseContext());
-					if (prefs.contains("calibrationType")) {
-						String type = prefs.getString("calibrationType", "3");
-						if ("3".equalsIgnoreCase(type)){
-							menu.getItem(2).setVisible(false);
-							if (menu != null){
-						 		menu.getItem(3).setVisible(false);
-			    	        	menu.getItem(4).setVisible(true);	    	        
-				            }
-						}else if ("2".equalsIgnoreCase(type)) {
-							menu.getItem(2).setVisible(true);
-							if (menu != null){
-				    	        menu.getItem(3).setVisible(false);
-				    	        menu.getItem(4).setVisible(false);
-				            }
-						} else{
-							menu.getItem(2).setVisible(false);
-							if (menu != null){
-				    	        menu.getItem(3).setVisible(false);
-				    	        menu.getItem(4).setVisible(false);
-				            }
-						}
+
+			if (menu != null) {
+				if (calibrationSelected == MedtronicConstants.CALIBRATION_MANUAL) {
+					menu.getItem(3).setVisible(false);
+					menu.getItem(4).setVisible(true);
+				} else {
+					menu.getItem(3).setVisible(false);
+					menu.getItem(4).setVisible(false);
+				}
+			}
+
+
+			SharedPreferences prefs = PreferenceManager
+					.getDefaultSharedPreferences(getBaseContext());
+			if (prefs.contains("calibrationType")) {
+				String type = prefs.getString("calibrationType", "3");
+				if ("3".equalsIgnoreCase(type)) {
+					menu.getItem(2).setVisible(false);
+					if (menu != null) {
+						menu.getItem(3).setVisible(false);
+						menu.getItem(4).setVisible(true);
 					}
-		        	menu.getItem(1).setVisible(true);
-		        }else{
-		        	menu.getItem(2).setVisible(false);
-		        	menu.getItem(1).setVisible(false);
-		        }
-			 	
-			 if (key.equals("monitor_type")){
-				stopService(new Intent(DexcomG4Activity.this, DexcomG4Service.class));
-	        	SharedPreferences settings = getSharedPreferences(MedtronicConstants.PREFS_NAME, 0);
-	        	SharedPreferences.Editor editor = settings.edit();
-	        	String type = prefs.getString("monitor_type", "1");
-	        	if ("1".equalsIgnoreCase(type)){
-		        	editor.remove("lastGlucometerMessage");
-			        editor.remove("previousValue");
-			        editor.remove("expectedSensorSortNumber");
-			        editor.remove("knownDevices");
-			        editor.remove("isCalibrating");
-			        editor.remove("lastGlucometerMessage");
-			        editor.remove("previousValue");	
-			        editor.remove("lastGlucometerValue");
-			        editor.remove("lastGlucometerDate");
-			        editor.remove("expectedSensorSortNumberForCalibration0");
-			        editor.remove("expectedSensorSortNumberForCalibration1");
-			        editor.remove("lastPumpAwake");
-			        editor.commit();
-	        	}
-		        if (!sharedPreferences.getBoolean("IUNDERSTAND", false)){
-					 synchronized (mHandlerActiveLock) {
-				        	mHandler.removeCallbacks(updateDataView);
-				        	mHandlerActive = false;
-					 }
-					 b1.setText("Start Uploading CGM Data");
-	                 mTitleTextView.setTextColor(Color.RED);
-	                 mTitleTextView.setText("CGM Service Stopped");
-					 stopCGMServices();
-				 }else{
-					 startCGMServices();
-					 mHandler.post(updateDataView);
-				     mHandlerActive = true;
-				 }
-		     }
-			 //If i do not
-			 if (key.equals("IUNDERSTAND")){
-				 if (!sharedPreferences.getBoolean("IUNDERSTAND", false)){
-					 synchronized (mHandlerActiveLock) {
-				        	mHandler.removeCallbacks(updateDataView);
-				        	mHandlerActive = false;
-					 }
-					 b1.setText("Start Uploading CGM Data");
-	                 mTitleTextView.setTextColor(Color.RED);
-	                 mTitleTextView.setText("CGM Service Stopped");
-					 stopCGMServices();
-				 }else{
-					 startCGMServices();
-					 mHandler.post(updateDataView);
-				     mHandlerActive = true;
-				 }
-		     }
-		 } catch (Exception e) {
-			 StringBuffer sb1 = new StringBuffer("");
-    		 sb1.append("EXCEPTION!!!!!! "+ e.getMessage()+" "+e.getCause());
-    		 for (StackTraceElement st : e.getStackTrace()){
-    			 sb1.append(st.toString()).append("\n");
-    		 }
-    		 Log.e(TAG, sb1.toString());
-    		 if (ISDEBUG){
-    			 display.append(sb1.toString());
-    		 }
+				} else if ("2".equalsIgnoreCase(type)) {
+					menu.getItem(2).setVisible(true);
+					if (menu != null) {
+						menu.getItem(3).setVisible(false);
+						menu.getItem(4).setVisible(false);
+					}
+				} else {
+					menu.getItem(2).setVisible(false);
+					if (menu != null) {
+						menu.getItem(3).setVisible(false);
+						menu.getItem(4).setVisible(false);
+					}
+				}
+			}
+			menu.getItem(1).setVisible(true);
+
+
+			if (!sharedPreferences.getBoolean("IUNDERSTAND", false)) {
+				synchronized (mHandlerActiveLock) {
+					mHandler.removeCallbacks(updateDataView);
+					mHandlerActive = false;
+				}
+				b1.setText("Start Uploading CGM Data");
+				mTitleTextView.setTextColor(Color.RED);
+				mTitleTextView.setText("CGM Service Stopped");
+				stopCGMServices();
+			} else {
+				startCGMServices();
+				mHandler.post(updateDataView);
+				mHandlerActive = true;
+			}
+
+			//If i do not
+			if (key.equals("IUNDERSTAND")) {
+				if (!sharedPreferences.getBoolean("IUNDERSTAND", false)) {
+					synchronized (mHandlerActiveLock) {
+						mHandler.removeCallbacks(updateDataView);
+						mHandlerActive = false;
+					}
+					b1.setText("Start Uploading CGM Data");
+					mTitleTextView.setTextColor(Color.RED);
+					mTitleTextView.setText("CGM Service Stopped");
+					stopCGMServices();
+				} else {
+					startCGMServices();
+					mHandler.post(updateDataView);
+					mHandlerActive = true;
+				}
+			}
+
+		} catch(Exception e){
 		}
 	}
 
