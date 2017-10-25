@@ -1,6 +1,5 @@
 package com.nightscout.android.medtronic;
 
-import android.app.NotificationManager;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -29,7 +28,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import com.nightscout.android.dexcom.DexcomG4Activity;
 import com.nightscout.android.dexcom.USB.HexDump;
 import com.nightscout.android.upload.GlucometerRecord;
 import com.nightscout.android.upload.MedtronicSensorRecord;

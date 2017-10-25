@@ -64,7 +64,6 @@ import com.bugfender.sdk.Bugfender;
 public class DexcomG4Activity extends Activity implements OnSharedPreferenceChangeListener, OnEulaAgreedTo{
 	private Logger log = (Logger)LoggerFactory.getLogger(DexcomG4Activity.class.getName());
 	//CGMs supported
-	public static final int MEDTRONIC_CGM = 1;
 	
     private static final String TAG = DexcomG4Activity.class.getSimpleName();
 
