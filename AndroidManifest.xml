@@ -38,8 +38,7 @@
                   android:icon="@drawable/ic_launcher"
                   android:label="Settings"/>
         
-        <service android:icon="@drawable/ic_launcher" android:name=".dexcom.DexcomG4Service" >
-        </service>
+
         <service  android:icon="@drawable/ic_launcher"
                 android:label="NightScout" android:name=".medtronic.MedtronicCGMService">
         </service>
