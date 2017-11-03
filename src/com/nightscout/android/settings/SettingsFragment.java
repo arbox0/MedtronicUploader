@@ -75,7 +75,6 @@ public class SettingsFragment extends PreferenceFragment implements OnSharedPref
     }
     
     private void addMedtronicOptionsListener(){
-         final ListPreference mon_type = (ListPreference)findPreference("monitor_type");
          final EditTextPreference med_id = (EditTextPreference)findPreference("medtronic_cgm_id");
          final EditTextPreference gluc_id = (EditTextPreference)findPreference("glucometer_cgm_id");
          final EditTextPreference sensor_id = (EditTextPreference)findPreference("sensor_cgm_id");
@@ -85,12 +84,11 @@ public class SettingsFragment extends PreferenceFragment implements OnSharedPref
          final ListPreference historicPeriod = (ListPreference)findPreference("historicPeriod");
          final ListPreference historicMixPeriod = (ListPreference)findPreference("historicMixPeriod");
 
-         int index = mon_type.findIndexOfValue(mon_type.getValue());
          int index2 = calib_type.findIndexOfValue(calib_type.getValue());
              med_id.setEnabled(true);
              gluc_id.setEnabled(true);
              sensor_id.setEnabled(true);
-         index = glucSrcType.findIndexOfValue(glucSrcType.getValue());
+         int index = glucSrcType.findIndexOfValue(glucSrcType.getValue());
          
         
          calib_type.setEnabled(med_id.isEnabled());
@@ -106,28 +104,6 @@ public class SettingsFragment extends PreferenceFragment implements OnSharedPref
                  historicMixPeriod.setEnabled(index==2 && med_id.isEnabled() );
                  return true; 
              }
-         });
-         mon_type.setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
-           public boolean onPreferenceChange(Preference preference, Object newValue) {
-             final String val = newValue.toString();
-             int index = mon_type.findIndexOfValue(val);
-             if(index==1){
-                 med_id.setEnabled(true);
-                 gluc_id.setEnabled(true);
-                 sensor_id.setEnabled(true);
-             }else{
-                med_id.setEnabled(false);
-                gluc_id.setEnabled(false);
-                sensor_id.setEnabled(false);
-             }
-             index = glucSrcType.findIndexOfValue(glucSrcType.getValue());
-             calib_type.setEnabled(med_id.isEnabled());
-             pumpPeriod.setEnabled(med_id.isEnabled());
-             glucSrcType.setEnabled(med_id.isEnabled());
-             historicPeriod.setEnabled(index==1 && med_id.isEnabled());
-             historicMixPeriod.setEnabled(index==2 && med_id.isEnabled() );
-             return true;
-           }
          });
     }
 }
