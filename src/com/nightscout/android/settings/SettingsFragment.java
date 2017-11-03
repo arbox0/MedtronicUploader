@@ -87,15 +87,9 @@ public class SettingsFragment extends PreferenceFragment implements OnSharedPref
 
          int index = mon_type.findIndexOfValue(mon_type.getValue());
          int index2 = calib_type.findIndexOfValue(calib_type.getValue());
-         if(index==1){
              med_id.setEnabled(true);
              gluc_id.setEnabled(true);
              sensor_id.setEnabled(true);
-         }else{
-            med_id.setEnabled(false);
-            gluc_id.setEnabled(false);
-            sensor_id.setEnabled(false);
-         }
          index = glucSrcType.findIndexOfValue(glucSrcType.getValue());
          
         

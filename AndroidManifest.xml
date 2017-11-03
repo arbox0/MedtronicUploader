@@ -12,7 +12,7 @@
     <uses-permission android:name="android.permission.WAKE_LOCK"></uses-permission>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"></uses-permission>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <application  android:allowBackup="true"  android:icon="@drawable/ic_launcher" android:label="@string/app_name">
+    <application  android:allowBackup="true"  android:icon="@drawable/ic_launcher" android:label="@string/app_name" android:largeHeap="true">
         <!-- I have set screenOrientation to "portrait" to avoid the restart of AsyncTasks when you rotate the phone -->
          <activity
                 android:name=".dexcom.DexcomG4Activity"
