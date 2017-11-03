@@ -1975,6 +1975,7 @@ public class MedtronicReader {
 					int lb = readData[firstMeasureByte + 5] & 0xff;
 					int num = lb + (ub << 8);
 
+					Log.d(TAG, "Read from sensor: value is " + num);
 					MedtronicSensorRecord record = new MedtronicSensorRecord();
 					isig = calculateISIG(num, adjustement);
 					record.setIsig(isig);
