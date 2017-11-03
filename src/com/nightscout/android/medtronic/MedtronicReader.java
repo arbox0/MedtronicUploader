@@ -150,6 +150,7 @@ public class MedtronicReader {
 					calibrationSelected = MedtronicConstants.CALIBRATION_GLUCOMETER;
 			}
 		}
+
 		if (prefs.contains("medtronic_cgm_id")) {
 			if (prefs.getString("medtronic_cgm_id", "").length() > 0) {
 				knownDevices.add(prefs.getString("medtronic_cgm_id", ""));
@@ -166,16 +167,23 @@ public class MedtronicReader {
 		}
 		if (prefs.contains("sensor_cgm_id")) {
 			if (prefs.getString("sensor_cgm_id", "").length() > 0) {
-				String sensorID = HexDump.toHexString(Integer.parseInt(prefs
-						.getString("sensor_cgm_id", "0")));
-				while (sensorID != null && sensorID.length() > 6) {
-					sensorID = sensorID.substring(1);
+				try {
+					String sensorID = HexDump.toHexString(Integer.parseInt(prefs
+							.getString("sensor_cgm_id", "0")));
+					while (sensorID != null && sensorID.length() > 6) {
+						sensorID = sensorID.substring(1);
+					}
+					log.debug("SensorID inserted "
+							+ prefs.getString("sensor_cgm_id", "0")
+							+ " transformed to " + sensorID);
+					knownDevices.add(sensorID);
+					idSensor = HexDump.hexStringToByteArray(sensorID);
 				}
-				log.debug("SensorID inserted "
-						+ prefs.getString("sensor_cgm_id", "0")
-						+ " transformed to " + sensorID);
-				knownDevices.add(sensorID);
-				idSensor = HexDump.hexStringToByteArray(sensorID);
+				catch(NumberFormatException nfe){
+					sendErrorMessageToUI("Sensor ID is incorrect - needs to be a number.  Ignored.");
+				}
+
+
 			}
 		}
 		String listPrevKnownDevices = "";
