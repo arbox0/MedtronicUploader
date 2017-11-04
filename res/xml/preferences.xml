@@ -27,7 +27,7 @@
         android:summary="Select item from array"
         android:entries="@array/types"
         android:entryValues="@array/types_values"
-        android:defaultValue="1"
+        android:defaultValue="0"
         />
         <EditTextPreference
             android:title="Pump ID"
