@@ -1641,7 +1641,7 @@ public class MedtronicReader {
 	 * @param readData
 	 * @return String, for debug or notification purposes
 	 */
-	public String processManualCalibrationDataMessage(float value,
+	public void processManualCalibrationDataMessage(float value,
 			boolean instant, boolean doCalibration) {
 		float mult = 1f;
 		//if (prefs.getBoolean("mmolxl", false))
@@ -1699,7 +1699,7 @@ public class MedtronicReader {
 			editor.commit();
 		}
 		editor.commit();
-		return "Measure received " + num + " mg/dl";
+		Log.i(TAG, "Manual calibration:" + num);
 	}
 
 	/**
@@ -2340,17 +2340,17 @@ public class MedtronicReader {
 		SimpleDateFormat formatter = new SimpleDateFormat(
 				"MM/dd/yyyy hh:mm:ss a", Locale.getDefault());
 		if (auxList.size() == size) {
-			log.debug("I Have the correct size");
+			Log.d(TAG, "I Have the correct size");
 			for (int i = 1; i < size; i++) {
 				if (!(auxList.get(i) instanceof MedtronicSensorRecord)) {
-					log.debug("but not the correct records");
+					Log.d(TAG, "but not the correct records");
 					return null;
 				}
 			}
 			float diff = 0;
 			long dateDif = 0;
 			for (int i = 1; i < size; i++) {
-				log.debug("Start calculate diff");
+				Log.d(TAG, "Start calculate diff");
 				MedtronicSensorRecord prevRecord = (MedtronicSensorRecord) auxList
 						.get(i - 1);
 				MedtronicSensorRecord record = (MedtronicSensorRecord) auxList
@@ -2361,9 +2361,9 @@ public class MedtronicReader {
 					prevDate = formatter.parse(prevRecord.displayTime);
 					date = formatter.parse(record.displayTime);
 					dateDif += (prevDate.getTime() - date.getTime());
-					log.debug("DATE_diff " + dateDif);
+					Log.d(TAG, "DATE_diff " + dateDif);
 				} catch (ParseException e1) {
-					e1.printStackTrace();
+					Log.e(TAG, "Bad current or previous value for date", e1);
 				}
 
 				float prevRecordValue = 0;
@@ -2371,31 +2371,31 @@ public class MedtronicReader {
 				try {
 					prevRecordValue = Float.parseFloat(prevRecord.bGValue);
 				} catch (Exception e) {
-
+					Log.e(TAG, "Bad previous bGValue: " + prevRecord.bGValue, e);
 				}
 				try {
 					recordValue = Float.parseFloat(record.bGValue);
 				} catch (Exception e) {
-
+					Log.e(TAG, "Bad current bGValue: " + record.bGValue, e);
 				}
 
 				if (prevRecordValue > 0 && recordValue <= 0) {
-					log.debug("AdjustRecordValue prev " + prevRecordValue
+					Log.d(TAG, "AdjustRecordValue prev " + prevRecordValue
 							+ " record " + recordValue);
 					recordValue = prevRecordValue;
 				}
 				diff += prevRecordValue - recordValue;
-				log.debug("VALUEDIFF " + diff);
+				Log.d(TAG, "VALUEDIFF " + diff);
 			}
 			if (dateDif > MedtronicConstants.TIME_20_MIN_IN_MS) {
-				log.debug("EXIT BY TIME ");
+				Log.d(TAG, "EXIT BY TIME ");
 				return null;
 			} else {
-				log.debug("CORRECT EXIT ");
+				Log.d(TAG, "CORRECT EXIT ");
 				return diff;
 			}
 		} else {
-			log.debug("I DO NOT Have the correct size " + auxList.size());
+			Log.d(TAG, "I DO NOT Have the correct size " + auxList.size());
 			return null;
 		}
 	}
@@ -2420,10 +2420,7 @@ public class MedtronicReader {
 	/**
 	 * This function calculates the SVG to upload applying a filter to the
 	 * Unfiltered glucose data
-	 * 
-	 * @param prevRecord
-	 * @param auxList
-	 * @return
+	 *
 	 */
 	public int applyFilterToRecord(MedtronicSensorRecord currentRecord,
 			List<Record> auxList) {

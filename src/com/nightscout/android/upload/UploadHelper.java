@@ -150,6 +150,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
         }
     }
 
+
     private void doRESTUploadTo(String baseURI, Record[] records) throws Exception {
         int apiVersion = 1;
         if (!baseURI.endsWith("/v1/"))
@@ -226,8 +227,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 
                     String jsonString = json.toString();
 
-                    Log.i(TAG, "DEXCOM JSON: " + jsonString);
-                    log.debug("JSON to Upload " + jsonString);
+                    Log.i(TAG, "JSON to upload " + jsonString);
 
                     try {
                         StringEntity se = new StringEntity(jsonString);
@@ -239,7 +239,6 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                         httpclient.execute(post, responseHandler);
                     } catch (Exception e) {
                         Log.w(TAG, "Unable to post data to: '" + post.getURI().toString() + "'", e);
-                        log.warn("Unable to post data to: '" + post.getURI().toString() + "'", e);
                     }
                 }
             }
@@ -279,14 +278,12 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 
                 } catch (Exception e) {
                     Log.w(TAG, "Unable to populate entry, apiVersion: " + apiVersion, e);
-                    log.warn("Unable to populate entry, apiVersion: " + apiVersion, e);
                     continue;
                 }
 
                 String jsonString = json.toString();
 
                 Log.i(TAG, "DEXCOM JSON: " + jsonString);
-                log.info("DEXCOM JSON: " + jsonString);
 
                 try {
                     StringEntity se = new StringEntity(jsonString);
@@ -297,6 +294,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                     ResponseHandler responseHandler = new BasicResponseHandler();
                     httpclient.execute(post, responseHandler);
                 } catch (Exception e) {
+                    Log.e(TAG, "Exception uploading: ", e);
                     if (typeSaved == 0) {//Only EGV records are important enough.
                         if (recordsNotUploadedListJson.size() > 49) {
                             recordsNotUploadedListJson.remove(0);
@@ -305,15 +303,12 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                             recordsNotUploadedListJson.add(json);
                         }
                     }
-
                     Log.w(TAG, "Unable to post data to: '" + post.getURI().toString() + "'", e);
-                    log.warn("Unable to post data to: '" + post.getURI().toString() + "'", e);
                 }
             }
             postDeviceStatus(baseURL, httpclient);
         } catch (Exception e) {
             Log.e(TAG, "Unable to post data", e);
-            log.error("Unable to post data", e);
         }
         if (recordsNotUploadedListJson.size() > 0) {
             synchronized (isModifyingRecordsLock) {
@@ -346,7 +341,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                     editor.remove("recordsNotUploadedJson");
                     editor.commit();
                 } catch (Exception e) {
-                    log.debug("ERROR RETRIEVING OLDER LISTs, I HAVE LOST THEM");
+                    Log.i(TAG, "ERROR RETRIEVING OLDER LISTs, I HAVE LOST THEM");
                     SharedPreferences.Editor editor = settings.edit();
                     if (settings.contains("recordsNotUploadedJson"))
                         editor.remove("recordsNotUploadedJson");
@@ -364,7 +359,6 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
     private void postDeviceStatus(String baseURL, DefaultHttpClient httpclient) throws Exception {
         String devicestatusURL = baseURL + "devicestatus";
         Log.i(TAG, "devicestatusURL: " + devicestatusURL);
-        log.info("devicestatusURL: " + devicestatusURL);
 
         JSONObject json = new JSONObject();
         json.put("uploaderBattery", DexcomG4Activity.batLevel);
