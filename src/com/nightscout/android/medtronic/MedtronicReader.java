@@ -302,7 +302,7 @@ public class MedtronicReader {
 		//get current date time with Date()
 		Date date = new Date();
 		valuetosend = dateFormat.format(date) + valuetosend;
-		Log.i("medtronicReader", valuetosend);
+		Log.i(TAG, valuetosend);
 		// log.debug("MedtronicReader Sends to UI "+valuetosend);
 
 
@@ -386,8 +386,10 @@ public class MedtronicReader {
 			return MedtronicConstants.COMMAND_ANSWER;
 		else if ((first == (byte) 0x03) || (first == (byte) 0x13))
 			return MedtronicConstants.FILTER_COMMAND;
-		else if (first == (byte) 0x82)
+		else if (first == (byte) 0x82) {
+			sendErrorMessageToUI("Garbled/incomplete message received");
 			return MedtronicConstants.CRC_ERROR;
+		}
 		else
 			return MedtronicConstants.UNKNOWN_ANSWER;
 	}
@@ -512,11 +514,11 @@ public class MedtronicReader {
 							MedtronicSensorRecord auxRecord = new MedtronicSensorRecord();
 
 							auxRecord.isCalibrating = calibrationSelectedAux == MedtronicConstants.CALIBRATION_GLUCOMETER;
-							log.debug("1");
+							Log.d(TAG, "No previous record - 1");
 							writeLocalCSV(auxRecord, context);
 						} else {
 							previousRecord.isCalibrating = calibrationSelectedAux == MedtronicConstants.CALIBRATION_GLUCOMETER;
-							log.debug("2");
+							Log.d(TAG, "Has previous record - 2");
 							writeLocalCSV(previousRecord,
 									context);
 						}
@@ -537,10 +539,10 @@ public class MedtronicReader {
 					Log.d(TAG, "SENSOR1 DATA RECEIVED");
 					if (prefs.getString("glucSrcTypes", "1")
 							.equals("2")) {
-						log.debug("Sensor value received, but value is took only by pump logs");
+						Log.d(TAG, "Sensor value received, but value is took only by pump logs");
 						break;
 					}
-					log.debug("WARMING_UP");
+					Log.d(TAG, "WARMING_UP");
 					SharedPreferences.Editor editor = settings
 							.edit();
 					editor.remove("lastGlucometerMessage");
@@ -552,7 +554,7 @@ public class MedtronicReader {
 							"calibrationStatus",
 							MedtronicConstants.WITHOUT_ANY_CALIBRATION);
 					editor.remove("calibrationFactor");
-					log.debug("remove lastCalibrationDate");
+					Log.d(TAG, "remove lastCalibrationDate");
 					editor.remove("lastCalibrationDate");
 					editor.remove("lastGlucometerValue");
 					editor.remove("lastGlucometerDate");
@@ -578,11 +580,11 @@ public class MedtronicReader {
 					if (previousRecord == null) {
 						MedtronicSensorRecord auxRecord = new MedtronicSensorRecord();
 						calculateDate(auxRecord, new Date(), 0);
-						log.debug("3");
+						Log.d(TAG, "no previous record - 3");
 						writeLocalCSV(auxRecord, context);
 					} else {
 						calculateDate(previousRecord, new Date(), 0);
-						log.debug("4");
+						Log.d(TAG, "previous record - 4");
 						writeLocalCSV(previousRecord, context);
 					}
 					sendMessageToUI("sensor data wUp.");
@@ -612,7 +614,7 @@ public class MedtronicReader {
 							editor1.putBoolean("isWarmingUp", false);
 							editor1.commit();
 						}
-						log.debug("Sensor value received, but value is took only by pump logs");
+						Log.d(TAG,"Sensor value received, but value is took only by pump logs");
 						break;
 					}
 					Log.i("MEdtronic", "process sensor2");
@@ -669,17 +671,18 @@ public class MedtronicReader {
                      */
 	public void processBufferedMessages(ArrayList<byte[]> bufferedMessages) {
 
-		log.debug("processBufferedMessages");
+		Log.d(TAG, "processBufferedMessages");
 
 		try {
 			for (byte[] readData : bufferedMessages) {
 				if (checkFirstByte(readData[0])) {
 					switch (getAnswerType(readData[0])) {
 					case MedtronicConstants.DATA_ANSWER:
+						Log.d(TAG, "DataAnswer recevied");
 						processDataAnswer(readData);
 						break;
 					case MedtronicConstants.COMMAND_ANSWER:
-						log.debug("ACK Received");
+						Log.d(TAG, "ACK Received");
 						synchronized (sendingCommandLock) {
 							sendingCommand = false;
 						}
@@ -691,13 +694,13 @@ public class MedtronicReader {
 							; // FILTER ACTIVATED
 						break;
 					default: {
-						log.debug("I don't understand this message "
+						Log.d(TAG, "I don't understand this message "
 								+ HexDump.toHexString(readData));
 
 					}
 					}
 				} else {
-					log.debug("CRC ERROR!!! " + HexDump.dumpHexString(readData));
+					Log.d(TAG, "CRC ERROR!!! " + HexDump.dumpHexString(readData));
 				}
 			}
 		} catch (Exception ex2) {
@@ -720,7 +723,7 @@ public class MedtronicReader {
 	 */
 	private ArrayList<byte[]> parseMessageData(byte[] readData, int read) {
 		byte[] readBuffer = null;
-		log.debug("PARSE MESSAGE");
+		Log.d(TAG, "Parsing message");
 		ArrayList<byte[]> messageList = new ArrayList<byte[]>();
 		if (notFinishedRead == null || notFinishedRead.length <= 0) {
 			readBuffer = Arrays.copyOf(readData, read);
@@ -743,7 +746,7 @@ public class MedtronicReader {
 		while (i < readBuffer.length) {
 			int answer = getAnswerType(readBuffer[i]);
 			if (answer == MedtronicConstants.COMMAND_ANSWER) {
-				log.debug("COMMAND");
+				Log.d(TAG, "COMMAND");
 				if (readBuffer.length >= i + 3)
 					messageList.add(Arrays.copyOfRange(readBuffer, i, i + 3));
 				else {
@@ -753,15 +756,15 @@ public class MedtronicReader {
 				}
 				i += 3;
 			} else if (answer == MedtronicConstants.FILTER_COMMAND) {
-				log.debug("FILTERCOMMAND");
+				Log.d(TAG, "FILTERCOMMAND");
 				messageList.add(Arrays.copyOfRange(readBuffer, i, i + 1));
 				i++;
 			} else if (answer == MedtronicConstants.CRC_ERROR) {
-				log.debug("CRC ERROR");
+				Log.d(TAG, "CRC ERROR");
 				if (hGetter != null && hGetter.isWaitingNextLine) {
 					if (hGetter.timeout >= 2) {
 						hGetter.timeout = 0;
-						log.debug("too much retries");
+						Log.d(TAG, "too much retries");
 						sendMessageToUI(
 								"historic log read aborted! too much crc errors, waiting to retry.");
 					} else {
@@ -802,7 +805,7 @@ public class MedtronicReader {
 					return messageList;
 				}
 			} else if (answer == MedtronicConstants.DATA_ANSWER) {
-				log.debug("DATA_ANSWER");
+				Log.d(TAG, "DATA_ANSWER");
 				if (readBuffer.length <= i + 1) {
 					notFinishedRead = Arrays.copyOfRange(readBuffer, i,
 							readBuffer.length);
@@ -2559,7 +2562,12 @@ public class MedtronicReader {
      * @param clear, if true, the display is cleared before printing "valuetosend"
      */
 	private void sendErrorMessageToUI(String valuetosend) {
-		Log.e("medtronicCGMService", valuetosend);
+		DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss - ");
+		//get current date time with Date()
+		Date date = new Date();
+		valuetosend = dateFormat.format(date) + valuetosend;
+		Log.e(TAG, valuetosend);
+		// log.debug("MedtronicReader Sends to UI "+valuetosend);
 
 		if (mClients != null && mClients.size() > 0) {
 			for (int i = mClients.size() - 1; i >= 0; i--) {
