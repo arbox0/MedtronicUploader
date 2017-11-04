@@ -811,12 +811,11 @@ public class MedtronicCGMService extends Service implements
 			synchronized (mSerialLock) {
 				if (mSerial.isOpened() && !isDestroying) {
 
-					log.debug("doREadAndUpload");
+					Log.d(TAG, "doReadAndUpload");
 					ArrayList<byte[]> bufferedMessages = medtronicReader
 							.readFromReceiver(size);
-					log.debug("Stream Received--> READED");
 					if (bufferedMessages != null && bufferedMessages.size() > 0) {
-						log.debug("Stream Received--> There are "+bufferedMessages.size()+" to process ");
+						Log.d(TAG, "doReadAndUpload: there are "+bufferedMessages.size()+" to process ");
 						synchronized (buffMessagesLock) {
 							processBufferedMessages.bufferedMessages
 									.addAll(bufferedMessages);
@@ -826,7 +825,7 @@ public class MedtronicCGMService extends Service implements
 							mHandlerProcessRead.post(processBufferedMessages);
 						}
 					}else{
-						log.debug("NULL doReadAndUpload");
+						Log.d(TAG, "Nothing to do in doReadAndUpload");
 					}
 
 				}
@@ -844,37 +843,26 @@ public class MedtronicCGMService extends Service implements
 	 */
 	private Runnable reloadLostRecords = new Runnable() {
 		public void run() {
-			Log.d(TAG, "Reloading Lost Records from medtronic service");
 
-    		JSONArray recordsNotUploadedJson;
+			Log.d(TAG, "Reload any lost records from medtronic service");
 
 			try {
-				recordsNotUploadedJson = new JSONArray(settings.getString("recordsNotUploadedJson","[]"));
+				JSONArray recordsNotUploadedJson = new JSONArray(settings.getString("recordsNotUploadedJson","[]"));
 				synchronized (reloadLostLock) {
-					if (isOnline()){
-						log.debug("reloadnotuploaded is online -> "+recordsNotUploadedJson.length() +" "+ !isDestroying);
+					if (isOnline()) {
+						log.debug("reloadnotuploaded is online -> " + recordsNotUploadedJson.length() + " " + !isDestroying);
 						if (recordsNotUploadedJson.length() > 0 && !isDestroying) {
-							log.debug("to upload old records");
+							Log.i(TAG, "Uploading" + recordsNotUploadedJson.length() + " lost records");
 							uploader = new UploadHelper(getApplicationContext());
-							if (!isDestroying)
-								mHandlerReloadLost.postDelayed(reloadLostRecords, 60000);
-							return;
 						}
-					}else{
-						if (!isDestroying)
-							mHandlerReloadLost.postDelayed(reloadLostRecords, 60000);
 					}
 				}
-				
 			} catch (JSONException e) {
-			
-				log.error("Error Reloading Lost Records");
-				e.printStackTrace();
+				sendExceptionToUI("Error Reloading Lost Records", e);
 			}
 			
 			if (!isDestroying)
 				mHandlerReloadLost.postDelayed(reloadLostRecords, 60000);
-			log.debug("lost records reloaded from medtronic service");
 		}
 	};
 	/**
@@ -1031,6 +1019,7 @@ public class MedtronicCGMService extends Service implements
 		if (faking) return;
 		if (mSerial == null) {
 			Toast.makeText(this, "cannot open / null device", Toast.LENGTH_SHORT).show();
+			Log.e(TAG, "mSerial==null");
 			return;
 		}
 		if (mSerial.isOpened() && reload){
@@ -1044,6 +1033,7 @@ public class MedtronicCGMService extends Service implements
 				if (!mSerial.open()) {
 					Toast.makeText(this, "cannot open / will not open", Toast.LENGTH_SHORT)
 							.show();
+					Log.e(TAG, "mSerial noted opened and will not open");
 					return;
 				} else {
 					if (!isReloaded && reload)
@@ -1407,9 +1397,7 @@ public class MedtronicCGMService extends Service implements
 								if (!medtronicReader.knownDevices.contains(prefs.getString("glucometer_cgm_id", ""))){
 									medtronicReader.knownDevices.add(prefs.getString("glucometer_cgm_id", ""));
 								}
-								medtronicReader.idGluc = HexDump.hexStringToByteArray(prefs.getString(
-									"glucometer_cgm_id", ""));
-								
+
 							}
 						}
 						if (key.equalsIgnoreCase("sensor_cgm_id") && prefs.contains("sensor_cgm_id")) {
@@ -1422,7 +1410,6 @@ public class MedtronicCGMService extends Service implements
 								if (!medtronicReader.knownDevices.contains(sensorID)){
 									medtronicReader.knownDevices.add(sensorID);
 								}
-								medtronicReader.idSensor = HexDump.hexStringToByteArray(sensorID);
 							}
 						}
 						medtronicReader.storeKnownDevices();

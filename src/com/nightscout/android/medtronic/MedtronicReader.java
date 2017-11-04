@@ -53,8 +53,6 @@ public class MedtronicReader {
 
 	protected Context context = null;
 	protected byte[] idPump = null;
-	protected byte[] idGluc = null;
-	protected byte[] idSensor = null;
 	protected byte[] notFinishedRead = null;
 
 	public MedtronicPumpRecord lastMedtronicPumpRecord = null;// last medtronic
@@ -161,8 +159,7 @@ public class MedtronicReader {
 		if (prefs.contains("glucometer_cgm_id")) {
 			if (prefs.getString("glucometer_cgm_id", "").length() > 0) {
 				knownDevices.add(prefs.getString("glucometer_cgm_id", ""));
-				idGluc = HexDump.hexStringToByteArray(prefs.getString(
-						"glucometer_cgm_id", ""));
+
 			}
 		}
 		if (prefs.contains("sensor_cgm_id")) {
@@ -177,7 +174,6 @@ public class MedtronicReader {
 							+ prefs.getString("sensor_cgm_id", "0")
 							+ " transformed to " + sensorID);
 					knownDevices.add(sensorID);
-					idSensor = HexDump.hexStringToByteArray(sensorID);
 				}
 				catch(NumberFormatException nfe){
 					sendErrorMessageToUI("Sensor ID is incorrect - needs to be a number.  Ignored.");
@@ -841,14 +837,13 @@ public class MedtronicReader {
 	 * @param calibrationSelected
 	 * @return String, for debug or notification purposes
 	 */
-	public String processPumpDataMessage(byte[] readData,
+	public void processPumpDataMessage(byte[] readData,
 			int calibrationSelected) {
 		int commandByte = firstByteAfterDeviceId(readData);
-		String sResult = "I do nothing";
 		if (commandByte < 0)
-			return "Error, I can not identify the command byte";
+			return;
 		if (lastCommandSend == null)
-			return "lastCommand == null";
+			return;
 		switch (readData[commandByte]) {
 		case MedtronicConstants.MEDTRONIC_GET_LAST_PAGE: {
 			synchronized (waitingCommandLock) {
@@ -860,13 +855,7 @@ public class MedtronicReader {
 			historicPageIndex = HexDump.byteArrayToInt(modelArray);
 			hGetter.historicPageIndex = historicPageIndex;
 			hGetter.lastHistoricPage = modelArray;
-			String sModel = new String(HexDump.toHexString(modelArray));
-			sResult = "Command " + commandByte + " Read Data "
-					+ HexDump.toHexString(readData)
-					+ " Pump last historic page......: " + sModel;
-
-			log.debug(sResult);
-			return sResult;
+			return;
 		}
 		case MedtronicConstants.MEDTRONIC_READ_PAGE_COMMAND: {
 			log.debug("READ_PAGE");
@@ -898,10 +887,7 @@ public class MedtronicReader {
 								lastCommandSend = null;
 							}
 							hGetter.historicPage.clear();
-							return "Error currentLine is "
-							+ hGetter.currentLine + " next line is "
-							+ currentLineAux
-							+ " is not the order expected";
+							return;
 						}
 						hGetter.currentLine = currentLineAux;
 						byte[] modelArray = Arrays.copyOfRange(readData,
@@ -917,11 +903,6 @@ public class MedtronicReader {
 							hGetter.withoutConfirmation = 0;
 							hGetter.wThread.isRequest = true;
 							hGetter.wThread.postCommandBytes = null;
-							// String sModel = new
-							// String(HexDump.toHexString(modelArray));
-							sResult = "Pump last historic page ("
-									+ hGetter.currentLine + ")......: Ok.";// +
-							// sModel;
 							hGetter.isWaitingNextLine = true;
 						} else {
 							log.debug("All lines read.");
@@ -936,8 +917,7 @@ public class MedtronicReader {
 				}
 			}
 
-			log.debug(sResult);
-			return sResult;
+			return;
 		}
 		case MedtronicConstants.MEDTRONIC_GET_PUMP_MODEL:
 			log.debug("Pump Model Received");
@@ -957,10 +937,9 @@ public class MedtronicReader {
 						commandByte + 2,
 						(commandByte + 2 + (readData[commandByte + 1])));
 				String sModel = new String(modelArray);
-				sResult = "Pump model......: " + sModel;
 				lastMedtronicPumpRecord.model = sModel;
 			}
-			return sResult;
+			return;
 		case MedtronicConstants.MEDTRONIC_GET_ALARM_MODE:
 			log.debug("Pump Alarm Mode Received");
 			if (lastMedtronicPumpRecord == null) {
@@ -974,14 +953,8 @@ public class MedtronicReader {
 					waitingCommand = false;
 					lastCommandSend = null;
 				}
-				int status = readData[commandByte + 2];
-				if (status == 0)
-					sResult = "Ok";
-				else
-					sResult = "Unknown (by now)";
-				lastMedtronicPumpRecord.alarm = sResult;
 			}
-			return sResult;
+			return;
 		case MedtronicConstants.MEDTRONIC_GET_PUMP_STATE:
 			log.debug("Pump Status Received");
 			sendMessageToUI("Pump Status Received...");
@@ -996,13 +969,11 @@ public class MedtronicReader {
 					waitingCommand = false;
 					lastCommandSend = null;
 				}
-				sResult = "Pump state...........: "
-						+ HexDump.toHexString(readData[commandByte + 2]);
 				lastMedtronicPumpRecord.status = HexDump
 						.toHexString(readData[commandByte + 2]);
 			}
 
-			return sResult;
+			return;
 		case MedtronicConstants.MEDTRONIC_GET_TEMPORARY_BASAL:
 			log.debug("Pump Temporary Basal Received");
 			if (lastMedtronicPumpRecord == null) {
@@ -1021,10 +992,9 @@ public class MedtronicReader {
 						(commandByte + 2 + (readData[commandByte + 2])));
 				String sTempBasalArray = HexDump.toHexString(tempBasalArray);
 
-				sResult = "Temporary basal......: " + sTempBasalArray;
 				lastMedtronicPumpRecord.status = sTempBasalArray;
 			}
-			return sResult;
+			return;
 		case MedtronicConstants.MEDTRONIC_GET_BATTERY_STATUS:
 			Log.d(TAG, "Pump Battery Status Received");
 			sendMessageToUI("Pump Battery Status Received...");
@@ -1044,17 +1014,14 @@ public class MedtronicReader {
 						.unsignedByte(readData[commandByte + 3])) * 256f + (float) HexDump
 						.unsignedByte(readData[commandByte + 4])) / 100;
 				if (status == 0) {
-					sResult = "Battery status.......: Normal\n";
 					lastMedtronicPumpRecord.batteryStatus = "Normal";
 				} else {
-					sResult = "Battery status.......: Low\n";
 					lastMedtronicPumpRecord.batteryStatus = "Low";
 				}
 
-				sResult += "Battery voltage......: " + voltage + " Volts";
 				lastMedtronicPumpRecord.batteryVoltage = "" + voltage;
 			}
-			return sResult;
+			return;
 		case MedtronicConstants.MEDTRONIC_GET_REMAINING_INSULIN:
 			log.debug("Pump Remaining Insulin Received");
 			sendMessageToUI("Pump Remaining Insulin Received...");
@@ -1072,10 +1039,9 @@ public class MedtronicReader {
 				float insulinLeft = (HexDump
 						.unsignedByte(readData[commandByte + 4]) * 256f + (float) HexDump
 						.unsignedByte(readData[commandByte + 5])) / 40f;
-				sResult = "Remaining insulin....: " + insulinLeft + " Units";
 				lastMedtronicPumpRecord.insulinLeft = insulinLeft;
 			}
-			return sResult;
+			return;
 		case MedtronicConstants.MEDTRONIC_GET_REMOTE_CONTROL_IDS:
 			log.debug("Pump Remote Control Ids Received");
 			sendMessageToUI("Pump Remote Control Ids Received...");
@@ -1109,11 +1075,9 @@ public class MedtronicReader {
 						knownDevices.add(sRemoteControlID3);
 				}
 				storeKnownDevices();
-				sResult = "Remote Control IDs...: " + sRemoteControlID1 + "  "
-						+ sRemoteControlID2 + "  " + sRemoteControlID3;
 
 			}
-			return sResult;
+			return;
 		case MedtronicConstants.MEDTRONIC_GET_PARADIGM_LINK_IDS:
 			Log.i(TAG, "Pump Paradigm Link Ids Received");
 			sendMessageToUI("Pump Paradigm Link Ids Received...");
@@ -1147,10 +1111,8 @@ public class MedtronicReader {
 						knownDevices.add(sGlucID3);
 				}
 				storeKnownDevices();
-				sResult = "Paradigm Link IDs....: " + sGlucID1 + "  "
-						+ sGlucID2 + "  " + sGlucID3;
 			}
-			return sResult;
+			return ;
 		case MedtronicConstants.MEDTRONIC_GET_SENSORID:
 			log.debug("Pump Sensor Id Received");
 			sendMessageToUI("Pump Sensor Id Received...");
@@ -1164,14 +1126,12 @@ public class MedtronicReader {
 					byte[] sensorId = Arrays.copyOfRange(readData,
 							commandByte + 58, commandByte + 61);
 					String sSensorId = HexDump.toHexString(sensorId);
-					sResult = "Sensor ID...: " + sSensorId;
 					if (!knownDevices.contains(sSensorId))
 						knownDevices.add(sSensorId);
 					storeKnownDevices();
-				} else
-					sResult = readData.length + " Not enough length";
+				}
 			}
-			return sResult;
+			return;
 		case MedtronicConstants.MEDTRONIC_GET_CALIBRATION_FACTOR:
 			log.debug("Pump Calibration Factor Received");
 			sendMessageToUI("Pump Cal. Factor Received...");
@@ -1219,9 +1179,8 @@ public class MedtronicReader {
 					// " Factor "+calibrationFactor, false);
 
 				}
-				sResult = "Calibration Factor...: " + factor;
 			}
-			return sResult;
+			return;
 		case MedtronicConstants.MEDTRONIC_ACK:
 			log.debug("Pump Ack Received");
 			if (lastCommandSend != null) {
@@ -1233,11 +1192,10 @@ public class MedtronicReader {
 					lastCommandSend = null;
 				}
 			}
-			return "ACK RECEIVED! ";
+			return;
 		default:
-			log.error("Undecoded Command");
-			return "I do not understand this command "
-			+ HexDump.toHexString(readData[commandByte]);
+			Log.e(TAG, "Undecoded Command");
+			return;
 		}
 	}
 
@@ -2681,55 +2639,6 @@ public class MedtronicReader {
 			}
 		}
 
-		/**
-		 * clear
-		 */
-		public void clear() {
-			synchronized (listLock) {
-				size = 0;
-				endOffset = 0;
-				startOffset = 0;
-				list.clear();
-			}
-		}
-
-		/**
-		 * @param size
-		 *            , maximum number of elements to get.
-		 * @return a list sorted from the "startOffset" to the "endOffset".
-		 */
-		public List<E> getList(int size) {
-			List<E> result = new ArrayList<E>();
-			List<E> aux = null;
-			int auxEndOffset = 0;
-			int auxStartOffset = 0;
-			synchronized (listLock) {
-				auxEndOffset = endOffset;
-				auxStartOffset = startOffset;
-				aux = new ArrayList<E>();
-				aux.addAll(list);
-
-			}
-			int auxSize = size;
-			if (auxSize > aux.size())
-				auxSize = aux.size();
-			if (auxEndOffset > auxStartOffset) {
-				for (int i = auxStartOffset; i < auxEndOffset && auxSize > 0; i++) {
-					result.add(aux.get(i));
-					auxSize--;
-				}
-			} else {
-				for (int i = auxStartOffset; i < capacity && auxSize > 0; i++) {
-					result.add(aux.get(i));
-					auxSize--;
-				}
-				for (int i = 0; i < auxEndOffset && auxSize > 0; i++) {
-					result.add(aux.get(i));
-					auxSize--;
-				}
-			}
-			return result;
-		}
 
 		/**
 		 * @param size

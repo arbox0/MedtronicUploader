@@ -87,7 +87,6 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
     public static int batLevel = 0;
     BatteryReceiver mArrow;
     IBinder bService = null;
-    Intent batteryReceiver;
     Messenger mService = null;
     boolean mIsBound;
     boolean keepServiceAlive = true;
@@ -308,7 +307,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 			            		df = new DecimalFormat("#.##");
 			            	else
 			            		df = new DecimalFormat("#.#");
-			            	if (auxRecord instanceof MedtronicSensorRecord && auxRecord != null){
+			            	if (auxRecord instanceof MedtronicSensorRecord){
 
 								MedtronicSensorRecord record = (MedtronicSensorRecord) auxRecord;
 								displaySensor(record, calDate,df);
@@ -456,7 +455,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
         mIntentFilter.addAction(Intent.ACTION_BATTERY_LOW);
         mIntentFilter.addAction(Intent.ACTION_BATTERY_CHANGED);
         mIntentFilter.addAction(Intent.ACTION_BATTERY_OKAY);
-        batteryReceiver = registerReceiver(mArrow,mIntentFilter);
+        registerReceiver(mArrow,mIntentFilter);
         setContentView(R.layout.adb);
         manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
         mTitleTextView = (TextView) findViewById(R.id.demoTitle);
@@ -620,8 +619,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 				df = new DecimalFormat("#.##");
 			else
 				df = new DecimalFormat("#.#");
-			if (auxRecord instanceof MedtronicSensorRecord
-					&& auxRecord != null) {
+			if (auxRecord instanceof MedtronicSensorRecord) {
 
 				MedtronicSensorRecord record = (MedtronicSensorRecord) auxRecord;
 				displaySensor(record, calDate,df);
