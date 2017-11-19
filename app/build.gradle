@@ -10,7 +10,7 @@ def gitVersionCode = { ->
         return code.toString().split("\n").size()
     }
     catch (ignored) {
-        return -1;
+        return -1
     }
 }
 
@@ -24,18 +24,18 @@ def gitVersionName = { ->
         return stdout.toString().trim()
     }
     catch (ignored) {
-        return null;
+        return null
     }
 }
 
 android {
-    compileSdkVersion 21
-    buildToolsVersion "25.0.3"
+    compileSdkVersion 23
+    buildToolsVersion '26.0.2'
 
     defaultConfig {
         applicationId "com.nightscout.android"
-        minSdkVersion 17
-        targetSdkVersion 21
+        minSdkVersion 21
+        targetSdkVersion 23
         versionCode gitVersionCode()
         versionName gitVersionName()
     }

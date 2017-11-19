@@ -218,7 +218,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	            		 for (StackTraceElement st : e.getStackTrace()){
 	            			 sb1.append(st.toString()).append("\n");
 	            		 }
-	            		 Log.e("ApprovingGlucValReceived", "Error approving gluc. value \n "+sb1.toString());
+	            		 Log.e(TAG, "Error approving gluc. value \n "+sb1.toString());
 	                	 if (ISDEBUG){
 	                		 display.setText(display.getText()+"Error approving gluc. value\n", BufferType.EDITABLE);
 	                	 }
@@ -257,7 +257,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
             // This is called when the connection with the service has been unexpectedly disconnected - process crashed.
             mService = null;
             bService = null;
-            Log.i("DXCG4_MEDTRONICSERVICE_ONSERVICEDISCONNECTED","Service Disconnected\n");
+            Log.i(TAG,"Service Disconnected\n");
             if (ISDEBUG){
             	display.setText(display.getText()+"Service Disconnected\n", BufferType.EDITABLE);
             }
@@ -433,8 +433,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	 	StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
 		StrictMode.setThreadPolicy(policy);
 
-		
-        this.settings = getBaseContext().getSharedPreferences(
+		this.settings = getBaseContext().getSharedPreferences(
 				MedtronicConstants.PREFS_NAME, 0);
         PreferenceManager.getDefaultSharedPreferences(getBaseContext()).registerOnSharedPreferenceChangeListener(this);
         prefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
@@ -589,8 +588,10 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
            
             }
         });
+		Log.i(TAG, "Version: " + BuildConfig.VERSION_NAME + " / " + BuildConfig.VERSION_CODE);
 
-    }
+
+	}
 
     @Override
     protected void onPause() {
@@ -874,7 +875,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 		            		 for (StackTraceElement st : e.getStackTrace()){
 		            			 sb1.append(st.toString()).append("\n");
 		            		 }
-		            		 Log.e("medtronicManualCalibration", "Error sending Instant Calibration\n "+sb1.toString());
+		            		 Log.e(TAG, "Error sending Instant Calibration\n "+sb1.toString());
 		                	 if (ISDEBUG){
 		                		 display.setText(display.getText()+"Error sending Instant Calibration\n", BufferType.EDITABLE);
 		                	 }
