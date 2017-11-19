@@ -1,7 +1,7 @@
 <component name="libraryTable">
-  <library name="bugfender">
+  <library name="physicaloidlibrary">
     <CLASSES>
-      <root url="jar://$PROJECT_DIR$/app/libs/bugfender.jar!/" />
+      <root url="jar://$PROJECT_DIR$/app/libs/physicaloidlibrary.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />
