@@ -8,12 +8,7 @@ public class MedtronicConstants {
     public static final int FILTER_COMMAND = 2;
     public static final int UNKNOWN_ANSWER = 3;
     public static final int CRC_ERROR = 4;
-    
-    //General constants
-    public static final int NUMBER_OF_RETRIES = 5;
 
-    public static final int TIMEOUT = 3000; 
-    public static final int WAIT_ANSWER = 5000;
     public static final int FIVE_SECONDS__MS = 5000;
     public static final int TIME_5_MIN_IN_MS = 300000;
     public static final int TIME_15_MIN_IN_MS = 900000;
@@ -21,7 +16,6 @@ public class MedtronicConstants {
     public static final int TIME_20_MIN_IN_MS = 1200000;
     public static final int TIME_30_MIN_IN_MS = 1800000;
     public static final int TIME_60_MIN_IN_MS = 3600000;
-    public static final int TIME_90_MIN_IN_MS = 5400000;
     public static final int TIME_12_HOURS_IN_MS = 43200000;
     public static final String PREFS_NAME = "MyPrefsFile";
     public static final float SENSOR_CONVERSION_CONSTANT_VALUE = 160.72f;
@@ -53,10 +47,8 @@ public class MedtronicConstants {
     public static final String	CALIBRATED_IN_15MIN_STR = "Calibrated between 15min. and 20min.";
     public static final String	CALIBRATING_STR = "Calibrating, wait 15 to 20min.";
     public static final String	CALIBRATING2_STR = "Calibrating, 2 values received wait 5min. more";
-    
-	//Medtronic commands
-	public static final byte MEDTRONIC_WAKE_UP = (byte)0x5d;
-	public static final byte MEDTRONIC_GET_PUMP_MODEL = (byte)0x8d;
+
+    public static final byte MEDTRONIC_GET_PUMP_MODEL = (byte)0x8d;
 	public static final byte MEDTRONIC_GET_ALARM_MODE = (byte)0x75;
 	public static final byte MEDTRONIC_GET_PUMP_STATE = (byte)0x83;
 	public static final byte MEDTRONIC_GET_TEMPORARY_BASAL = (byte)0x98;
@@ -69,8 +61,7 @@ public class MedtronicConstants {
 	public static final byte MEDTRONIC_GET_LAST_PAGE = (byte)0xcd;
 	public static final byte MEDTRONIC_GET_CALIBRATION_FACTOR = (byte)0x9c;
 	public static final byte MEDTRONIC_ACK = (byte)0x06;
-	public static final byte MEDTRONIC_INIT = (byte)0xff;
-	//Device class
+    //Device class
 	public static final byte MEDTRONIC_PUMP = (byte)0xa7;
 	public static final byte MEDTRONIC_SENSOR1 = (byte)0xaa;
 	public static final byte MEDTRONIC_SENSOR2 = (byte)0xab;
@@ -80,8 +71,7 @@ public class MedtronicConstants {
 	public static final int MSG_REGISTER_CLIENT = 0; 
 	public static final int MSG_UNREGISTER_CLIENT = 1;
 	public static final int MSG_MEDTRONIC_CGM_MESSAGE_RECEIVED = 2;
-	public static final int MSG_MEDTRONIC_CGM_TEST_MESSAGE_REQUEST = 3;
-	public static final int MSG_MEDTRONIC_CGM_CLEAR_DISPLAY = 4;
+    public static final int MSG_MEDTRONIC_CGM_CLEAR_DISPLAY = 4;
 	public static final int MSG_MEDTRONIC_CGM_NO_PERMISSION = 5;
 	public static final int MSG_MEDTRONIC_CGM_USB_GRANTED = 6;
 	public static final int MSG_MEDTRONIC_CGM_REQUEST_PERMISSION = 7;
@@ -90,8 +80,7 @@ public class MedtronicConstants {
 	public static final int MSG_MEDTRONIC_SEND_GET_SENSORCAL_FACTOR = 10;
 	public static final int MSG_MEDTRONIC_SEND_GET_PUMP_INFO = 11;
 	public static final int MSG_MEDTRONIC_SEND_INSTANT_CALIB_VALUE = 12;
-	public static final int MSG_MEDTRONIC_SEND_INSTANT_GLUC_VALUE = 13;
-	public static final int MSG_MEDTRONIC_CALIBRATION_DONE = 14;
+    public static final int MSG_MEDTRONIC_CALIBRATION_DONE = 14;
 	public static final int MSG_MEDTRONIC_GLUCMEASURE_DETECTED = 15;
 	public static final int MSG_MEDTRONIC_GLUCMEASURE_APPROVED = 16;
 	public static final int MSG_MEDTRONIC_FAKE = 17;

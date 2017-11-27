@@ -85,7 +85,6 @@ public class MedtronicReader {
 	// but we do not have the answer
 	// yet.
 	public CircleList<Record> lastRecordsInMemory = new CircleList<Record>(10);// array
-	private Object lastRecordsListLock = new Object();
 	// to
 	// store
 	// last
@@ -986,10 +985,6 @@ public class MedtronicReader {
 	private void calibratingBackwards(float previousCalibrationFactor,
 			int previousCalibrationStatus, float isig,
 			MedtronicSensorRecord record, int added, Date currentTime) {
-		List<Record> auxList = null;
-		synchronized (lastRecordsListLock) {
-			auxList = lastRecordsInMemory.getListFromTail(2);
-		}
 		if (previousCalibrationFactor > 0) {
 			if (previousCalibrationStatus != MedtronicConstants.WITHOUT_ANY_CALIBRATION) {
 				record.setUnfilteredGlucose(isig * previousCalibrationFactor);
@@ -1050,10 +1045,7 @@ public class MedtronicReader {
 			}
 		}
 		if (calibrationFactor > 0 && !calibrated) {
-			List<Record> auxList = null;
-			synchronized (lastRecordsListLock) {
-				auxList = lastRecordsInMemory.getListFromTail(2);
-			}
+
 			if (calibrationStatus != MedtronicConstants.WITHOUT_ANY_CALIBRATION) {
 				record.setUnfilteredGlucose(isig * calibrationFactor);
 				record.setBGValue((applyFilterToRecord(record)) + "");

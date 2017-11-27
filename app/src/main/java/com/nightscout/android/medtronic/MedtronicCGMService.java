@@ -68,7 +68,6 @@ public class MedtronicCGMService extends Service implements
 
 	private Physicaloid mSerial;
 	private Handler mHandlerCheckSerial = new Handler();// This handler runs readAndUpload Runnable which checks the USB device and NET connection. 
-	private Handler mHandler3ActivatePump = new Handler();// this Handler is used to execute commands after changing the pump ID
 	private Handler mHandlerRead = new Handler();// this Handler is used to read and parse the messages received from the USB, It is only activated after a Read.
 	private Handler mHandlerProcessRead = new Handler();// this Handler is used to process the messages parsed.
 	private Handler mHandlerReviewParameters = new Handler();
@@ -84,7 +83,6 @@ public class MedtronicCGMService extends Service implements
 	private int calibrationSelected = MedtronicConstants.CALIBRATION_GLUCOMETER;//calibration Selected
 	private Handler mHandlerSensorCalibration = new Handler();// this Handler is used to ask for SensorCalibration.
 	private Handler mHandlerReloadLost = new Handler();// this Handler is used to upload records which upload failed due to a network error.
-	private long pumpPeriod = MedtronicConstants.TIME_30_MIN_IN_MS;
 	private boolean connectedSent = false;
 	private boolean isDestroying = false;
 	private Object reloadLostLock = new Object();
@@ -218,15 +216,11 @@ public class MedtronicCGMService extends Service implements
 					break;
 				case MedtronicConstants.MSG_MEDTRONIC_SEND_GET_PUMP_INFO:
 					sendMessageToUI("Retrieving Pump info...");
-					log.debug("Retrieving Pump info...");
-					mHandler3ActivatePump.removeCallbacks(activateNewPump);
-					mHandler3ActivatePump.post(activateNewPump);
 					break;
 				case MedtronicConstants.MSG_MEDTRONIC_SEND_GET_SENSORCAL_FACTOR:
 					sendMessageToUI("Retrieve calibration factor...Now!");
 					log.debug("Retrieve calibration factor...Now!");
-					mHandlerSensorCalibration.removeCallbacks(getCalibrationFromSensor);
-					mHandlerSensorCalibration.post(getCalibrationFromSensor);
+
 					break;
 				case MedtronicConstants.MSG_MEDTRONIC_CGM_REQUEST_PERMISSION:
 					openUsbSerial(false);
@@ -411,7 +405,6 @@ public class MedtronicCGMService extends Service implements
 	    if (prefs.contains("pumpPeriod")){
         	int type = Integer.parseInt(prefs.getString("pumpPeriod", "1"));
         	type = (type < 1 || type > 4) ? 1 : type;
-			pumpPeriod = type * MedtronicConstants.TIME_30_MIN_IN_MS;
 		}
         if (prefs.contains("monitor_type")){
         	String type = prefs.getString("monitor_type", "1");
@@ -422,8 +415,6 @@ public class MedtronicCGMService extends Service implements
         				calibrationSelected = MedtronicConstants.CALIBRATION_MANUAL;
         			else if ("2".equalsIgnoreCase(type)){
         				calibrationSelected = MedtronicConstants.CALIBRATION_SENSOR;
-        				// start handler to ask for sensor calibration value
-        				mHandlerSensorCalibration.postDelayed(getCalibrationFromSensor, pumpPeriod);
         			}else
         				calibrationSelected = MedtronicConstants.CALIBRATION_GLUCOMETER;
         		}
@@ -472,7 +463,6 @@ public class MedtronicCGMService extends Service implements
             }
 		
 		medtronicReader.mHandlerSensorCalibration = mHandlerSensorCalibration;
-		medtronicReader.getCalibrationFromSensor = getCalibrationFromSensor;
 		checker = medtronicReader.new CalibrationStatusChecker(mHandlerReviewParameters);
 		mHandlerReviewParameters.postDelayed(checker, MedtronicConstants.TIME_5_MIN_IN_MS);
 		IntentFilter filter = new IntentFilter();
@@ -482,36 +472,7 @@ public class MedtronicCGMService extends Service implements
 		mHandlerCheckSerial.post(readAndUpload);
 		mHandlerReloadLost.postDelayed(reloadLostRecords, 60000);
 		mHandlerActive = true;
-		long currentTime = System.currentTimeMillis();
-		long diff = currentTime - settings.getLong("lastDestroy", 0);
-		if (diff == currentTime || diff > (2*MedtronicConstants.TIME_12_HOURS_IN_MS)) {
-			if (calibrationSelected == MedtronicConstants.CALIBRATION_SENSOR || !prefs.getString("glucSrcTypes","1").equals("1"))
-			{
-				if (isConnected())
-					mHandler3ActivatePump.post(activateNewPump);
-				else
-					mHandler3ActivatePump.postDelayed(activateNewPump, MedtronicConstants.TIME_5_MIN_IN_MS);
-			}
-		}
-		//if I have selected "historic log read" then ...
-		if (prefs.getString("glucSrcTypes","1").equals("2")){
-			Log.d(TAG,"LOG READ ON CREATE");
 
-		}else if (prefs.getString("glucSrcTypes","1").equals("3")){
-
-			String type = prefs.getString("historicMixPeriod", "1");
-			int t;
-			try {
-				t = Integer.parseInt(type);
-				t = (t > 11 || t < 1) ? 1 : t;
-			}
-			catch (NumberFormatException ne) {
-				t = 1;
-			}
-
-
-		}
-		
 	}
 
 	@Override
@@ -618,10 +579,7 @@ public class MedtronicCGMService extends Service implements
 						mHandlerRead.post(readByListener);
 						listenerAttached = true;
 						
-						if (calibrationSelected == MedtronicConstants.CALIBRATION_SENSOR){
-							mHandlerSensorCalibration.removeCallbacks(getCalibrationFromSensor);
-							mHandlerSensorCalibration.postDelayed(getCalibrationFromSensor, MedtronicConstants.FIVE_SECONDS__MS);
-						}
+
 					}
 
 				} else {
@@ -989,8 +947,6 @@ public class MedtronicCGMService extends Service implements
 		mHandlerRead.removeCallbacks(readByListener);
 		mHandlerProcessRead.removeCallbacks(processBufferedMessages);
 
-		mHandler3ActivatePump.removeCallbacks(activateNewPump);
-		mHandlerSensorCalibration.removeCallbacks(getCalibrationFromSensor);
 		mHandlerReviewParameters.removeCallbacks(checker);
 		listenerAttached = false;
 		mSerial.close();
@@ -1035,24 +991,14 @@ public class MedtronicCGMService extends Service implements
 	        			type = sharedPreferences.getString("calibrationType", "3");
 	        			if ("3".equalsIgnoreCase(type)){
 	        				calibrationSelected = MedtronicConstants.CALIBRATION_MANUAL;
-	        				mHandlerSensorCalibration.removeCallbacks(getCalibrationFromSensor);
 	        			}else if ("2".equalsIgnoreCase(type)){
-	        				type = sharedPreferences.getString("pumpPeriod", "1");
-	        	        	if ("2".equalsIgnoreCase(type))
-	        	        		pumpPeriod = MedtronicConstants.TIME_60_MIN_IN_MS;
-	        	        	else if ("3".equalsIgnoreCase(type))
-	        	        		pumpPeriod = MedtronicConstants.TIME_90_MIN_IN_MS;
-	        	        	else if ("4".equalsIgnoreCase(type))
-	        	        		pumpPeriod = MedtronicConstants.TIME_60_MIN_IN_MS + MedtronicConstants.TIME_60_MIN_IN_MS;
-	        	        	else
-	        	        		pumpPeriod = MedtronicConstants.TIME_30_MIN_IN_MS;
+
 	        				calibrationSelected = MedtronicConstants.CALIBRATION_SENSOR;
 	        				//start handler to ask for sensor calibration value
-	        				mHandlerSensorCalibration.removeCallbacks(getCalibrationFromSensor);
-	        				mHandlerSensorCalibration.postDelayed(getCalibrationFromSensor, pumpPeriod);
+
 	        			}else{
 	        				calibrationSelected = MedtronicConstants.CALIBRATION_GLUCOMETER;
-	        				mHandlerSensorCalibration.removeCallbacks(getCalibrationFromSensor);
+
 	        			}
 						synchronized (medtronicReader.calibrationSelectedLock) {
 	        				medtronicReader.calibrationSelected = calibrationSelected;	
@@ -1063,65 +1009,32 @@ public class MedtronicCGMService extends Service implements
 	        }
 			
 			if (sharedPreferences.contains("calibrationType") && key.equalsIgnoreCase("calibrationType")){
-				
-	        	String type = sharedPreferences.getString("pumpPeriod", "1");
-	        	if ("2".equalsIgnoreCase(type))
-	        		pumpPeriod = MedtronicConstants.TIME_60_MIN_IN_MS;
-	        	else if ("3".equalsIgnoreCase(type))
-	        		pumpPeriod = MedtronicConstants.TIME_90_MIN_IN_MS;
-	        	else if ("4".equalsIgnoreCase(type))
-	        		pumpPeriod = MedtronicConstants.TIME_60_MIN_IN_MS + MedtronicConstants.TIME_60_MIN_IN_MS;
-	        	else
-	        		pumpPeriod = MedtronicConstants.TIME_30_MIN_IN_MS;
-				
-    			type = sharedPreferences.getString("calibrationType", "3");
+
+				String type = sharedPreferences.getString("calibrationType", "3");
     			if ("3".equalsIgnoreCase(type)){
     				calibrationSelected = MedtronicConstants.CALIBRATION_MANUAL;
-    				mHandlerSensorCalibration.removeCallbacks(getCalibrationFromSensor);
+
     			}else if ("2".equalsIgnoreCase(type)){
     				calibrationSelected = MedtronicConstants.CALIBRATION_SENSOR;
     				//start handler to ask for sensor calibration value
-    				mHandlerSensorCalibration.removeCallbacks(getCalibrationFromSensor);
-    				mHandlerSensorCalibration.postDelayed(getCalibrationFromSensor, pumpPeriod);
+
     			}else{
     				calibrationSelected = MedtronicConstants.CALIBRATION_GLUCOMETER;
-    				mHandlerSensorCalibration.removeCallbacks(getCalibrationFromSensor);
+
     			}
 				synchronized (medtronicReader.calibrationSelectedLock) {
     				medtronicReader.calibrationSelected = calibrationSelected;	
 				}
 				String type1 = sharedPreferences.getString("glucSrcTypes", "1");
 				 if (calibrationSelected != MedtronicConstants.CALIBRATION_SENSOR && type1.equals("1")){
-						mHandler3ActivatePump.removeCallbacks(getCalibrationFromSensor);
+
 					}
     		}
-			if (key.equalsIgnoreCase("pumpPeriod")){
-				 if (sharedPreferences.contains("pumpPeriod")){
-			        	String type = sharedPreferences.getString("pumpPeriod", "1");
-			        	if ("2".equalsIgnoreCase(type))
-			        		pumpPeriod = MedtronicConstants.TIME_60_MIN_IN_MS;
-			        	else if ("3".equalsIgnoreCase(type))
-			        		pumpPeriod = MedtronicConstants.TIME_90_MIN_IN_MS;
-			        	else if ("4".equalsIgnoreCase(type))
-			        		pumpPeriod = MedtronicConstants.TIME_60_MIN_IN_MS + MedtronicConstants.TIME_60_MIN_IN_MS;
-			        	else
-			        		pumpPeriod = MedtronicConstants.TIME_30_MIN_IN_MS;
-			     }
-				 if (medtronicReader != null) {
-						mHandler3ActivatePump.removeCallbacks(getCalibrationFromSensor);
-						if (pumpPeriod > -1)
-							mHandler3ActivatePump.postDelayed(getCalibrationFromSensor, pumpPeriod);
-						else
-							mHandler3ActivatePump.post(getCalibrationFromSensor);
-				  }
-				 
-			}
+
 			if (key.equalsIgnoreCase("glucSrcTypes")){
 					
 					String type1 = sharedPreferences.getString("glucSrcTypes", "1");
-					if (calibrationSelected != MedtronicConstants.CALIBRATION_SENSOR && type1.equals("1")){
-						mHandler3ActivatePump.removeCallbacks(getCalibrationFromSensor);
-					}
+
 					if (type1.equals("2")){
 
 
@@ -1179,11 +1092,6 @@ public class MedtronicCGMService extends Service implements
 						synchronized (checkSerialLock) {
 							mHandlerCheckSerial.post(readAndUpload);
 							mHandlerActive = true;
-							if (medtronicReader != null) {
-								mHandler3ActivatePump.removeCallbacks(activateNewPump);
-								mHandler3ActivatePump.post(activateNewPump);
-							}
-
 						}
 					}else{
 						if (key.equalsIgnoreCase("glucometer_cgm_id") && prefs.contains("glucometer_cgm_id")) {
@@ -1216,102 +1124,6 @@ public class MedtronicCGMService extends Service implements
 			sendExceptionToUI("", e);
 		}
 	}
-	
-	/**
-	 * Runnable,
-	 * If there is a serial device connected.
-	 * This process wakes it up, and gather some information from it to upload to the cloud.
-	 */
-	private Runnable activateNewPump = new Runnable() {
-		public void run() {
-			boolean executed = false;
-			try {
-				synchronized (mSerialLock) {
-					
-					if (mSerial.isOpened()) {
-						synchronized (medtronicReader.processingCommandLock) {
-							if (medtronicReader.processingCommand){
-								mHandler3ActivatePump.postDelayed(activateNewPump,
-													MedtronicConstants.TIMEOUT);
-
-								return;
 
 
-							}else{
-								medtronicReader.processingCommand = true;
-							}
-						}
-						executed = true;
-
-
-
-
-						SharedPreferences.Editor editor = prefs.edit();
-						editor.putLong("lastPumpAwake", System.currentTimeMillis());
-						editor.commit();
-					}
-				}
-			} catch (Exception e) {
-
-				sendExceptionToUI("", e);
-				synchronized (medtronicReader.processingCommandLock) {
-					medtronicReader.processingCommand = false;
-				}
-			}finally{
-				if (!executed){
-					mHandler3ActivatePump.removeCallbacks(activateNewPump);
-					mHandler3ActivatePump.postDelayed(activateNewPump, MedtronicConstants.TIME_5_MIN_IN_MS);
-				}
-			}
-			
-		}
-	};
-
-	/**
-	 * Runnable,
-	 * If there is a serial device connected.
-	 * This process wakes it up, asks for its calibration value.
-	 */
-	private Runnable getCalibrationFromSensor = new Runnable() {
-		public void run() {
-			try {
-				Log.d(TAG, "getting Calibration factor!!");
-				synchronized (mSerialLock) {
-					log.debug("mSerial synchronized!");
-					if (mSerial.isOpened()) {
-						log.debug("mSerial open!!");
-						if (calibrationSelected == MedtronicConstants.CALIBRATION_SENSOR) {
-							synchronized (medtronicReader.processingCommandLock) {
-								if (medtronicReader.processingCommand){
-
-									log.debug("is processing other commands wait 3 secs.");
-									mHandlerSensorCalibration.postDelayed(getCalibrationFromSensor,
-											MedtronicConstants.TIMEOUT);
-									return;
-
-								}else{
-									medtronicReader.processingCommand = true;
-								}
-							}
-
-							log.debug("get Cal Factor and other info!!");
-	
-
-						}
-					}
-				}
-			} catch (Exception e) {
-				sendExceptionToUI("", e);
-				synchronized (medtronicReader.processingCommandLock) {
-					medtronicReader.processingCommand = false;
-				}
-			}finally{
-				if (pumpPeriod > -1){
-					mHandlerSensorCalibration.removeCallbacks(getCalibrationFromSensor);
-					mHandlerSensorCalibration.postDelayed(getCalibrationFromSensor, pumpPeriod);
-				}
-			}
-			
-		}
-	};
 }
