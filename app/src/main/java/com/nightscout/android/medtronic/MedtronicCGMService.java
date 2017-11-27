@@ -68,13 +68,10 @@ public class MedtronicCGMService extends Service implements
 
 	private Physicaloid mSerial;
 	private Handler mHandlerCheckSerial = new Handler();// This handler runs readAndUpload Runnable which checks the USB device and NET connection. 
-	private Handler mHandler2CheckDevice = new Handler(); // this Handler is used to read the device info each thirty minutes
 	private Handler mHandler3ActivatePump = new Handler();// this Handler is used to execute commands after changing the pump ID
-	private Handler mHandlerReadFromHistoric = new Handler();// this Handler is used to read data from pump log file.
 	private Handler mHandlerRead = new Handler();// this Handler is used to read and parse the messages received from the USB, It is only activated after a Read.
 	private Handler mHandlerProcessRead = new Handler();// this Handler is used to process the messages parsed.
 	private Handler mHandlerReviewParameters = new Handler();
-	private Handler mHandlerCheckLastRead = new Handler();
 	private boolean mHandlerActive = false;
 	private SharedPreferences settings = null;// Here I store the settings needed to store the status of the service.
 	private Runnable checker = null;
@@ -83,7 +80,6 @@ public class MedtronicCGMService extends Service implements
 	private BufferedMessagesProcessor processBufferedMessages = new BufferedMessagesProcessor();// Runnable which manages the message processing;
 	private ArrayList<Messenger> mClients = new ArrayList<Messenger>(); // clients subscribed;
 	private final Messenger mMessenger = new Messenger(new IncomingHandler()); // Target we publish for clients to send messages to IncomingHandler.
-	private CommandSenderThread cMThread = null;// Thread to process a set of commands
 	private SharedPreferences prefs = null;// common application preferences
 	private int calibrationSelected = MedtronicConstants.CALIBRATION_GLUCOMETER;//calibration Selected
 	private Handler mHandlerSensorCalibration = new Handler();// this Handler is used to ask for SensorCalibration.
@@ -98,8 +94,6 @@ public class MedtronicCGMService extends Service implements
 	private Object buffMessagesLock = new Object();
 	private Object mSerialLock = new Object();
 	private boolean faking = false;
-	private HistoricGetterThread hGetter = null;//Medtronic Historic Log retriever
-	private long historicLogPeriod = 0;
 	private ReadByListener readByListener = new ReadByListener();//Listener to read data
 	private boolean isReloaded = false;
 
@@ -501,36 +495,7 @@ public class MedtronicCGMService extends Service implements
 		}
 		//if I have selected "historic log read" then ...
 		if (prefs.getString("glucSrcTypes","1").equals("2")){
-			log.debug("LOG READ ON CREATE");
-        	String type = prefs.getString("historicPeriod", "1");
-        	if ("2".equalsIgnoreCase(type))
-        		historicLogPeriod = MedtronicConstants.TIME_10_MIN_IN_MS;
-        	else if ("3".equalsIgnoreCase(type))
-        		historicLogPeriod = MedtronicConstants.TIME_15_MIN_IN_MS;
-        	else  if ("4".equalsIgnoreCase(type))
-        		historicLogPeriod = MedtronicConstants.TIME_15_MIN_IN_MS;
-        	else
-        		historicLogPeriod = MedtronicConstants.TIME_5_MIN_IN_MS;
-        
-        	if (settings.getLong("lastHistoricRead", 0) != 0 ){
-        		log.debug("PREVIOUS READ");
-				if ((System.currentTimeMillis() - settings.getLong("lastHistoricRead", 0)) >= historicLogPeriod ){
-					log.debug("periodRead "+(System.currentTimeMillis() - settings.getLong("lastHistoricRead", 0))+" >= "+historicLogPeriod);
-					mHandlerReadFromHistoric.post(readDataFromHistoric);
-					SharedPreferences.Editor editor = settings.edit();
-					editor.putLong("lastHistoricRead", System.currentTimeMillis());
-					editor.commit();
-				}else{
-					log.debug("Read after delay");
-					mHandlerReadFromHistoric.postDelayed(readDataFromHistoric, historicLogPeriod);
-				}
-			}else{
-				log.debug("Read log immediatly");
-				mHandlerReadFromHistoric.post(readDataFromHistoric);
-				SharedPreferences.Editor editor = settings.edit();
-				editor.putLong("lastHistoricRead", System.currentTimeMillis());
-				editor.commit();
-			}
+			Log.d(TAG,"LOG READ ON CREATE");
 
 		}else if (prefs.getString("glucSrcTypes","1").equals("3")){
 
@@ -544,9 +509,7 @@ public class MedtronicCGMService extends Service implements
 				t = 1;
 			}
 
-			historicLogPeriod = MedtronicConstants.TIME_5_MIN_IN_MS * (t + 1);
-	        mHandlerCheckLastRead.post(checkLastRead);
-	        
+
 		}
 		
 	}
@@ -578,62 +541,12 @@ public class MedtronicCGMService extends Service implements
 			mHandlerActive = false;
 			unregisterReceiver(mUsbReceiver);
 		}
-		mHandlerReadFromHistoric.removeCallbacks(readDataFromHistoric);
-		mHandlerCheckLastRead.removeCallbacks(checkLastRead);
+
 		synchronized (isUploadingLock) {
 			super.onDestroy();
 		}
 	}
 	
-	
-	/**
-	 * Check last Historic Log read. (This will not be possible in newer Medtronic Pumps) 
-	 */
-	private Runnable checkLastRead = new Runnable() {
-		public void run() {
-			if (prefs.getString("glucSrcTypes","1").equals("3")){
-				
-	        	String type = prefs.getString("historicMixPeriod", "1");
-	        	int t;
-				try {
-					t = Integer.parseInt(type);
-					t = (t > 11 || t < 1) ? 1 : t;
-				}
-				catch (NumberFormatException ne) {
-					t = 1;
-				}
-
-				historicLogPeriod = MedtronicConstants.TIME_5_MIN_IN_MS * (t + 1);
-
-
-	        	if (medtronicReader != null && medtronicReader.lastSensorValueDate >  0){
-					if ((System.currentTimeMillis() - medtronicReader.lastSensorValueDate) >= historicLogPeriod ){
-						if (settings.getLong("lastHistoricRead", 0) != 0 ){
-							if ((System.currentTimeMillis() - settings.getLong("lastHistoricRead", 0)) >= historicLogPeriod ){
-								mHandlerReadFromHistoric.post(readDataFromHistoric);
-								return;	
-							}
-						}else{
-							mHandlerReadFromHistoric.post(readDataFromHistoric);
-							return;
-						}
-					}
-				}else{
-					if (settings.getLong("lastHistoricRead", 0) != 0 ){
-						if ((System.currentTimeMillis() - settings.getLong("lastHistoricRead", 0)) >= historicLogPeriod ){
-							mHandlerReadFromHistoric.post(readDataFromHistoric);
-							return;	
-						}
-					}else{
-						mHandlerReadFromHistoric.post(readDataFromHistoric);
-						return;
-					}
-				}
-				mHandlerCheckLastRead.postDelayed(checkLastRead, MedtronicConstants.TIME_10_MIN_IN_MS);
-			}
-			
-		}
-	};
 
 	
 	/**
@@ -1075,7 +988,7 @@ public class MedtronicCGMService extends Service implements
 		mSerial.clearReadListener();
 		mHandlerRead.removeCallbacks(readByListener);
 		mHandlerProcessRead.removeCallbacks(processBufferedMessages);
-		mHandler2CheckDevice.removeCallbacks(cMThread);
+
 		mHandler3ActivatePump.removeCallbacks(activateNewPump);
 		mHandlerSensorCalibration.removeCallbacks(getCalibrationFromSensor);
 		mHandlerReviewParameters.removeCallbacks(checker);
@@ -1210,37 +1123,12 @@ public class MedtronicCGMService extends Service implements
 						mHandler3ActivatePump.removeCallbacks(getCalibrationFromSensor);
 					}
 					if (type1.equals("2")){
-						mHandlerReadFromHistoric.removeCallbacks(readDataFromHistoric);
-						
-			        	String type = prefs.getString("historicPeriod", "1");
-			        	if ("2".equalsIgnoreCase(type))
-			        		historicLogPeriod = MedtronicConstants.TIME_10_MIN_IN_MS;
-			        	else if ("3".equalsIgnoreCase(type))
-			        		historicLogPeriod = MedtronicConstants.TIME_15_MIN_IN_MS;
-			        	else  if ("4".equalsIgnoreCase(type))
-			        		historicLogPeriod = MedtronicConstants.TIME_15_MIN_IN_MS;
-			        	else
-			        		historicLogPeriod = MedtronicConstants.TIME_5_MIN_IN_MS;
-			        
-			        	if (settings.getLong("lastHistoricRead", 0) != 0 ){
-							if ((System.currentTimeMillis() - settings.getLong("lastHistoricRead", 0)) >= historicLogPeriod ){
-								mHandlerReadFromHistoric.post(readDataFromHistoric);
-								SharedPreferences.Editor editor = settings.edit();
-								editor.putLong("lastHistoricRead", System.currentTimeMillis());
-								editor.commit();
-							}
-						}else{
-							mHandlerReadFromHistoric.post(readDataFromHistoric);
-							SharedPreferences.Editor editor = settings.edit();
-							editor.putLong("lastHistoricRead", System.currentTimeMillis());
-							editor.commit();
-						}
+
 
 					}else if (type1.equals("1")){
-						mHandlerReadFromHistoric.removeCallbacks(readDataFromHistoric);
-						mHandlerCheckLastRead.removeCallbacks(checkLastRead);
+
 					}else if (type1.equals("3")){
-						mHandlerCheckLastRead.removeCallbacks(checkLastRead);
+
 			        	String type = prefs.getString("historicMixPeriod", "1");
 						int t;
 						try {
@@ -1251,31 +1139,12 @@ public class MedtronicCGMService extends Service implements
 							t = 1;
 						}
 
-						historicLogPeriod = MedtronicConstants.TIME_5_MIN_IN_MS * (t + 1);
 
-				        mHandlerCheckLastRead.post(checkLastRead);
-				        
 					}
 
 
 			}
-			if (key.equalsIgnoreCase("historicPeriod")){
-				mHandlerReadFromHistoric.removeCallbacks(readDataFromHistoric);
-	        	String type = sharedPreferences.getString("historicPeriod", "1");
-	        	if ("2".equalsIgnoreCase(type))
-	        		historicLogPeriod = MedtronicConstants.TIME_10_MIN_IN_MS;
-	        	else if ("3".equalsIgnoreCase(type))
-	        		historicLogPeriod = MedtronicConstants.TIME_15_MIN_IN_MS;
-	        	else  if ("4".equalsIgnoreCase(type))
-	        		historicLogPeriod = MedtronicConstants.TIME_15_MIN_IN_MS;
-	        	else
-	        		historicLogPeriod = MedtronicConstants.TIME_5_MIN_IN_MS;
-	        	
-				mHandlerReadFromHistoric.post(readDataFromHistoric);
-				SharedPreferences.Editor editor = settings.edit();
-				editor.putLong("lastHistoricRead", System.currentTimeMillis());
-				editor.commit();
-			}
+
 
 			if (key.equals("medtronic_cgm_id") || key.equals("glucometer_cgm_id") || key.equals("sensor_cgm_id")) {
 				String newID = sharedPreferences.getString("medtronic_cgm_id", "");
@@ -1313,63 +1182,6 @@ public class MedtronicCGMService extends Service implements
 							if (medtronicReader != null) {
 								mHandler3ActivatePump.removeCallbacks(activateNewPump);
 								mHandler3ActivatePump.post(activateNewPump);
-								mHandlerReadFromHistoric.removeCallbacks(readDataFromHistoric);
-								if (hGetter == null){
-									hGetter = new HistoricGetterThread(mClients, medtronicReader,
-											medtronicReader.idPump, mSerial, mHandlerReadFromHistoric);
-									
-								}else
-									hGetter.init();
-
-									String type1 = sharedPreferences.getString("glucSrcTypes", "1");
-									if (type1.equals("2")){
-										mHandlerReadFromHistoric.removeCallbacks(readDataFromHistoric);
-										if (prefs.contains("historicPeriod")){
-								        	String type = prefs.getString("historicPeriod", "1");
-								        	if ("2".equalsIgnoreCase(type))
-								        		historicLogPeriod = MedtronicConstants.TIME_10_MIN_IN_MS;
-								        	else if ("3".equalsIgnoreCase(type))
-								        		historicLogPeriod = MedtronicConstants.TIME_15_MIN_IN_MS;
-								        	else  if ("4".equalsIgnoreCase(type))
-								        		historicLogPeriod = MedtronicConstants.TIME_15_MIN_IN_MS;
-								        	else
-								        		historicLogPeriod = MedtronicConstants.TIME_5_MIN_IN_MS;
-								        }
-										if (settings.getLong("lastHistoricRead", 0) != 0 ){
-											if ((System.currentTimeMillis() - settings.getLong("lastHistoricRead", 0)) >= historicLogPeriod ){
-												mHandlerReadFromHistoric.post(readDataFromHistoric);
-												SharedPreferences.Editor editor2 = settings.edit();
-												editor2.putLong("lastHistoricRead", System.currentTimeMillis());
-												editor2.commit();
-											}
-										}else{
-											mHandlerReadFromHistoric.post(readDataFromHistoric);
-											SharedPreferences.Editor editor2 = settings.edit();
-											editor2.putLong("lastHistoricRead", System.currentTimeMillis());
-											editor2.commit();
-										}
-
-									}else if (type1.equals("1")){
-										mHandlerReadFromHistoric.removeCallbacks(readDataFromHistoric);
-										mHandlerCheckLastRead.removeCallbacks(checkLastRead);
-									}else if (type1.equals("3")){
-										mHandlerCheckLastRead.removeCallbacks(checkLastRead);
-							        	String type = prefs.getString("historicMixPeriod", "1");
-										int t;
-										try {
-											t = Integer.parseInt(type);
-											t = (t > 11 || t < 1) ? 1 : t;
-										}
-										catch (NumberFormatException ne) {
-											t = 1;
-										}
-
-										historicLogPeriod = MedtronicConstants.TIME_5_MIN_IN_MS * (t + 1);
-
-								        mHandlerCheckLastRead.post(checkLastRead);
-								        
-									}
-								
 							}
 
 						}
@@ -1430,23 +1242,10 @@ public class MedtronicCGMService extends Service implements
 							}
 						}
 						executed = true;
-						byte[] initProcess = {
-								MedtronicConstants.MEDTRONIC_WAKE_UP,
-								MedtronicConstants.MEDTRONIC_GET_REMOTE_CONTROL_IDS,
-								MedtronicConstants.MEDTRONIC_GET_PARADIGM_LINK_IDS,
-								MedtronicConstants.MEDTRONIC_GET_SENSORID };
 
-						cMThread = new CommandSenderThread(medtronicReader,
-								medtronicReader.idPump, mSerial, mHandler2CheckDevice);
-						if (hGetter == null){
-							hGetter = new HistoricGetterThread(mClients, medtronicReader,
-									medtronicReader.idPump, mSerial, mHandlerReadFromHistoric);
-							
-						}
-						medtronicReader.hGetter = hGetter;
-						cMThread.setCommandList(initProcess);
-						cMThread.setmClients(mClients);
-						mHandler2CheckDevice.post(cMThread);
+
+
+
 						SharedPreferences.Editor editor = prefs.edit();
 						editor.putLong("lastPumpAwake", System.currentTimeMillis());
 						editor.commit();
@@ -1467,164 +1266,7 @@ public class MedtronicCGMService extends Service implements
 			
 		}
 	};
-	/**
-	 * Runnable,
-	 * If my value source is Medtronic Historic Log (not available in newer Pump versions).
-	 * This process wakes it up, and retrieve last historic pages from it to upload last records to the cloud.
-	 */
-	private Runnable readDataFromHistoric = new Runnable() {
-		public void run() {
-			boolean bAfterPeriod = false;
-			try {
-				Log.d(TAG, "Read data from Historic");
-				synchronized (mSerialLock) {
-					if (mSerial.isOpened()) {
-						log.debug("mserial open");
-						synchronized (medtronicReader.processingCommandLock) {
-							if (medtronicReader.processingCommand) {
 
-								if (!prefs.getString("glucSrcTypes","1").equals("1")){
-									mHandlerReadFromHistoric.postDelayed(readDataFromHistoric,
-											MedtronicConstants.TIMEOUT);
-									log.debug("TIMEOUT");
-								}
-								bAfterPeriod = true;
-								return;
-
-							}else{
-								medtronicReader.processingCommand = true;
-							}
-						}
-						
-						
-						if (prefs.getString("glucSrcTypes","1").equals("2")){
-							log.debug("EQUALS 2");
-							String type = prefs.getString("historicPeriod", "1");
-				        	if ("2".equalsIgnoreCase(type))
-				        		historicLogPeriod = MedtronicConstants.TIME_10_MIN_IN_MS;
-				        	else if ("3".equalsIgnoreCase(type))
-				        		historicLogPeriod = MedtronicConstants.TIME_15_MIN_IN_MS;
-				        	else  if ("4".equalsIgnoreCase(type))
-				        		historicLogPeriod = MedtronicConstants.TIME_15_MIN_IN_MS;
-				        	else
-				        		historicLogPeriod = MedtronicConstants.TIME_5_MIN_IN_MS;
-				        
-				        	if (settings.getLong("lastHistoricRead", 0) != 0 ){
-				        		log.debug("PREVIOUS READ");
-								if ((System.currentTimeMillis() - settings.getLong("lastHistoricRead", 0)) >= historicLogPeriod ){
-									if (hGetter == null){
-										hGetter = new HistoricGetterThread(mClients, medtronicReader,
-												medtronicReader.idPump, mSerial, mHandlerReadFromHistoric);
-										
-									}else{
-										hGetter.init();
-										synchronized (medtronicReader.processingCommandLock) {
-											medtronicReader.processingCommand = true;
-										}
-
-									}
-									medtronicReader.hGetter = hGetter;
-									log.debug("SEND GETTER!!!!!");
-									mHandlerReadFromHistoric.post(hGetter);
-									SharedPreferences.Editor editor = settings.edit();
-									editor.putLong("lastHistoricRead", System.currentTimeMillis());
-									editor.commit();
-								}else{
-									log.debug("Read after delay");
-									bAfterPeriod = true;
-									mHandlerReadFromHistoric.postDelayed(readDataFromHistoric,historicLogPeriod);
-									synchronized (medtronicReader.processingCommandLock) {
-										medtronicReader.processingCommand = false;
-									}
-									return;
-								}
-							}else{
-								log.debug("OTHER ELSE");
-								if (hGetter == null){
-									hGetter = new HistoricGetterThread(mClients, medtronicReader,
-											medtronicReader.idPump, mSerial, mHandlerReadFromHistoric);
-									
-								}else{
-									hGetter.init();
-									synchronized (medtronicReader.processingCommandLock) {
-										medtronicReader.processingCommand = true;
-									}
-
-								}
-								medtronicReader.hGetter = hGetter;
-								log.debug("SEND GETTER!!!!!");
-								mHandlerReadFromHistoric.post(hGetter);
-								SharedPreferences.Editor editor = settings.edit();
-								editor.putLong("lastHistoricRead", System.currentTimeMillis());
-								editor.commit();
-							}
-
-						}else if (prefs.getString("glucSrcTypes","1").equals("3")){
-							if (hGetter == null){
-								hGetter = new HistoricGetterThread(mClients, medtronicReader,
-										medtronicReader.idPump, mSerial, mHandlerReadFromHistoric);
-								
-							}else{
-								hGetter.init();
-								synchronized (medtronicReader.processingCommandLock) {
-									medtronicReader.processingCommand = true;
-								}
-
-							}
-							medtronicReader.hGetter = hGetter;
-							mHandlerReadFromHistoric.post(hGetter);
-							log.debug("SEND GETTER!!!!!");
-					        mHandlerCheckLastRead.postDelayed(checkLastRead, MedtronicConstants.TIME_30_MIN_IN_MS);
-						}
-						
-						
-						
-					}
-				}
-			} catch (Exception e) {
-				sendExceptionToUI("", e);
-				synchronized (medtronicReader.processingCommandLock) {
-					medtronicReader.processingCommand = false;
-				}
-			} finally {
-				log.debug("Executing read_Historic finally");
-				if (prefs.getString("glucSrcTypes","1").equals("2")){
-					
-		        	String type = prefs.getString("historicPeriod", "1");
-		        	if ("2".equalsIgnoreCase(type))
-		        		historicLogPeriod = MedtronicConstants.TIME_10_MIN_IN_MS;
-		        	else if ("3".equalsIgnoreCase(type))
-		        		historicLogPeriod = MedtronicConstants.TIME_15_MIN_IN_MS;
-		        	else  if ("4".equalsIgnoreCase(type))
-		        		historicLogPeriod = MedtronicConstants.TIME_15_MIN_IN_MS;
-		        	else
-		        		historicLogPeriod = MedtronicConstants.TIME_5_MIN_IN_MS;
-		      
-					if (settings.getLong("lastHistoricRead", 0) != 0 ){
-						if ((System.currentTimeMillis() - settings.getLong("lastHistoricRead", 0)) >= historicLogPeriod ){
-							SharedPreferences.Editor editor = settings.edit();
-							editor.putLong("lastHistoricRead", System.currentTimeMillis());
-							editor.commit();
-							mHandlerReadFromHistoric.postDelayed(readDataFromHistoric, historicLogPeriod);
-						}else{
-							mHandlerReadFromHistoric.removeCallbacks(readDataFromHistoric);
-							mHandlerReadFromHistoric.postDelayed(readDataFromHistoric, historicLogPeriod);
-						}
-					}else{
-						mHandlerReadFromHistoric.post(readDataFromHistoric);
-						if (!bAfterPeriod){
-							SharedPreferences.Editor editor = settings.edit();
-							editor.putLong("lastHistoricRead", System.currentTimeMillis());
-							editor.commit();
-						}
-						
-					}
-
-				}
-			}
-			
-		}
-	};	
 	/**
 	 * Runnable,
 	 * If there is a serial device connected.
@@ -1651,25 +1293,10 @@ public class MedtronicCGMService extends Service implements
 									medtronicReader.processingCommand = true;
 								}
 							}
-							byte[] initProcess = {
-									MedtronicConstants.MEDTRONIC_WAKE_UP,
-									MedtronicConstants.MEDTRONIC_GET_CALIBRATION_FACTOR,
-									MedtronicConstants.MEDTRONIC_GET_REMAINING_INSULIN,
-									MedtronicConstants.MEDTRONIC_GET_BATTERY_STATUS};
+
 							log.debug("get Cal Factor and other info!!");
 	
-							//mHandler2CheckDevice.removeCallbacks(cMThread);
-							cMThread = new CommandSenderThread(medtronicReader,
-									medtronicReader.idPump, mSerial, mHandler2CheckDevice);
-							cMThread.setCommandList(initProcess);
-							cMThread.setmClients(mClients);
-							if (hGetter == null){
-								hGetter = new HistoricGetterThread(mClients, medtronicReader,
-										medtronicReader.idPump, mSerial, mHandlerReadFromHistoric);
-								
-							}
-							medtronicReader.hGetter = hGetter;
-							mHandler2CheckDevice.post(cMThread);
+
 						}
 					}
 				}

@@ -1,14 +1,10 @@
 package com.nightscout.android.medtronic;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.ObjectOutputStream;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -80,18 +76,11 @@ public class MedtronicReader {
 	public float previousValue = -1f; // last sensor value read
 	public MedtronicSensorRecord previousRecord = null; // last sensor record
 	public Byte lastCommandSend = null; // last command sent from this
-	// application to the pump.
-	public Boolean sendingCommand = false;// shared variable, It tells us that
 	public Object sendingCommandLock = new Object();
 	// the receptor is sending a command
 	// and we have no received the ACK
 	public Boolean processingCommand = false;// shared variable, It tells us
 	public Object processingCommandLock = new Object();
-	// that our service is launching
-	// a set of commands, and it has
-	// not ended yet.
-	public Boolean waitingCommand = false; // shared variable, It tells us that
-	public Object waitingCommandLock = new Object();
 	// the receptor has sent a message
 	// but we do not have the answer
 	// yet.
@@ -112,7 +101,6 @@ public class MedtronicReader {
 	SharedPreferences prefs = null;
 	Integer calibrationSelected = MedtronicConstants.CALIBRATION_GLUCOMETER;
 	Object calibrationSelectedLock = new Object();
-	HistoricGetterThread hGetter = null;
 
 	Handler mHandlerSensorCalibration = null;
 	Runnable getCalibrationFromSensor = null;
@@ -446,8 +434,8 @@ public class MedtronicReader {
 				case MedtronicConstants.MEDTRONIC_PUMP:
 					Log.d(TAG, "IS A PUMP MESSAGE");
 
-					processPumpDataMessage(readData,
-									calibrationSelectedAux);
+					processPumpDataMessage(readData
+					);
 					if (lastMedtronicPumpRecord == null) {
 						lastMedtronicPumpRecord = new MedtronicPumpRecord();
 						calculateDate(lastMedtronicPumpRecord,
@@ -664,7 +652,6 @@ public class MedtronicReader {
 					case MedtronicConstants.COMMAND_ANSWER:
 						Log.d(TAG, "ACK Received");
 						synchronized (sendingCommandLock) {
-							sendingCommand = false;
 						}
 						break;
 					case MedtronicConstants.FILTER_COMMAND:
@@ -741,31 +728,7 @@ public class MedtronicReader {
 				i++;
 			} else if (answer == MedtronicConstants.CRC_ERROR) {
 				Log.d(TAG, "CRC ERROR");
-				if (hGetter != null && hGetter.isWaitingNextLine) {
-					if (hGetter.timeout >= 2) {
-						hGetter.timeout = 0;
-						Log.d(TAG, "too much retries");
-						sendMessageToUI(
-								"historic log read aborted! too much crc errors, waiting to retry.");
-					} else {
-						sendMessageToUI(
-								"CRC error reading historic log line, reinitializating read...");
-						hGetter.timeout++;
-						hGetter.commandList = Arrays.copyOf(
-								hGetter.commandList,
-								hGetter.commandList.length + 1);
-						hGetter.commandList[hGetter.commandList.length - 1] = MedtronicConstants.MEDTRONIC_READ_PAGE_COMMAND;
-						hGetter.firstReadPage = true;
-						hGetter.isWaitingNextLine = true;
-						hGetter.withoutConfirmation = 0;
-						hGetter.currentLine = -1;
-						hGetter.historicPage.clear();
-						synchronized (waitingCommandLock) {
-							waitingCommand = false;
-							lastCommandSend = null;
-						}
-					}
-				}
+
 				if (readBuffer.length <= i + 1) {
 					notFinishedRead = Arrays.copyOfRange(readBuffer, i,
 							readBuffer.length);
@@ -817,11 +780,9 @@ public class MedtronicReader {
 	 * This method process the pump answers
 	 * 
 	 * @param readData
-	 * @param calibrationSelected
 	 * @return String, for debug or notification purposes
 	 */
-	public void processPumpDataMessage(byte[] readData,
-			int calibrationSelected) {
+	public void processPumpDataMessage(byte[] readData) {
 		int commandByte = firstByteAfterDeviceId(readData);
 		if (commandByte < 0)
 			return;
@@ -1032,13 +993,13 @@ public class MedtronicReader {
 		if (previousCalibrationFactor > 0) {
 			if (previousCalibrationStatus != MedtronicConstants.WITHOUT_ANY_CALIBRATION) {
 				record.setUnfilteredGlucose(isig * previousCalibrationFactor);
-				record.setBGValue((applyFilterToRecord(record, auxList)) + "");
+				record.setBGValue((applyFilterToRecord(record)) + "");
 				record.isCalibrating = false;
 				record.calibrationFactor = previousCalibrationFactor;
 				record.calibrationStatus = previousCalibrationStatus;
 			} else {
 				record.setUnfilteredGlucose(isig * previousCalibrationFactor);
-				record.setBGValue((applyFilterToRecord(record, auxList)) + "");
+				record.setBGValue((applyFilterToRecord(record)) + "");
 				record.isCalibrating = false;
 				record.calibrationFactor = previousCalibrationFactor;
 				record.calibrationStatus = MedtronicConstants.LAST_CALIBRATION_FAILED_USING_PREVIOUS;
@@ -1095,13 +1056,13 @@ public class MedtronicReader {
 			}
 			if (calibrationStatus != MedtronicConstants.WITHOUT_ANY_CALIBRATION) {
 				record.setUnfilteredGlucose(isig * calibrationFactor);
-				record.setBGValue((applyFilterToRecord(record, auxList)) + "");
+				record.setBGValue((applyFilterToRecord(record)) + "");
 				record.isCalibrating = false;
 				record.calibrationFactor = calibrationFactor;
 				record.calibrationStatus = calibrationStatus;
 			} else {
 				record.setUnfilteredGlucose(isig * calibrationFactor);
-				record.setBGValue((applyFilterToRecord(record, auxList)) + "");
+				record.setBGValue((applyFilterToRecord(record)) + "");
 				record.isCalibrating = false;
 				record.calibrationFactor = calibrationFactor;
 				record.calibrationStatus = MedtronicConstants.LAST_CALIBRATION_FAILED_USING_PREVIOUS;
@@ -1187,7 +1148,6 @@ public class MedtronicReader {
 				|| lastSensorValueDate == 0
 				|| (firstTimeOut >= MedtronicConstants.TIME_10_MIN_IN_MS)) {
 			Log.i("Medtronic", "First reading - or missed last 40 minutes - Backfilling old data");
-			int elementsMissing = (int) (firstTimeOut / MedtronicConstants.TIME_5_MIN_IN_MS);
 
 			lastElementsAdded = 0;
 			// I must read ALL THE MEASURES
@@ -1680,8 +1640,7 @@ public class MedtronicReader {
 	 * Unfiltered glucose data
 	 *
 	 */
-	public int applyFilterToRecord(MedtronicSensorRecord currentRecord,
-			List<Record> auxList) {
+	public int applyFilterToRecord(MedtronicSensorRecord currentRecord) {
 		/*
 		 * if (auxList.size() >= 2) {
 		 * 
