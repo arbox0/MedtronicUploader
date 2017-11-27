@@ -51,7 +51,7 @@ public class MedtronicReader {
 	private static final String TAG = MedtronicReader.class.getSimpleName();
 	public Physicaloid mSerialDevice;
 
-	protected Context context = null;
+
 	protected byte[] idPump = null;
 	protected byte[] notFinishedRead = null;
 
@@ -113,11 +113,7 @@ public class MedtronicReader {
 	Integer calibrationSelected = MedtronicConstants.CALIBRATION_GLUCOMETER;
 	Object calibrationSelectedLock = new Object();
 	HistoricGetterThread hGetter = null;
-	int historicPageIndex = -1;
-	int historicPageShift = 0;
-	DataLog datalog = new DataLog();
-	Handler mHandlerCheckLastRead = null;
-	Runnable checkLastRead = null;
+
 	Handler mHandlerSensorCalibration = null;
 	Runnable getCalibrationFromSensor = null;
 
@@ -131,7 +127,7 @@ public class MedtronicReader {
 			ArrayList<Messenger> mClients) {
 		this.settings = context.getSharedPreferences(
 				MedtronicConstants.PREFS_NAME, 0);
-		this.context = context;
+
 		this.mClients = mClients;
 
 		knownDevices = new ArrayList<String>();
@@ -182,21 +178,6 @@ public class MedtronicReader {
 
 			}
 		}
-		String listPrevKnownDevices = "";
-
-		if (settings.contains("knownDevices")) {
-			listPrevKnownDevices = settings.getString("knownDevices", "");
-			String[] splitted = listPrevKnownDevices.split(",");
-			for (int i = 0; i < splitted.length; i++) {
-				// log.debug("splitted["+i+"]= "+splitted[i]);
-				if (splitted[i] != null
-						&& splitted[i].replaceAll(" ", "").length() > 0) {
-					if (!knownDevices.contains(splitted[i]))
-						knownDevices.add(splitted[i]);
-				}
-			}
-		}
-		storeKnownDevices();
 
 
 		if (settings.contains("lastSensorValueDate"))
@@ -453,7 +434,7 @@ public class MedtronicReader {
 
 	private void processDataAnswer(byte[] readData)
 	{
-		int calibrationSelectedAux = 0;
+		int calibrationSelectedAux;
 		Log.d(TAG, "processDataAnswer");
 		synchronized (calibrationSelectedLock) {
 			calibrationSelectedAux = calibrationSelected;
@@ -515,12 +496,11 @@ public class MedtronicReader {
 
 							auxRecord.isCalibrating = calibrationSelectedAux == MedtronicConstants.CALIBRATION_GLUCOMETER;
 							Log.d(TAG, "No previous record - 1");
-							writeLocalCSV(auxRecord, context);
+
 						} else {
 							previousRecord.isCalibrating = calibrationSelectedAux == MedtronicConstants.CALIBRATION_GLUCOMETER;
 							Log.d(TAG, "Has previous record - 2");
-							writeLocalCSV(previousRecord,
-									context);
+
 						}
 						SharedPreferences.Editor editor = settings
 								.edit();
@@ -581,11 +561,11 @@ public class MedtronicReader {
 						MedtronicSensorRecord auxRecord = new MedtronicSensorRecord();
 						calculateDate(auxRecord, new Date(), 0);
 						Log.d(TAG, "no previous record - 3");
-						writeLocalCSV(auxRecord, context);
+
 					} else {
 						calculateDate(previousRecord, new Date(), 0);
 						Log.d(TAG, "previous record - 4");
-						writeLocalCSV(previousRecord, context);
+
 					}
 					sendMessageToUI("sensor data wUp.");
 					editor.commit();
@@ -848,353 +828,52 @@ public class MedtronicReader {
 		if (lastCommandSend == null)
 			return;
 		switch (readData[commandByte]) {
-		case MedtronicConstants.MEDTRONIC_GET_LAST_PAGE: {
-			synchronized (waitingCommandLock) {
-				waitingCommand = false;
-				lastCommandSend = null;
-			}
-			byte[] modelArray = Arrays.copyOfRange(readData,
-					commandByte + 2, (commandByte + 6));
-			historicPageIndex = HexDump.byteArrayToInt(modelArray);
-			hGetter.historicPageIndex = historicPageIndex;
-			hGetter.lastHistoricPage = modelArray;
+		case MedtronicConstants.MEDTRONIC_GET_LAST_PAGE:
+			Log.d(TAG,"Pump get last page command received");
 			return;
-		}
-		case MedtronicConstants.MEDTRONIC_READ_PAGE_COMMAND: {
-			log.debug("READ_PAGE");
-
-			if (lastCommandSend != null) {
-				try {
-					log.debug("lcommand send != null");
-					if (!hGetter.firstReadPage) {
-						hGetter.isWaitingNextLine = false;
-						int currentLineAux = HexDump
-								.unsignedByte(readData[commandByte + 1]);
-						log.debug("!first page ");
-						if (!(currentLineAux == HexDump
-								.unsignedByte((byte) 0x90)
-								|| (currentLineAux == hGetter.currentLine + 1) || hGetter.currentLine < 1
-								&& currentLineAux == 1)) {
-							log.debug("Error");
-							hGetter.commandList = Arrays.copyOf(
-									hGetter.commandList,
-									hGetter.commandList.length + 1);
-							hGetter.commandList[hGetter.commandList.length - 1] = MedtronicConstants.MEDTRONIC_READ_PAGE_COMMAND;
-							hGetter.wThread.isRequest = true;
-							hGetter.firstReadPage = false;
-							hGetter.withoutConfirmation = 0;
-							hGetter.isWaitingNextLine = true;
-							hGetter.currentLine = -1;
-							synchronized (waitingCommandLock) {
-								waitingCommand = false;
-								lastCommandSend = null;
-							}
-							hGetter.historicPage.clear();
-							return;
-						}
-						hGetter.currentLine = currentLineAux;
-						byte[] modelArray = Arrays.copyOfRange(readData,
-								commandByte + 2, (commandByte + 2 + (4 * 16)));
-						hGetter.historicPage.add(modelArray);
-						if (hGetter.currentLine != HexDump
-								.unsignedByte((byte) 0x90)) {
-							log.debug("is correct line");
-							hGetter.commandList = Arrays.copyOf(
-									hGetter.commandList,
-									hGetter.commandList.length + 1);
-							hGetter.commandList[hGetter.commandList.length - 1] = MedtronicConstants.MEDTRONIC_ACK;
-							hGetter.withoutConfirmation = 0;
-							hGetter.wThread.isRequest = true;
-							hGetter.wThread.postCommandBytes = null;
-							hGetter.isWaitingNextLine = true;
-						} else {
-							log.debug("All lines read.");
-							processHistoricPage();
-						}
-					}
-				} finally {
-					synchronized (waitingCommandLock) {
-						waitingCommand = false;
-						lastCommandSend = null;
-					}
-				}
-			}
-
+		case MedtronicConstants.MEDTRONIC_READ_PAGE_COMMAND:
+			Log.d(TAG,"Pump read page command received");
 			return;
-		}
 		case MedtronicConstants.MEDTRONIC_GET_PUMP_MODEL:
-			log.debug("Pump Model Received");
-			sendMessageToUI("Pump Model Received...");
-			if (lastMedtronicPumpRecord == null) {
-				lastMedtronicPumpRecord = new MedtronicPumpRecord();
-				calculateDate(lastMedtronicPumpRecord, new Date(), 0);
-				lastMedtronicPumpRecord.deviceId = prefs.getString(
-						"medtronic_cgm_id", "");
-			}
-			if (lastCommandSend != null) {
-				synchronized (waitingCommandLock) {
-					waitingCommand = false;
-					lastCommandSend = null;
-				}
-				byte[] modelArray = Arrays.copyOfRange(readData,
-						commandByte + 2,
-						(commandByte + 2 + (readData[commandByte + 1])));
-				String sModel = new String(modelArray);
-				lastMedtronicPumpRecord.model = sModel;
-			}
+			Log.d(TAG, "Pump Model Received");
+			sendMessageToUI("Pump Model Received... this is ignored");
 			return;
 		case MedtronicConstants.MEDTRONIC_GET_ALARM_MODE:
-			log.debug("Pump Alarm Mode Received");
-			if (lastMedtronicPumpRecord == null) {
-				lastMedtronicPumpRecord = new MedtronicPumpRecord();
-				calculateDate(lastMedtronicPumpRecord, new Date(), 0);
-				lastMedtronicPumpRecord.deviceId = prefs.getString(
-						"medtronic_cgm_id", "");
-			}
-			if (lastCommandSend != null) {
-				synchronized (waitingCommandLock) {
-					waitingCommand = false;
-					lastCommandSend = null;
-				}
-			}
+			Log.d(TAG,"Pump Alarm Mode Received");
 			return;
 		case MedtronicConstants.MEDTRONIC_GET_PUMP_STATE:
-			log.debug("Pump Status Received");
-			sendMessageToUI("Pump Status Received...");
-			if (lastMedtronicPumpRecord == null) {
-				lastMedtronicPumpRecord = new MedtronicPumpRecord();
-				calculateDate(lastMedtronicPumpRecord, new Date(), 0);
-				lastMedtronicPumpRecord.deviceId = prefs.getString(
-						"medtronic_cgm_id", "");
-			}
-			if (lastCommandSend != null) {
-				synchronized (waitingCommandLock) {
-					waitingCommand = false;
-					lastCommandSend = null;
-				}
-				lastMedtronicPumpRecord.status = HexDump
-						.toHexString(readData[commandByte + 2]);
-			}
-
+			Log.d(TAG,"Pump Status Received");
+			sendMessageToUI("Pump Status Received... this is ignored");
 			return;
 		case MedtronicConstants.MEDTRONIC_GET_TEMPORARY_BASAL:
-			log.debug("Pump Temporary Basal Received");
-			if (lastMedtronicPumpRecord == null) {
-				lastMedtronicPumpRecord = new MedtronicPumpRecord();
-				calculateDate(lastMedtronicPumpRecord, new Date(), 0);
-				lastMedtronicPumpRecord.deviceId = prefs.getString(
-						"medtronic_cgm_id", "");
-			}
-			if (lastCommandSend != null) {
-				synchronized (waitingCommandLock) {
-					waitingCommand = false;
-					lastCommandSend = null;
-				}
-				byte[] tempBasalArray = Arrays.copyOfRange(readData,
-						commandByte + 2,
-						(commandByte + 2 + (readData[commandByte + 2])));
-				String sTempBasalArray = HexDump.toHexString(tempBasalArray);
-
-				lastMedtronicPumpRecord.status = sTempBasalArray;
-			}
+			Log.d(TAG,"Pump Temporary Basal Received");
 			return;
 		case MedtronicConstants.MEDTRONIC_GET_BATTERY_STATUS:
 			Log.d(TAG, "Pump Battery Status Received");
-			sendMessageToUI("Pump Battery Status Received...");
-			if (lastMedtronicPumpRecord == null) {
-				lastMedtronicPumpRecord = new MedtronicPumpRecord();
-				calculateDate(lastMedtronicPumpRecord, new Date(), 0);
-				lastMedtronicPumpRecord.deviceId = prefs.getString(
-						"medtronic_cgm_id", "");
-			}
-			if (lastCommandSend != null) {
-				synchronized (waitingCommandLock) {
-					waitingCommand = false;
-					lastCommandSend = null;
-				}
-				int status = readData[commandByte + 3];
-				float voltage = (((float) HexDump
-						.unsignedByte(readData[commandByte + 3])) * 256f + (float) HexDump
-						.unsignedByte(readData[commandByte + 4])) / 100;
-				if (status == 0) {
-					lastMedtronicPumpRecord.batteryStatus = "Normal";
-				} else {
-					lastMedtronicPumpRecord.batteryStatus = "Low";
-				}
-
-				lastMedtronicPumpRecord.batteryVoltage = "" + voltage;
-			}
+			sendMessageToUI("Pump Battery Status Received... this is ignored");
 			return;
 		case MedtronicConstants.MEDTRONIC_GET_REMAINING_INSULIN:
-			log.debug("Pump Remaining Insulin Received");
-			sendMessageToUI("Pump Remaining Insulin Received...");
-			if (lastMedtronicPumpRecord == null) {
-				lastMedtronicPumpRecord = new MedtronicPumpRecord();
-				calculateDate(lastMedtronicPumpRecord, new Date(), 0);
-				lastMedtronicPumpRecord.deviceId = prefs.getString(
-						"medtronic_cgm_id", "");
-			}
-			if (lastCommandSend != null) {
-				synchronized (waitingCommandLock) {
-					waitingCommand = false;
-					lastCommandSend = null;
-				}
-				float insulinLeft = (HexDump
-						.unsignedByte(readData[commandByte + 4]) * 256f + (float) HexDump
-						.unsignedByte(readData[commandByte + 5])) / 40f;
-				lastMedtronicPumpRecord.insulinLeft = insulinLeft;
-			}
+			Log.i(TAG,"Pump Remaining Insulin Received");
+			sendMessageToUI("Pump Remaining Insulin Received... this is ignored");
 			return;
 		case MedtronicConstants.MEDTRONIC_GET_REMOTE_CONTROL_IDS:
-			log.debug("Pump Remote Control Ids Received");
-			sendMessageToUI("Pump Remote Control Ids Received...");
-			if (lastCommandSend != null) {
-				synchronized (waitingCommandLock) {
-					waitingCommand = false;
-					lastCommandSend = null;
-				}
-
-				byte[] remoteControlID1 = Arrays.copyOfRange(readData,
-						commandByte + 2, commandByte + 8);
-				String sRemoteControlID1 = new String(remoteControlID1);
-				if (HexDump.isHexaNumber(sRemoteControlID1)) {
-					if (!knownDevices.contains(sRemoteControlID1))
-						knownDevices.add(sRemoteControlID1);
-				}
-
-				byte[] remoteControlID2 = Arrays.copyOfRange(readData,
-						commandByte + 8, commandByte + 14);
-				String sRemoteControlID2 = new String(remoteControlID2);
-				if (HexDump.isHexaNumber(sRemoteControlID2)) {
-					if (!knownDevices.contains(sRemoteControlID2))
-						knownDevices.add(sRemoteControlID2);
-				}
-
-				byte[] remoteControlID3 = Arrays.copyOfRange(readData,
-						commandByte + 14, commandByte + 20);
-				String sRemoteControlID3 = new String(remoteControlID3);
-				if (HexDump.isHexaNumber(sRemoteControlID3)) {
-					if (!knownDevices.contains(sRemoteControlID3))
-						knownDevices.add(sRemoteControlID3);
-				}
-				storeKnownDevices();
-
-			}
+			Log.i(TAG, "Pump Remote Control Ids Received");
+			sendMessageToUI("Pump Remote Control Ids Received... this is ignored");
 			return;
 		case MedtronicConstants.MEDTRONIC_GET_PARADIGM_LINK_IDS:
 			Log.i(TAG, "Pump Paradigm Link Ids Received");
-			sendMessageToUI("Pump Paradigm Link Ids Received...");
-			if (lastCommandSend != null) {
-				synchronized (waitingCommandLock) {
-					waitingCommand = false;
-					lastCommandSend = null;
-				}
-
-				byte[] glucID1 = Arrays.copyOfRange(readData, commandByte + 2,
-						commandByte + 8);
-				String sGlucID1 = new String(glucID1);
-				if (HexDump.isHexaNumber(sGlucID1)) {
-					if (!knownDevices.contains(sGlucID1))
-						knownDevices.add(sGlucID1);
-				}
-
-				byte[] glucID2 = Arrays.copyOfRange(readData, commandByte + 8,
-						commandByte + 14);
-				String sGlucID2 = new String(glucID2);
-				if (HexDump.isHexaNumber(sGlucID2)) {
-					if (!knownDevices.contains(sGlucID2))
-						knownDevices.add(sGlucID2);
-				}
-
-				byte[] glucID3 = Arrays.copyOfRange(readData, commandByte + 14,
-						commandByte + 20);
-				String sGlucID3 = new String(glucID3);
-				if (HexDump.isHexaNumber(sGlucID3)) {
-					if (!knownDevices.contains(sGlucID3))
-						knownDevices.add(sGlucID3);
-				}
-				storeKnownDevices();
-			}
+			sendMessageToUI("Pump Paradigm Link Ids Received... this is ignored");
 			return ;
 		case MedtronicConstants.MEDTRONIC_GET_SENSORID:
-			log.debug("Pump Sensor Id Received");
-			sendMessageToUI("Pump Sensor Id Received...");
-			if (lastCommandSend != null) {
-				synchronized (waitingCommandLock) {
-					waitingCommand = false;
-					lastCommandSend = null;
-				}
-				if (readData.length >= HexDump.unsignedByte(readData[1])
-						&& HexDump.unsignedByte(readData[1]) > 0) {
-					byte[] sensorId = Arrays.copyOfRange(readData,
-							commandByte + 58, commandByte + 61);
-					String sSensorId = HexDump.toHexString(sensorId);
-					if (!knownDevices.contains(sSensorId))
-						knownDevices.add(sSensorId);
-					storeKnownDevices();
-				}
-			}
+			Log.i(TAG,"Pump Sensor Id Received");
+			sendMessageToUI("Pump Sensor Id Received... this is ignored");
 			return;
 		case MedtronicConstants.MEDTRONIC_GET_CALIBRATION_FACTOR:
-			log.debug("Pump Calibration Factor Received");
-			sendMessageToUI("Pump Cal. Factor Received...");
-			if (lastCommandSend != null) {
-				synchronized (waitingCommandLock) {
-					waitingCommand = false;
-					lastCommandSend = null;
-				}
-				float factor = ((float) HexDump
-						.unsignedByte(readData[commandByte + 2]) * 256f + (float) HexDump
-						.unsignedByte(readData[commandByte + 3]));
-				if (calibrationSelected == MedtronicConstants.CALIBRATION_SENSOR) {
-					if (factor > 0) {
-						calibrationStatus = MedtronicConstants.CALIBRATED;
-						calibrationFactor = factor / 1126;
-					} else {
-						if (calibrationStatus != MedtronicConstants.WITHOUT_ANY_CALIBRATION) {
-							calibrationStatus = MedtronicConstants.LAST_CALIBRATION_FAILED_USING_PREVIOUS;
-						}
-					}
-					SharedPreferences.Editor editor = settings.edit();
-					editor.putFloat("calibrationFactor",
-                            calibrationFactor);
-					editor.putInt("calibrationStatus", calibrationStatus);
-					editor.commit();
-					if (previousRecord == null) {
-						MedtronicSensorRecord auxRecord = new MedtronicSensorRecord();
-						auxRecord.calibrationStatus = calibrationStatus;
-						auxRecord.calibrationFactor = calibrationFactor;
-						log.debug("5");
-						writeLocalCSV(auxRecord, context);
-					} else {
-						previousRecord.calibrationStatus = calibrationStatus;
-						previousRecord.calibrationFactor = calibrationFactor;
-						log.debug("6");
-						writeLocalCSV(previousRecord, context);
-					}
-					if (lastMedtronicPumpRecord == null) {
-						lastMedtronicPumpRecord = new MedtronicPumpRecord();
-						calculateDate(lastMedtronicPumpRecord, new Date(), 0);
-						lastMedtronicPumpRecord.deviceId = prefs.getString(
-								"medtronic_cgm_id", "");
-					}
-					// sendMessageToUI("Is In RANGE CALIBRATION SUCCESS "+currentMeasure+
-					// " Factor "+calibrationFactor, false);
-
-				}
-			}
+			Log.i(TAG,"Pump Calibration Factor Received");
+			sendMessageToUI("Pump Cal. Factor Received... this is ignored");
 			return;
 		case MedtronicConstants.MEDTRONIC_ACK:
-			log.debug("Pump Ack Received");
-			if (lastCommandSend != null) {
-				synchronized (sendingCommandLock) {
-					sendingCommand = false;
-				}
-				synchronized (waitingCommandLock) {
-					waitingCommand = false;
-					lastCommandSend = null;
-				}
-			}
+			Log.i(TAG,"Pump Ack Received");
 			return;
 		default:
 			Log.e(TAG, "Undecoded Command");
@@ -1202,378 +881,7 @@ public class MedtronicReader {
 		}
 	}
 
-	/**
-	 * method to check the Medtronic log page received.
-	 */
-	private void processHistoricPage() {
-		ArrayList<Byte> page = new ArrayList<Byte>();
-		ArrayList<Byte> crcPage = new ArrayList<Byte>();
-		int substract = 3;
-		for (int i = 0; i < hGetter.historicPage.size(); i++) {
-			byte[] hPage = hGetter.historicPage.get(i);
-			for (int j = 0; j < hPage.length; j++) {
-				crcPage.add(hPage[j]);
-			}
-		}
-		byte crc2 = crcPage.get(crcPage.size() - 1);// remove crc
-		crcPage.remove(crcPage.size() - 1);// remove crc
-		byte crc1 = crcPage.get(crcPage.size() - 1);// remove crc
-		crcPage.remove(crcPage.size() - 1);// remove crc
-		// CALCULA EL CRC
-		byte[] crcReceived = { crc1, crc2 };
-		short sCrcReceived = HexDump.byteArrayToShort(crcReceived);
-		Byte[] finalCrcPage = crcPage.toArray(new Byte[crcPage.size()]);
-		// crc16Init();
-		short sCrcCalculated = (short) crc16(finalCrcPage);
-		if (sCrcCalculated != sCrcReceived) {
-			log.debug("Error page crc --> crcReceived " + sCrcReceived
-					+ " crcCalculated " + sCrcCalculated);
-			if (hGetter.timeout >= 2) {
-				hGetter.timeout = 0;
-				log.debug("too much retries");
-				sendMessageToUI(
-						"historic log read aborted! too much crc errors, waiting to retry");
-				return;
-			}
-			sendMessageToUI(
-					"Crc error in page read, reinitializing page read...");
-			hGetter.timeout++;
-			hGetter.commandList = Arrays.copyOf(hGetter.commandList,
-					hGetter.commandList.length + 1);
-			hGetter.commandList[hGetter.commandList.length - 1] = MedtronicConstants.MEDTRONIC_READ_PAGE_COMMAND;
-			hGetter.wThread.isRequest = true;
-			hGetter.firstReadPage = false;
-			hGetter.withoutConfirmation = 0;
 
-			hGetter.isWaitingNextLine = true;
-			hGetter.currentLine = -1;
-			hGetter.historicPage.clear();
-			return;
-		}
-		log.debug("Success!! page crc --> crcReceived " + sCrcReceived
-				+ " crcCalculated " + sCrcCalculated);
-		// invertpage and remove 0
-		StringBuffer buf = new StringBuffer();
-		for (int i = hGetter.historicPage.size() - 1; i >= 0; i--) {
-			byte[] hPage = hGetter.historicPage.get(i);
-			for (int j = hPage.length - substract; j >= 0; j--) {
-				if (hPage[j] == (byte) 0x00 && (substract == 3)) {
-					continue;
-				}
-				substract = 1;
-				page.add(hPage[j]);
-				buf = buf.append(HexDump.toHexString(hPage[j]));
-			}
-			buf.append("\n");
-		}
-		Byte[] invertedPage = page.toArray(new Byte[page.size()]);
-		// log.debug("InvertedPage   \n"+buf.toString());
-		readHistoricPage(invertedPage);
-	}
-
-	/**
-	 * Read and translate the Medtronic log page received.
-	 * 
-	 * @param invertedPage
-	 */
-	private void readHistoricPage(Byte[] invertedPage) {
-		boolean glucoseDataRead = false;
-		boolean sensorTimeStampRead = false;
-		int glucoseVal = 0;
-		StringBuffer sb = null;
-		for (int i = 0; i < invertedPage.length; i++) {
-			sb = new StringBuffer();
-			byte opCommand = HexDump.bUnsignedByte(invertedPage[i]);
-			if ((opCommand > 0) && (opCommand < 20)) {
-				// Other data
-				switch (opCommand) {
-				case 0x0001:
-					log.debug("    - Data End");
-					i += 0;
-					break;
-				case 0x0002:
-					log.debug("    - Sensor Weak Signal");
-					i += 0;
-					break;
-				case 0x0003:
-					sb.append("    - Sensor Calibration : ");
-					datalog.numEntries++;
-					if ((invertedPage[i + 1] & 0x00FF) == 0x00) {
-						sb.append(" Not Calibrated");
-						datalog.entryType[datalog.numEntries] = 0x03;
-					} else {
-						sb.append(" Calibrating");
-						datalog.entryType[datalog.numEntries] = 0x04;
-					}
-					log.debug(sb.toString());
-					i += 1;
-					break;
-				case 0x0008:
-					int year = 2000 + (invertedPage[i + 4] & 0x00FF);
-					int day = (invertedPage[i + 3] & 0x001F);
-					int minute = (invertedPage[i + 2] & 0x003F);
-					int hour = (invertedPage[i + 1] & 0x001F);
-					int month = (((invertedPage[i + 1] >> 6) & 0x0003) << 2)
-							+ ((invertedPage[i + 2] >> 6) & 0x0003);
-					log.debug("    - Sensor Timestamp: " + day + "-" + month
-							+ "-" + year + " " + hour + ":" + minute);
-					if (glucoseDataRead)
-						sensorTimeStampRead = true;
-					i += 4;
-
-					datalog.numEntries++;
-					datalog.entryType[datalog.numEntries] = 0x08;
-					Calendar cal = Calendar.getInstance();
-					cal.set(year, month, day, hour, minute);
-					datalog.dateField[datalog.numEntries] = cal.getTime();
-					break;
-				case 0x000B:
-					sb.append("    - Sensor Status : ");
-					year = 2000 + (invertedPage[i + 4] & 0x000F);
-					day = (invertedPage[i + 3] & 0x001F);
-					minute = (invertedPage[i + 2] & 0x003F);
-					hour = (invertedPage[i + 1] & 0x001F);
-					month = (((invertedPage[i + 1] >> 6) & 0x0003) << 2)
-							+ ((invertedPage[i + 2] >> 6) & 0x0003);
-					sb.append(day + "-" + month + "-" + year + " " + hour + ":"
-							+ minute);
-					log.debug(sb.toString());
-					i += 4;
-					break;
-				case 0x000C:
-					sb.append("    - Date Time Change : ");
-					for (int j = 14; j > 0; j--)
-						sb.append(HexDump
-								.toHexString(invertedPage[i + j] & 0x00FF));
-					log.debug(sb.toString());
-					i += 14;
-					break;
-				case 0x000D:
-					sb.append("    - Sensor Sync : ");
-					year = 2000 + (invertedPage[i + 4] & 0x000F);
-					day = (invertedPage[i + 3] & 0x001F);
-					minute = (invertedPage[i + 2] & 0x003F);
-					hour = (invertedPage[i + 1] & 0x001F);
-					month = (((invertedPage[i + 1] >> 6) & 0x0003) << 2)
-							+ ((invertedPage[i + 2] >> 6) & 0x0003);
-					sb.append(day + "-" + month + "-" + year + " " + hour + ":"
-							+ minute);
-					log.debug(sb.toString());
-					i += 4;
-					break;
-				case 0x000E:
-					glucoseVal = HexDump.unsignedByte(invertedPage[i + 5]);
-					year = 2000 + (invertedPage[i + 4] & 0x000F);
-					day = (invertedPage[i + 3] & 0x001F);
-					minute = (invertedPage[i + 2] & 0x003F);
-					hour = (invertedPage[i + 1] & 0x001F);
-					month = (((invertedPage[i + 1] >> 6) & 0x0003) << 2)
-							+ ((invertedPage[i + 2] >> 6) & 0x0003);
-					sb.append("    - Calibration BG:  " + glucoseVal
-							+ " mg/dl - ");
-					sb.append(day + "-" + month + "-" + year + " " + hour + ":"
-							+ minute);
-					log.debug(sb.toString());
-					i += 5;
-					break;
-				case 0x000F:
-					sb.append("    - Sensor Calibration Factor : ");
-					byte[] value = new byte[2];
-					value[0] = 0x00;
-					value[1] = 0x00;
-					int index = 1;
-					for (int j = 6; j > 4; j--) {
-						value[index] = invertedPage[i + j];
-						index--;
-					}
-					sb.append("" + HexDump.byteArrayToShort(value));
-					year = 2000 + (invertedPage[i + 4] & 0x000F);
-					day = (invertedPage[i + 3] & 0x001F);
-					minute = (invertedPage[i + 2] & 0x003F);
-					hour = (invertedPage[i + 1] & 0x001F);
-					month = (((invertedPage[i + 1] >> 6) & 0x0003) << 2)
-							+ ((invertedPage[i + 2] >> 6) & 0x0003);
-					sb.append("\n" + day + "-" + month + "-" + year + " "
-							+ hour + ":" + minute);
-					datalog.numEntries++;
-					datalog.entryType[datalog.numEntries] = 0x0F;
-					cal = Calendar.getInstance();
-					cal.set(year, month, day, hour, minute);
-					datalog.dateField[datalog.numEntries] = cal.getTime();
-					datalog.calFactor[datalog.numEntries] = HexDump
-							.byteArrayToShort(value);
-					log.debug(sb.toString());
-					i += 6;
-					break;
-				case 0x0010:
-					sb.append("    - Bolus : ");
-					// for (j=7;j>4;j--)
-					// log.debug("%.2X",(invertedPage[i+j]&0x00FF));
-					year = 2000 + (invertedPage[i + 4] & 0x00FF);
-					day = (invertedPage[i + 3] & 0x001F);
-					minute = (invertedPage[i + 2] & 0x003F);
-					hour = (invertedPage[i + 1] & 0x001F);
-					month = (((invertedPage[i + 1] >> 6) & 0x0003) << 2)
-							+ ((invertedPage[i + 2] >> 6) & 0x0003);
-					sb.append(day + "-" + month + "-" + year + " " + hour + ":"
-							+ minute);
-					log.debug(sb.toString());
-					i += 7;
-					break;
-				case 0x0013:
-					log.debug("    - Basal Profile Start\n");
-					i += 0;
-					break;
-				default:
-					log.debug("    - Unknown (" + HexDump.toHexString(opCommand)
-							+ ")");
-					i += 0;
-					break;
-				}
-			} else {
-				// Glucose data
-
-				glucoseVal = (HexDump.unsignedByte(invertedPage[i])) * 2;
-				log.debug("    - Glucose:" + glucoseVal + " mg/dl ("
-						+ HexDump.toHexString(invertedPage[i]) + ")");
-				glucoseDataRead = true;
-				datalog.numEntries++;
-				datalog.entryType[datalog.numEntries] = 0x00;
-				datalog.glucose[datalog.numEntries] = glucoseVal;
-			}
-		}
-		historicPageShift++;
-		hGetter.shift = historicPageShift;
-		Date d = new Date();
-
-		long lastRecordTime = 0;
-		if (previousRecord != null) {
-
-			lastRecordTime = previousRecord.displayDateTime;
-		} else if (settings.contains("lastSensorValueDate")) {
-			lastRecordTime = settings.getLong("lastSensorValueDate", 0);
-		}
-
-		log.debug("EVAL sensorTimeStampRead " + sensorTimeStampRead
-				+ " timeSinceLastRecord " + lastRecordTime + " historicshift "
-				+ historicPageShift);
-		if ((sensorTimeStampRead && lastRecordTime > 0)
-				|| historicPageShift > 1) {
-			log.debug("shift: " + historicPageShift);
-			int i;
-			long actualTime = 0;
-
-			// First drop everything before the first timestamp
-			for (i = datalog.numEntries; i > 0 && datalog.entryType[i] != 0x08; i--)
-				;
-			datalog.numEntries = i;
-			log.debug("\n * Number of traceable entries: " + datalog.numEntries);
-			MedtronicSensorRecord record = null;
-			// Fill missing timestamps
-			boolean otherPage = false;
-			boolean first = true;
-
-			for (i = datalog.numEntries; i > 0; i--) {
-				switch (datalog.entryType[i]) {
-				case 0x00:
-				case 0x03:
-				case 0x04: {
-					actualTime += 5 * 60000;
-					datalog.dateField[i] = new Date(actualTime);
-					// Check times to kow if This record must be uploaded.
-					if (lastRecordTime == 0
-							|| ((actualTime > lastRecordTime) && (actualTime
-									- lastRecordTime > 150000))) {
-						log.debug("OK! Upload this record");
-
-						if (first && historicPageShift <= 1) {
-							otherPage = true;
-						}
-
-						record = new MedtronicSensorRecord();
-						record.setBGValue(datalog.glucose[i] + "");
-						calculateDate(record, datalog.dateField[i], 0);
-						record.isCalibrating = false;
-						record.calibrationStatus = MedtronicConstants.CALIBRATED;
-						lastRecordsInMemory.add(record);
-						calculateTrendAndArrow(record, lastRecordsInMemory);
-					} else {
-						log.debug("KO!, this record must not be uploaded");
-						first = false;
-					}
-					break;
-				}
-				case 0x08:
-					actualTime = datalog.dateField[i].getTime();
-					break;
-				default:
-					break;
-				}
-			}
-
-			SharedPreferences.Editor editor = settings.edit();
-			editor.putFloat("previousValue", previousValue);
-			editor.putInt("calibrationStatus", calibrationStatus);
-			lastSensorValueDate = d.getTime();
-			editor.putLong("lastSensorValueDate", lastSensorValueDate);
-			editor.commit();
-			if (record != null) {
-				previousRecord = record;
-				log.debug("7");
-				writeLocalCSV(previousRecord, context);
-			}
-			if (otherPage) {
-				sendMessageToUI("The next page must be read");
-				log.debug("The next page must be read");
-				hGetter.commandList = Arrays.copyOf(hGetter.commandList,
-						hGetter.commandList.length + 2);
-				hGetter.commandList[hGetter.commandList.length - 2] = MedtronicConstants.MEDTRONIC_ACK;
-				hGetter.commandList[hGetter.commandList.length - 1] = MedtronicConstants.MEDTRONIC_READ_PAGE_COMMAND;
-				hGetter.wThread.isRequest = true;
-				hGetter.firstReadPage = true;
-				hGetter.withoutConfirmation = 1;
-
-				hGetter.isWaitingNextLine = true;
-				hGetter.currentLine = -1;
-				hGetter.historicPage.clear();
-				return;
-			}
-			hGetter.commandList = Arrays.copyOf(hGetter.commandList,
-					hGetter.commandList.length + 2);
-			hGetter.commandList[hGetter.commandList.length - 2] = MedtronicConstants.MEDTRONIC_ACK;
-			hGetter.commandList[hGetter.commandList.length - 1] = MedtronicConstants.MEDTRONIC_INIT;
-			hGetter.withoutConfirmation = 1;
-			hGetter.wThread.isRequest = true;
-			hGetter.wThread.postCommandBytes = null;
-
-			// clear vars and EXIT!!!
-			sendMessageToUI("historic log has been read");
-			// hGetter.init();
-			historicPageIndex = -1;
-			historicPageShift = 0;
-			datalog = new DataLog();
-			SharedPreferences.Editor editor2 = prefs.edit();
-			editor2.putLong("lastHistoricRead", System.currentTimeMillis());
-			editor2.commit();
-			if (mHandlerCheckLastRead != null && checkLastRead != null)
-				mHandlerCheckLastRead.postDelayed(checkLastRead,
-						MedtronicConstants.TIME_10_MIN_IN_MS);
-
-		} else {
-			sendMessageToUI("The next page must be read");
-			log.debug("The next page must be read");
-			hGetter.commandList = Arrays.copyOf(hGetter.commandList,
-					hGetter.commandList.length + 2);
-			hGetter.commandList[hGetter.commandList.length - 2] = MedtronicConstants.MEDTRONIC_ACK;
-			hGetter.commandList[hGetter.commandList.length - 1] = MedtronicConstants.MEDTRONIC_READ_PAGE_COMMAND;
-			hGetter.wThread.isRequest = true;
-			hGetter.firstReadPage = true;
-			hGetter.withoutConfirmation = 1;
-			hGetter.isWaitingNextLine = true;
-			hGetter.currentLine = -1;
-			hGetter.historicPage.clear();
-		}
-	}
 
 	/**
 	 * This method process the glucometer messages
@@ -1692,11 +1000,9 @@ public class MedtronicReader {
 				MedtronicSensorRecord auxRecord = new MedtronicSensorRecord();
 				auxRecord.isCalibrating = !instant;
 				log.debug("8");
-				writeLocalCSV(auxRecord, context);
 			} else {
 				previousRecord.isCalibrating = !instant;
 				log.debug("9");
-				writeLocalCSV(previousRecord, context);
 			}
 			editor.putBoolean("isCalibrating", !instant);
 			editor.commit();
@@ -1820,7 +1126,7 @@ public class MedtronicReader {
 				previousRecord.isCalibrating = false;
 				previousRecord.calibrationStatus = calibrationStatus;
 				log.debug("10");
-				writeLocalCSV(previousRecord, context);
+
 				SharedPreferences.Editor editor = settings.edit();
 				log.debug("change instant lastCalibrationDate");
 				editor.putLong("lastCalibrationDate", lastCalibrationDate);
@@ -1845,7 +1151,7 @@ public class MedtronicReader {
 		}
 		previousRecord.calibrationStatus = calibrationStatus;
 		log.debug("11");
-		writeLocalCSV(previousRecord, context);
+
 		log.debug("Instant Calibration Failure!! ");
 	}
 
@@ -2072,42 +1378,11 @@ public class MedtronicReader {
 		editor.putLong("lastSensorValueDate", lastSensorValueDate);
 		editor.commit();
 		log.debug("12");
-		writeLocalCSV(previousRecord, context);
+
 		Log.i("Medtronic", "BYE!!!!");
 		log.debug("sensorprocessed end expected "
 				+ HexDump.toHexString(expectedSensorSortNumber));
 
-	}
-
-	/**
-	 * This method saves a file with the last Record read from the device
-	 * 
-	 * @param mostRecentData
-	 *            , Record to save.
-	 * @param context
-	 *            , Application context.
-	 */
-	private void writeLocalCSV(MedtronicSensorRecord mostRecentData,
-			Context context) {
-
-		// Write EGV Binary of last (most recent) data
-		try {
-			if (mostRecentData == null || mostRecentData.bGValue == null)
-				log.debug("writeLocalCSV SAVING  EMPTY!!");
-			else
-				log.debug("writeLocalCSV SAVING --> " + mostRecentData.bGValue);
-			ObjectOutputStream oos = new ObjectOutputStream(
-					new FileOutputStream(new File(context.getFilesDir(),
-							"save.bin"))); // Select where you wish to save the
-			// file...
-			oos.writeObject(mostRecentData); // write the class as an 'object'
-			oos.flush(); // flush the stream to insure all of the information
-			// was written to 'save.bin'
-			oos.close();// close the stream
-		} catch (Exception e) {
-			Log.e(TAG, "write to OutputStream failed", e);
-			log.error("write to OutputStream failed", e);
-		}
 	}
 
 	/**
@@ -2180,26 +1455,6 @@ public class MedtronicReader {
 		}
 	}
 
-	/**
-	 * method to store the current status of my known devices. this info will be
-	 * used to restore status.
-	 */
-	public void storeKnownDevices() {
-		StringBuffer listKnownDevices = new StringBuffer();
-		boolean first = true;
-		for (String id : knownDevices) {
-			if (id.length() > 0) {
-				if (!first)
-					listKnownDevices = listKnownDevices.append(",");
-				else
-					first = false;
-				listKnownDevices = listKnownDevices.append(id);
-			}
-		}
-		SharedPreferences.Editor editor = settings.edit();
-		editor.putString("knownDevices", listKnownDevices.toString());
-		editor.commit();
-	}
 
 	/**
 	 * This method calculates the date of the sensor readings
@@ -2449,28 +1704,6 @@ public class MedtronicReader {
 
 	}
 
-	/**
-	 * calculates crc16
-	 * 
-	 * @param bytes
-	 * @return crc
-	 */
-	public int crc16(Byte[] bytes) {
-		int crc = 0xFFFF; // initial value
-		int polynomial = 0x1021; // 0001 0000 0010 0001 (0, 5, 12)
-		// byte[] testBytes = "123456789".getBytes("ASCII");
-		for (byte b : bytes) {
-			for (int i = 0; i < 8; i++) {
-				boolean bit = ((b >> (7 - i) & 1) == 1);
-				boolean c15 = ((crc >> 15 & 1) == 1);
-				crc <<= 1;
-				if (c15 ^ bit)
-					crc ^= polynomial;
-			}
-		}
-		crc &= 0xffff;
-		return crc;
-	}
 
 	/**
 	 * This function tries to calculate the trend of the glucose values.
@@ -2559,7 +1792,6 @@ public class MedtronicReader {
 	/**
      * Sends an error message to be printed in the display (DEBUG) if it is repeated, It is not printed again. If UI is not visible, It will launch a pop-up message.
      * @param valuetosend
-     * @param clear, if true, the display is cleared before printing "valuetosend"
      */
 	private void sendErrorMessageToUI(String valuetosend) {
 		DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss - ");

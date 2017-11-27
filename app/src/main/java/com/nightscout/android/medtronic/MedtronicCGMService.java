@@ -501,8 +501,6 @@ public class MedtronicCGMService extends Service implements
 		}
 		//if I have selected "historic log read" then ...
 		if (prefs.getString("glucSrcTypes","1").equals("2")){
-			medtronicReader.mHandlerCheckLastRead = null;
-			medtronicReader.checkLastRead = null;
 			log.debug("LOG READ ON CREATE");
         	String type = prefs.getString("historicPeriod", "1");
         	if ("2".equalsIgnoreCase(type))
@@ -535,10 +533,8 @@ public class MedtronicCGMService extends Service implements
 			}
 
 		}else if (prefs.getString("glucSrcTypes","1").equals("3")){
-			medtronicReader.mHandlerCheckLastRead = mHandlerCheckLastRead;
-			medtronicReader.checkLastRead = checkLastRead;
-	
-        	String type = prefs.getString("historicMixPeriod", "1");
+
+			String type = prefs.getString("historicMixPeriod", "1");
 			int t;
 			try {
 				t = Integer.parseInt(type);
@@ -1214,8 +1210,6 @@ public class MedtronicCGMService extends Service implements
 						mHandler3ActivatePump.removeCallbacks(getCalibrationFromSensor);
 					}
 					if (type1.equals("2")){
-						medtronicReader.mHandlerCheckLastRead = null;
-						medtronicReader.checkLastRead = null;
 						mHandlerReadFromHistoric.removeCallbacks(readDataFromHistoric);
 						
 			        	String type = prefs.getString("historicPeriod", "1");
@@ -1243,14 +1237,10 @@ public class MedtronicCGMService extends Service implements
 						}
 
 					}else if (type1.equals("1")){
-						medtronicReader.mHandlerCheckLastRead = null;
-						medtronicReader.checkLastRead = null;
 						mHandlerReadFromHistoric.removeCallbacks(readDataFromHistoric);
 						mHandlerCheckLastRead.removeCallbacks(checkLastRead);
 					}else if (type1.equals("3")){
-						medtronicReader.mHandlerCheckLastRead = mHandlerCheckLastRead;
-						medtronicReader.checkLastRead = checkLastRead;
-						 mHandlerCheckLastRead.removeCallbacks(checkLastRead);
+						mHandlerCheckLastRead.removeCallbacks(checkLastRead);
 			        	String type = prefs.getString("historicMixPeriod", "1");
 						int t;
 						try {
@@ -1266,8 +1256,8 @@ public class MedtronicCGMService extends Service implements
 				        mHandlerCheckLastRead.post(checkLastRead);
 				        
 					}
-				
-				
+
+
 			}
 			if (key.equalsIgnoreCase("historicPeriod")){
 				mHandlerReadFromHistoric.removeCallbacks(readDataFromHistoric);
@@ -1330,13 +1320,9 @@ public class MedtronicCGMService extends Service implements
 									
 								}else
 									hGetter.init();
-								medtronicReader.historicPageIndex = -1;
-								medtronicReader.historicPageShift = 0;
-								medtronicReader.datalog = new DataLog();
+
 									String type1 = sharedPreferences.getString("glucSrcTypes", "1");
 									if (type1.equals("2")){
-										medtronicReader.mHandlerCheckLastRead = null;
-										medtronicReader.checkLastRead = null;
 										mHandlerReadFromHistoric.removeCallbacks(readDataFromHistoric);
 										if (prefs.contains("historicPeriod")){
 								        	String type = prefs.getString("historicPeriod", "1");
@@ -1364,13 +1350,9 @@ public class MedtronicCGMService extends Service implements
 										}
 
 									}else if (type1.equals("1")){
-										medtronicReader.mHandlerCheckLastRead = null;
-										medtronicReader.checkLastRead = null;
 										mHandlerReadFromHistoric.removeCallbacks(readDataFromHistoric);
 										mHandlerCheckLastRead.removeCallbacks(checkLastRead);
 									}else if (type1.equals("3")){
-										medtronicReader.mHandlerCheckLastRead = mHandlerCheckLastRead;
-										medtronicReader.checkLastRead = checkLastRead;
 										mHandlerCheckLastRead.removeCallbacks(checkLastRead);
 							        	String type = prefs.getString("historicMixPeriod", "1");
 										int t;
@@ -1412,7 +1394,7 @@ public class MedtronicCGMService extends Service implements
 								}
 							}
 						}
-						medtronicReader.storeKnownDevices();
+
 						mHandlerCheckSerial.post(readAndUpload);
 					}
 				}
@@ -1517,9 +1499,7 @@ public class MedtronicCGMService extends Service implements
 						
 						if (prefs.getString("glucSrcTypes","1").equals("2")){
 							log.debug("EQUALS 2");
-							medtronicReader.mHandlerCheckLastRead = null;
-							medtronicReader.checkLastRead = null;
-				        	String type = prefs.getString("historicPeriod", "1");
+							String type = prefs.getString("historicPeriod", "1");
 				        	if ("2".equalsIgnoreCase(type))
 				        		historicLogPeriod = MedtronicConstants.TIME_10_MIN_IN_MS;
 				        	else if ("3".equalsIgnoreCase(type))
@@ -1541,9 +1521,7 @@ public class MedtronicCGMService extends Service implements
 										synchronized (medtronicReader.processingCommandLock) {
 											medtronicReader.processingCommand = true;
 										}
-										medtronicReader.historicPageIndex = -1;
-										medtronicReader.historicPageShift = 0;
-										medtronicReader.datalog = new DataLog();
+
 									}
 									medtronicReader.hGetter = hGetter;
 									log.debug("SEND GETTER!!!!!");
@@ -1571,9 +1549,7 @@ public class MedtronicCGMService extends Service implements
 									synchronized (medtronicReader.processingCommandLock) {
 										medtronicReader.processingCommand = true;
 									}
-									medtronicReader.historicPageIndex = -1;
-									medtronicReader.historicPageShift = 0;
-									medtronicReader.datalog = new DataLog();
+
 								}
 								medtronicReader.hGetter = hGetter;
 								log.debug("SEND GETTER!!!!!");
@@ -1584,8 +1560,6 @@ public class MedtronicCGMService extends Service implements
 							}
 
 						}else if (prefs.getString("glucSrcTypes","1").equals("3")){
-							medtronicReader.mHandlerCheckLastRead = mHandlerCheckLastRead;
-							medtronicReader.checkLastRead = checkLastRead;
 							if (hGetter == null){
 								hGetter = new HistoricGetterThread(mClients, medtronicReader,
 										medtronicReader.idPump, mSerial, mHandlerReadFromHistoric);
@@ -1595,9 +1569,7 @@ public class MedtronicCGMService extends Service implements
 								synchronized (medtronicReader.processingCommandLock) {
 									medtronicReader.processingCommand = true;
 								}
-								medtronicReader.historicPageIndex = -1;
-								medtronicReader.historicPageShift = 0;
-								medtronicReader.datalog = new DataLog();
+
 							}
 							medtronicReader.hGetter = hGetter;
 							mHandlerReadFromHistoric.post(hGetter);

@@ -38,6 +38,7 @@ android {
         targetSdkVersion 23
         versionCode gitVersionCode()
         versionName gitVersionName()
+        useLibrary 'org.apache.http.legacy'
     }
 
     buildTypes {
