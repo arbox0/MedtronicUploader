@@ -1804,8 +1804,7 @@ public class MedtronicReader {
 		if (mClients != null && mClients.size() > 0) {
 			for (int i = mClients.size() - 1; i >= 0; i--) {
 				try {
-					Message mSend = null;
-					mSend = Message
+					Message mSend = Message
 							.obtain(null,
 									MedtronicConstants.MSG_MEDTRONIC_CGM_ERROR_RECEIVED);
 					Bundle b = new Bundle();
