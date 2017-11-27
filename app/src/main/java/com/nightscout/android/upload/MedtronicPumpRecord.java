@@ -14,7 +14,6 @@ public class MedtronicPumpRecord extends DeviceRecord implements Serializable{
     public String temporaryBasal = "---";
     public String batteryStatus = "---";
     public String batteryVoltage = "---";
-    public String model = "---";
 
 	public boolean isWarmingUp = false;
 	public MedtronicPumpRecord(){
