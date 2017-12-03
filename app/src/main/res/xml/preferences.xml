@@ -50,15 +50,7 @@
         android:entryValues="@array/calib_types_values"
         android:defaultValue="3"
         />
-         <ListPreference
-        android:key="pumpPeriod"
-        android:disableDependentsState="false"
-        android:title="Pump Request Period"
-        android:summary="Select item from array"
-        android:entries="@array/pumpPeriodList"
-        android:entryValues="@array/pumpperiod_values"
-        android:defaultValue="1"
-        />
+
           <ListPreference
         android:key="glucSrcTypes"
         android:disableDependentsState="false"
@@ -68,24 +60,8 @@
         android:entryValues="@array/calib_types_values"
         android:defaultValue="1"
         />
-         <ListPreference
-        android:key="historicPeriod"
-        android:disableDependentsState="false"
-        android:title="Historic Log Request Period"
-        android:summary="Select item from array"
-        android:entries="@array/historicPeriodList"
-        android:entryValues="@array/pumpperiod_values"
-        android:defaultValue="1"
-        />
-        <ListPreference
-        android:key="historicMixPeriod"
-        android:disableDependentsState="false"
-        android:title="Period after failure"
-        android:summary="Select item from array"
-        android:entries="@array/historicMixPeriodList"
-        android:entryValues="@array/historicMixPeriodVal"
-        android:defaultValue="3"
-        />
+
+
     </PreferenceCategory>
     <PreferenceCategory android:title="Sharing">    
 
@@ -106,15 +82,7 @@
             android:summaryOff="The uploader won't try to disable Wifi even if there is a timeout"
             >
     </com.nightscout.android.utils.CustomSwitchPreference>
-    <com.nightscout.android.utils.CustomSwitchPreference
-            android:title="2 Days at Startup"
-            android:key="InitialTwoDayUpload"
-            android:disableDependentsState="false"
-            android:defaultValue="true"
-            android:summaryOn="When the upload application first starts it will upload ~2.5 days of data"
-            android:summaryOff="The uploader won't try upload old data"
-            >
-    </com.nightscout.android.utils.CustomSwitchPreference>
+
     </PreferenceCategory>
      <PreferenceCategory android:title="Disclaimer">
 	    <com.nightscout.android.utils.CustomSwitchPreference

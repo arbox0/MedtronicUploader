@@ -81,29 +81,16 @@ public class SettingsFragment extends PreferenceFragment implements OnSharedPref
          final ListPreference calib_type = (ListPreference)findPreference("calibrationType");
          final ListPreference pumpPeriod = (ListPreference)findPreference("pumpPeriod");
          final ListPreference glucSrcType = (ListPreference)findPreference("glucSrcTypes");
-         final ListPreference historicPeriod = (ListPreference)findPreference("historicPeriod");
-         final ListPreference historicMixPeriod = (ListPreference)findPreference("historicMixPeriod");
 
          int index2 = calib_type.findIndexOfValue(calib_type.getValue());
              med_id.setEnabled(true);
              gluc_id.setEnabled(true);
              sensor_id.setEnabled(true);
-         int index = glucSrcType.findIndexOfValue(glucSrcType.getValue());
-         
+
         
          calib_type.setEnabled(med_id.isEnabled());
          pumpPeriod.setEnabled(index2==1);
          glucSrcType.setEnabled(med_id.isEnabled());
-         historicPeriod.setEnabled(index==1 && med_id.isEnabled() );
-         historicMixPeriod.setEnabled(index==2 && med_id.isEnabled() );
-         glucSrcType.setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
-             public boolean onPreferenceChange(Preference preference, Object newValue) {
-            	 final String val = newValue.toString();
-                 int index = glucSrcType.findIndexOfValue(val);
-                 historicPeriod.setEnabled(index==1 && med_id.isEnabled());
-                 historicMixPeriod.setEnabled(index==2 && med_id.isEnabled() );
-                 return true; 
-             }
-         });
+
     }
 }
