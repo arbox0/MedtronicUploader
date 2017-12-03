@@ -548,7 +548,7 @@ public class MedtronicCGMService extends Service implements
 							return;
 						}
 						mHandlerCheckSerial.removeCallbacks(readAndUpload);
-						mHandlerCheckSerial.postDelayed(readAndUpload, 2 * MedtronicConstants.FIVE_SECONDS__MS);
+						mHandlerCheckSerial.postDelayed(readAndUpload, MedtronicConstants.FIVE_SECONDS__MS);
 						return;
 					}
 				} else
@@ -594,7 +594,7 @@ public class MedtronicCGMService extends Service implements
 					return;
 				}
 				mHandlerCheckSerial.removeCallbacks(readAndUpload);
-				mHandlerCheckSerial.postDelayed(readAndUpload, 2 * MedtronicConstants.FIVE_SECONDS__MS);
+				mHandlerCheckSerial.postDelayed(readAndUpload,  MedtronicConstants.FIVE_SECONDS__MS);
 			}
 		}
 	};
