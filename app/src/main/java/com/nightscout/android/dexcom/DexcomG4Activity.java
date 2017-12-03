@@ -747,29 +747,6 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
             	}
             
             	break;
-            case R.id.readPumpInfo:
-            	 if (mService == null && bService != null) {
-            		 mService = new Messenger(bService);
-            	 }
-            	if (mService != null){
-	            	 try {
-	                     Message msg = Message.obtain(null, MedtronicConstants.MSG_MEDTRONIC_SEND_GET_PUMP_INFO);
-	                     msg.replyTo = mMessenger;
-	                     mService.send(msg);
-	                 } catch (RemoteException e) {
-	                	 StringBuffer sb1 = new StringBuffer("");
-	            		 sb1.append("EXCEPTION!!!!!! "+ e.getMessage()+" "+e.getCause());
-	            		 for (StackTraceElement st : e.getStackTrace()){
-	            			 sb1.append(st.toString()).append("\n");
-	            		 }
-	            		 //log.error("medtronicManualCalibration", "Error sending Manual Calibration\n "+sb1.toString());
-	                	 if (ISDEBUG){
-	                		 display.setText(display.getText()+"Error sending get pump info\n", BufferType.EDITABLE);
-	                	 }
-	                     // In this case the service has crashed before we could even do anything with it
-	                 }
-           	}
-            	break;
             case R.id.calibMan:{
             	
             	log.debug("Manual Calibration");

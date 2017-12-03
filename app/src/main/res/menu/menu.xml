@@ -6,11 +6,6 @@
             android:title="Preferences">
     </item>
     <item
-            android:id="@+id/readPumpInfo"
-            android:orderInCategory="100"
-            android:title="Read Pump Info.">
-    </item>
-    <item
             android:id="@+id/refreshCalFactor"
             android:orderInCategory="100"
             android:title="Get Cal Factor!">
