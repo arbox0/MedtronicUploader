@@ -58,30 +58,24 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                 long currentTime = System.currentTimeMillis();
                 long diff = currentTime - settings.getLong("lastDestroy", 0);
                 if (diff != currentTime && diff > (6 * MedtronicConstants.TIME_60_MIN_IN_MS)) {
-                    log.debug("Remove older records");
-                    SharedPreferences.Editor editor = settings.edit();
-                    if (settings.contains("recordsNotUploadedJson"))
-                        editor.remove("recordsNotUploadedJson");
-                    editor.commit();
+                    Log.d(TAG, "Remove older records");
+                    recordsNotUploadedListJson = new ArrayList<JSONObject>();
                 }
-                if (settings.contains("recordsNotUploadedJson")) {
+                else {
                     JSONArray recordsNotUploadedJson = new JSONArray(settings.getString("recordsNotUploadedJson", "[]"));
                     for (int i = 0; i < recordsNotUploadedJson.length(); i++) {
                         recordsNotUploadedListJson.add(recordsNotUploadedJson.getJSONObject(i));
                     }
-                    log.debug("retrieve older json records -->" + recordsNotUploadedJson.length());
-                    SharedPreferences.Editor editor = settings.edit();
-                    editor.remove("recordsNotUploadedJson");
-                    editor.commit();
+                    Log.d(TAG, "retrieved older json records -->" + recordsNotUploadedJson.length());
                 }
             } catch (Exception e) {
-                log.debug("ERROR Retrieving older list, I have lost them");
                 recordsNotUploadedListJson = new ArrayList<JSONObject>();
-                SharedPreferences.Editor editor = settings.edit();
-                if (settings.contains("recordsNotUploadedJson"))
-                    editor.remove("recordsNotUploadedJson");
-                editor.commit();
             }
+
+            SharedPreferences.Editor editor = settings.edit();
+            if (settings.contains("recordsNotUploadedJson"))
+                editor.remove("recordsNotUploadedJson");
+            editor.commit();
         }
     }
 
