@@ -584,7 +584,7 @@ public class MedtronicReader {
 						Log.d(TAG,"Sensor value received, but value is took only by pump logs");
 						break;
 					}
-					Log.i("MEdtronic", "process sensor2");
+					Log.i(TAG, "process sensor2");
 					log.debug("SENSOR DATA RECEIVED");
 					if (prefs.getBoolean("isWarmingUp", false)) {
 						if (lastMedtronicPumpRecord == null) {
@@ -617,12 +617,12 @@ public class MedtronicReader {
 					sendMessageToUI("sensor data value received");
 					break;
 				default:
-					Log.i("MEdtronic", "No Match");
+					Log.i(TAG, "No Match");
 					break;
 			}
 		} else {
 			Log.i(TAG,
-					"I dont have to listen to this. This message comes from another source: " + HexDump.dumpHexString(readData));
+					"I don't have to listen to this. This message comes from another source: " + HexDump.dumpHexString(readData));
 			log.debug("I don't have to listen to this message. This message comes from another source.");
 
 		}

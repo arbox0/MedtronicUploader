@@ -10,16 +10,7 @@
 	            android:summaryOn="mmol/l. Values are shown and setted in mmol/l"
 	            android:summaryOff="mg/dl. Values are shown and setted in mg/dl">
 	    </com.nightscout.android.utils.CustomSwitchPreference>
-	    <com.nightscout.android.utils.CustomSwitchPreference
-	            android:title="mmol/l decimals"
-	            android:key="mmolDecimals"
-	            android:dependency = "mmolxl"
-	            android:defaultValue="false"
-	            android:switchTextOn="2"
-	            android:switchTextOff="1"
-	            android:summaryOn="Activated. 2 Decimal values will be shown ."
-	            android:summaryOff="Deactivated. 1 Decimal value will be shown .">
-	    </com.nightscout.android.utils.CustomSwitchPreference>
+
         <ListPreference
         android:key="monitor_type"
         android:disableDependentsState="false"

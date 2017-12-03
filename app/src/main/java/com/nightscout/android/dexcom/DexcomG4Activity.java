@@ -303,10 +303,8 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 			            	
 			            
 			            	DecimalFormat df =  null;
-			            	if (prefs.getBoolean("mmolDecimals", false))
-			            		df = new DecimalFormat("#.##");
-			            	else
-			            		df = new DecimalFormat("#.#");
+			            	df = new DecimalFormat("#.##");
+
 			            	if (auxRecord instanceof MedtronicSensorRecord){
 
 								MedtronicSensorRecord record = (MedtronicSensorRecord) auxRecord;
@@ -615,11 +613,8 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 			SharedPreferences prefs = PreferenceManager
 					.getDefaultSharedPreferences(getBaseContext());
 
-			DecimalFormat df = null;
-			if (prefs.getBoolean("mmolDecimals", false))
-				df = new DecimalFormat("#.##");
-			else
-				df = new DecimalFormat("#.#");
+			DecimalFormat df = new DecimalFormat("#.##");
+
 			if (auxRecord instanceof MedtronicSensorRecord) {
 
 				MedtronicSensorRecord record = (MedtronicSensorRecord) auxRecord;
@@ -703,7 +698,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 			} else
 				calibrationSelected = MedtronicConstants.CALIBRATION_GLUCOMETER;
 		}
-		
+
 		if (calibrationSelected == MedtronicConstants.CALIBRATION_MANUAL){
 			menu.getItem(1).setVisible(true);
 			menu.getItem(2).setVisible(false);

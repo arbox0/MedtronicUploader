@@ -360,7 +360,7 @@ public class MedtronicCGMService extends Service implements
 	private void sendMessageDisconnectedToUI() {
 		Log.i("medtronicCGMService", "Disconnected");
 		if (connectedSent)
-			log.debug("Send Message Disconnected to UI");
+			Log.d(TAG, "Send Message Disconnected to UI");
 		connectedSent = false;
 		for (int i = mClients.size() - 1; i >= 0; i--) {
 			try {
@@ -380,7 +380,7 @@ public class MedtronicCGMService extends Service implements
 	@Override
 	public void onCreate() {
 		//Debug.startMethodTracing();
-		log.debug("medCGM onCreate!");
+		Log.debug(TAG,"medCGM onCreate!");
 		super.onCreate();
 		StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
 		StrictMode.setThreadPolicy(policy);
@@ -402,10 +402,7 @@ public class MedtronicCGMService extends Service implements
 				log.setLevel(Level.ERROR);
 				break;
 		}
-	    if (prefs.contains("pumpPeriod")){
-        	int type = Integer.parseInt(prefs.getString("pumpPeriod", "1"));
-        	type = (type < 1 || type > 4) ? 1 : type;
-		}
+
         if (prefs.contains("monitor_type")){
         	String type = prefs.getString("monitor_type", "1");
         	if ("2".equalsIgnoreCase(type)){
@@ -432,14 +429,11 @@ public class MedtronicCGMService extends Service implements
      	SharedPreferences prefs = PreferenceManager
  				.getDefaultSharedPreferences(getBaseContext());
      
-     	DecimalFormat df;
-     	if (prefs.getBoolean("mmolDecimals", false))
-     		df = new DecimalFormat("#.##");
-     	else
-     		df = new DecimalFormat("#.#");
+     	DecimalFormat df = new DecimalFormat("#.##");
+
      	if (auxRecord instanceof MedtronicSensorRecord){
             	
-    	    	MedtronicSensorRecord record = (MedtronicSensorRecord) auxRecord;
+			MedtronicSensorRecord record = (MedtronicSensorRecord) auxRecord;
      		
      		if (prefs.getBoolean("mmolxl", false)){
      			Float fBgValue;
@@ -452,7 +446,7 @@ public class MedtronicCGMService extends Service implements
 
 				}
      		}else
-     			log.info("mmolxl false --> "+record.bGValue);
+     			Log.info(TAG,"mmolxl false --> "+record.bGValue);
 
 
     	    	if (prefs.getBoolean("isWarmingUp",false)){
@@ -1030,34 +1024,6 @@ public class MedtronicCGMService extends Service implements
 
 					}
     		}
-
-			if (key.equalsIgnoreCase("glucSrcTypes")){
-					
-					String type1 = sharedPreferences.getString("glucSrcTypes", "1");
-
-					if (type1.equals("2")){
-
-
-					}else if (type1.equals("1")){
-
-					}else if (type1.equals("3")){
-
-			        	String type = prefs.getString("historicMixPeriod", "1");
-						int t;
-						try {
-							t = Integer.parseInt(type);
-							t = (t > 11 || t < 1) ? 1 : t;
-						}
-						catch (NumberFormatException ne) {
-							t = 1;
-						}
-
-
-					}
-
-
-			}
-
 
 			if (key.equals("medtronic_cgm_id") || key.equals("glucometer_cgm_id") || key.equals("sensor_cgm_id")) {
 				String newID = sharedPreferences.getString("medtronic_cgm_id", "");
