@@ -331,18 +331,14 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                         }
                     }
                     log.debug("retrieve older json records -->" + recordsNotUploadedJson.length());
-                    SharedPreferences.Editor editor = settings.edit();
-                    editor.remove("recordsNotUploadedJson");
-                    editor.commit();
+
                 } catch (Exception e) {
                     Log.i(TAG, "ERROR RETRIEVING OLDER LISTs, I HAVE LOST THEM");
-                    SharedPreferences.Editor editor = settings.edit();
-                    if (settings.contains("recordsNotUploadedJson"))
-                        editor.remove("recordsNotUploadedJson");
-                    editor.commit();
                 }
-                JSONArray jsonArray = new JSONArray(recordsNotUploadedListJson);
                 SharedPreferences.Editor editor = settings.edit();
+                if (settings.contains("recordsNotUploadedJson"))
+                    editor.remove("recordsNotUploadedJson");
+                JSONArray jsonArray = new JSONArray(recordsNotUploadedListJson);
                 editor.putString("recordsNotUploadedJson", jsonArray.toString());
                 editor.commit();
             }

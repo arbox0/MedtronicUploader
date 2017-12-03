@@ -79,8 +79,7 @@ public class MedtronicReader {
 	public Object sendingCommandLock = new Object();
 	// the receptor is sending a command
 	// and we have no received the ACK
-	public Boolean processingCommand = false;// shared variable, It tells us
-	public Object processingCommandLock = new Object();
+
 	// the receptor has sent a message
 	// but we do not have the answer
 	// yet.
@@ -101,7 +100,6 @@ public class MedtronicReader {
 	Integer calibrationSelected = MedtronicConstants.CALIBRATION_GLUCOMETER;
 
 	Handler mHandlerSensorCalibration = null;
-	Runnable getCalibrationFromSensor = null;
 
 	/**
 	 * Constructor
@@ -881,16 +879,7 @@ public class MedtronicReader {
 			sendMessageToUI(
 					"Glucometer Detected!!..Waiting 15 min. to retrieve calibration factor...");
 			log.debug("Glucometer Detected!!..Waiting 15 min. to retrieve calibration factor...");
-			if (mHandlerSensorCalibration != null
-					&& getCalibrationFromSensor != null) {
-				mHandlerSensorCalibration
-				.removeCallbacks(getCalibrationFromSensor);
-				mHandlerSensorCalibration
-				.postDelayed(
-						getCalibrationFromSensor,
-						MedtronicConstants.TIME_15_MIN_IN_MS + 120000);
-			} else
-				log.debug("glucometer handler or glucometer runnable is null");
+			Log.d(TAG,"glucometer handler or glucometer runnable is null");
 			lastGlucometerRecord = new GlucometerRecord();
 			lastGlucometerRecord.numGlucometerValue = num;
 			lastGlucometerValue = num;

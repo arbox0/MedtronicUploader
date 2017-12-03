@@ -380,7 +380,7 @@ public class MedtronicCGMService extends Service implements
 	@Override
 	public void onCreate() {
 		//Debug.startMethodTracing();
-		Log.debug(TAG,"medCGM onCreate!");
+		Log.d(TAG,"medCGM onCreate!");
 		super.onCreate();
 		StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
 		StrictMode.setThreadPolicy(policy);
@@ -446,7 +446,7 @@ public class MedtronicCGMService extends Service implements
 
 				}
      		}else
-     			Log.info(TAG,"mmolxl false --> "+record.bGValue);
+     			Log.i(TAG,"mmolxl false --> "+record.bGValue);
 
 
     	    	if (prefs.getBoolean("isWarmingUp",false)){
@@ -472,15 +472,10 @@ public class MedtronicCGMService extends Service implements
 	@Override
 	public void onDestroy() {
 		//Debug.stopMethodTracing();
-		log.debug("medCGM onDestroy!");
+		Log.d(TAG,"medCGM onDestroy!");
 		isDestroying = true;
 		prefs.unregisterOnSharedPreferenceChangeListener(this);
-		synchronized (medtronicReader.processingCommandLock) {
-			SharedPreferences.Editor editor = prefs.edit();
-			
-			editor.putBoolean("wasProcessing", medtronicReader.processingCommand);
-			editor.commit();			
-		}
+
 		synchronized (reloadLostLock) {
 			mHandlerReloadLost.removeCallbacks(reloadLostRecords);
 		}
@@ -549,7 +544,7 @@ public class MedtronicCGMService extends Service implements
 						mHandlerRead.removeCallbacks(readByListener);
 						sendMessageDisconnectedToUI();
 						if (!mHandlerActive || isDestroying){
-							log.debug("destroy readAnd Upload "+ mHandlerActive + " isDes "+ isDestroying);
+							Log.d(TAG,"destroy readAnd Upload "+ mHandlerActive + " isDes "+ isDestroying);
 							return;
 						}
 						mHandlerCheckSerial.removeCallbacks(readAndUpload);
@@ -583,7 +578,7 @@ public class MedtronicCGMService extends Service implements
 					if (!connected)
 						sendErrorMessageToUI("Receptor connection error");
 					else if (!isOnline())
-						sendErrorMessageToUI("NET connection error");
+						sendErrorMessageToUI("Not online/connection error");
 					else {
 						sendMessageConnectedToUI();
 						sendMessageToUI("connected");
@@ -595,7 +590,7 @@ public class MedtronicCGMService extends Service implements
 			}
 			synchronized (checkSerialLock) {
 				if (!mHandlerActive || isDestroying){
-					log.debug("destroy readAnd Upload2 "+ mHandlerActive + " isDes "+ isDestroying);
+					Log.d(TAG,"destroy readAnd Upload2 "+ mHandlerActive + " isDes "+ isDestroying);
 					return;
 				}
 				mHandlerCheckSerial.removeCallbacks(readAndUpload);
@@ -711,7 +706,7 @@ public class MedtronicCGMService extends Service implements
 				JSONArray recordsNotUploadedJson = new JSONArray(settings.getString("recordsNotUploadedJson","[]"));
 				synchronized (reloadLostLock) {
 					if (isOnline()) {
-						log.debug("reloadnotuploaded is online -> " + recordsNotUploadedJson.length() + " " + !isDestroying);
+						Log.d(TAG,"reloadnotuploaded is online -> " + recordsNotUploadedJson.length() + " " + !isDestroying);
 						if (recordsNotUploadedJson.length() > 0 && !isDestroying) {
 							Log.i(TAG, "Uploading" + recordsNotUploadedJson.length() + " lost records");
 							uploader = new UploadHelper(getApplicationContext());
@@ -733,9 +728,8 @@ public class MedtronicCGMService extends Service implements
 	private class BufferedMessagesProcessor implements Runnable {
 		public ArrayList<byte[]> bufferedMessages = new ArrayList<byte[]>();
 		public void run() {
-			log.debug("Processing bufferedMessages ");
+			Log.d(TAG,"Processing bufferedMessages ");
 			synchronized (isUploadingLock) {
-				log.debug("I am Not Uploading ");
 				
 				try {
 					ArrayList<byte[]> bufferedMessages2Process = new ArrayList<byte[]>();
@@ -744,7 +738,7 @@ public class MedtronicCGMService extends Service implements
 						bufferedMessages2Process.addAll(bufferedMessages);
 						bufferedMessages.clear();
 					}
-					log.debug("I am going to process "+ bufferedMessages2Process.size()+" Messages");
+					Log.d(TAG,"I am going to process "+ bufferedMessages2Process.size()+" Messages");
 
 					medtronicReader.processBufferedMessages(bufferedMessages2Process);
 
@@ -794,7 +788,7 @@ public class MedtronicCGMService extends Service implements
 					sendExceptionToUI("BufferedMessagesProcessor", e);
 				}
 			}
-			log.debug("Buffered Messages Processed ");
+			Log.d(TAG,"Buffered Messages Processed ");
 		}
 
 	}
@@ -1036,7 +1030,6 @@ public class MedtronicCGMService extends Service implements
 						editor.remove("lastGlucometerDate");
 						editor.remove("expectedSensorSortNumberForCalibration0");
 						editor.remove("expectedSensorSortNumberForCalibration1");
-						editor.remove("lastPumpAwake");
 						editor.commit();
 						synchronized (checkSerialLock) {
 
