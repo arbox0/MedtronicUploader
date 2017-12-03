@@ -99,7 +99,6 @@ public class MedtronicReader {
 	SharedPreferences settings = null;
 	SharedPreferences prefs = null;
 	Integer calibrationSelected = MedtronicConstants.CALIBRATION_GLUCOMETER;
-	Object calibrationSelectedLock = new Object();
 
 	Handler mHandlerSensorCalibration = null;
 	Runnable getCalibrationFromSensor = null;
@@ -120,17 +119,17 @@ public class MedtronicReader {
 		knownDevices = new ArrayList<String>();
 		mSerialDevice = device;
 		prefs = PreferenceManager.getDefaultSharedPreferences(context);
-		synchronized (calibrationSelectedLock) {
-			if (prefs.contains("calibrationType")) {
-				String type = prefs.getString("calibrationType", "3");
-				if ("3".equalsIgnoreCase(type))
-					calibrationSelected = MedtronicConstants.CALIBRATION_MANUAL;
-				else if ("2".equalsIgnoreCase(type)) {
-					calibrationSelected = MedtronicConstants.CALIBRATION_SENSOR;
-				} else
-					calibrationSelected = MedtronicConstants.CALIBRATION_GLUCOMETER;
-			}
+
+		if (prefs.contains("calibrationType")) {
+			String type = prefs.getString("calibrationType", "3");
+			if ("3".equalsIgnoreCase(type))
+				calibrationSelected = MedtronicConstants.CALIBRATION_MANUAL;
+			else if ("2".equalsIgnoreCase(type)) {
+				calibrationSelected = MedtronicConstants.CALIBRATION_SENSOR;
+			} else
+				calibrationSelected = MedtronicConstants.CALIBRATION_GLUCOMETER;
 		}
+
 
 		if (prefs.contains("medtronic_cgm_id")) {
 			if (prefs.getString("medtronic_cgm_id", "").length() > 0) {
@@ -423,10 +422,9 @@ public class MedtronicReader {
 	{
 		int calibrationSelectedAux;
 		Log.d(TAG, "processDataAnswer");
-		synchronized (calibrationSelectedLock) {
-			calibrationSelectedAux = calibrationSelected;
-		}
-		Log.d(TAG, "IS DATA ANSWER");
+
+		calibrationSelectedAux = calibrationSelected;
+
 		if (isMessageFromMyDevices(readData)) {
 			Log.d(TAG, "IS FROM MY DEVICES");
 			switch (readData[2]) {
@@ -1237,7 +1235,7 @@ public class MedtronicReader {
 							dataLost *= -1;
 						dataLost--;
 						added = dataLost;
-						Log.i("medtronic", " valPrev " + valPrev
+						Log.i(TAG, " valPrev " + valPrev
 								+ " currentVal " + currentVal + " dataLost "
 								+ dataLost + " added " + added);
 					}
@@ -1245,7 +1243,7 @@ public class MedtronicReader {
 					dataLost = 10;
 					added = 8;
 				}
-				Log.i("Medtronic", "Data Lost " + dataLost);
+				Log.i(TAG, "Data Lost " + dataLost);
 				if (dataLost >= 0) {
 					if (dataLost >= 2)
 						dataLost += 2;
@@ -1415,7 +1413,7 @@ public class MedtronicReader {
 	 *            , current sensor reading
 	 * @param initTime
 	 *            , time of the first (most actual) reading in this row
-	 * @param substract
+	 * @param subtract
 	 *            , index of this reading respectively the initTime reading.
 	 *            Each increment subtracts 5 minutes to "initTime"
 	 */

@@ -994,10 +994,9 @@ public class MedtronicCGMService extends Service implements
 	        				calibrationSelected = MedtronicConstants.CALIBRATION_GLUCOMETER;
 
 	        			}
-						synchronized (medtronicReader.calibrationSelectedLock) {
-	        				medtronicReader.calibrationSelected = calibrationSelected;	
-						}
-	        			
+
+						medtronicReader.calibrationSelected = calibrationSelected;
+
 	        		}
 	        	}
 	        }
@@ -1016,13 +1015,7 @@ public class MedtronicCGMService extends Service implements
     				calibrationSelected = MedtronicConstants.CALIBRATION_GLUCOMETER;
 
     			}
-				synchronized (medtronicReader.calibrationSelectedLock) {
-    				medtronicReader.calibrationSelected = calibrationSelected;	
-				}
-				String type1 = sharedPreferences.getString("glucSrcTypes", "1");
-				 if (calibrationSelected != MedtronicConstants.CALIBRATION_SENSOR && type1.equals("1")){
-
-					}
+				medtronicReader.calibrationSelected = calibrationSelected;
     		}
 
 			if (key.equals("medtronic_cgm_id") || key.equals("glucometer_cgm_id") || key.equals("sensor_cgm_id")) {
