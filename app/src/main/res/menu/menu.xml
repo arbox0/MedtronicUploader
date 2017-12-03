@@ -5,11 +5,7 @@
             android:orderInCategory="100"
             android:title="Preferences">
     </item>
-    <item
-            android:id="@+id/refreshCalFactor"
-            android:orderInCategory="100"
-            android:title="Get Cal Factor!">
-    </item>
+
      <item
             android:id="@+id/calibMan"
             android:orderInCategory="100"

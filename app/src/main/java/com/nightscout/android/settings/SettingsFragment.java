@@ -79,18 +79,13 @@ public class SettingsFragment extends PreferenceFragment implements OnSharedPref
          final EditTextPreference gluc_id = (EditTextPreference)findPreference("glucometer_cgm_id");
          final EditTextPreference sensor_id = (EditTextPreference)findPreference("sensor_cgm_id");
          final ListPreference calib_type = (ListPreference)findPreference("calibrationType");
-         final ListPreference pumpPeriod = (ListPreference)findPreference("pumpPeriod");
          final ListPreference glucSrcType = (ListPreference)findPreference("glucSrcTypes");
 
-         int index2 = calib_type.findIndexOfValue(calib_type.getValue());
-             med_id.setEnabled(true);
-             gluc_id.setEnabled(true);
-             sensor_id.setEnabled(true);
-
-        
-         calib_type.setEnabled(med_id.isEnabled());
-         pumpPeriod.setEnabled(index2==1);
-         glucSrcType.setEnabled(med_id.isEnabled());
+         med_id.setEnabled(true);
+         gluc_id.setEnabled(true);
+         sensor_id.setEnabled(true);
+         calib_type.setEnabled(true);
+         glucSrcType.setEnabled(true);
 
     }
 }

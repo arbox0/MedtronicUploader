@@ -501,11 +501,11 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
         //lnr3.addView(b4);
         if (menu != null){
 	        if (calibrationSelected == MedtronicConstants.CALIBRATION_MANUAL){
-	        	menu.getItem(3).setVisible(false);
-	        	menu.getItem(4).setVisible(true);
+	        	menu.getItem(1).setVisible(true);
+	        	menu.getItem(2).setVisible(false);
 	        } else{
-	        	menu.getItem(3).setVisible(false);
-	        	menu.getItem(4).setVisible(false);
+	        	menu.getItem(1).setVisible(false);
+	        	menu.getItem(2).setVisible(true);
 	        }
         }
         if (ISDEBUG){
@@ -697,19 +697,19 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 		if (prefs.contains("calibrationType")) {
 			String type = prefs.getString("calibrationType", "3");
 			if ("3".equalsIgnoreCase(type))
-				menu.getItem(2).setVisible(false);
+				calibrationSelected = MedtronicConstants.CALIBRATION_MANUAL;
 			else if ("2".equalsIgnoreCase(type)) {
-				menu.getItem(2).setVisible(true);
+				calibrationSelected = MedtronicConstants.CALIBRATION_SENSOR;
 			} else
-				menu.getItem(2).setVisible(false);
+				calibrationSelected = MedtronicConstants.CALIBRATION_GLUCOMETER;
 		}
-		menu.getItem(1).setVisible(true);
+		
 		if (calibrationSelected == MedtronicConstants.CALIBRATION_MANUAL){
-			menu.getItem(3).setVisible(false);
-			menu.getItem(4).setVisible(true);
+			menu.getItem(1).setVisible(true);
+			menu.getItem(2).setVisible(false);
 		} else{
-			menu.getItem(3).setVisible(false);
-			menu.getItem(4).setVisible(false);
+			menu.getItem(1).setVisible(false);
+			menu.getItem(2).setVisible(true);
 		}
 
         return true;
@@ -723,30 +723,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
                 Intent intent = new Intent(this, SettingsActivity.class);
                 startActivity(intent);
                 break;
-            case R.id.refreshCalFactor:
-            	 if (mService == null && bService != null) {
-            		 mService = new Messenger(bService);
-            	 }
-            	if (mService != null){
-	            	 try {
-	                     Message msg = Message.obtain(null, MedtronicConstants.MSG_MEDTRONIC_SEND_GET_SENSORCAL_FACTOR);
-	                     msg.replyTo = mMessenger;
-	                     mService.send(msg);
-	                 } catch (RemoteException e) {
-	                	 StringBuffer sb1 = new StringBuffer("");
-	            		 sb1.append("EXCEPTION!!!!!! "+ e.getMessage()+" "+e.getCause());
-	            		 for (StackTraceElement st : e.getStackTrace()){
-	            			 sb1.append(st.toString()).append("\n");
-	            		 }
-	            		 //log.error("medtronicManualCalibration", "Error sending Manual Calibration\n "+sb1.toString());
-	                	 if (ISDEBUG){
-	                		 display.setText(display.getText()+"Error sending get sensor Calibration factor\n", BufferType.EDITABLE);
-	                	 }
-	                     // In this case the service has crashed before we could even do anything with it
-	                 }
-            	}
-            
-            	break;
+
             case R.id.calibMan:{
             	
             	log.debug("Manual Calibration");
@@ -972,41 +949,13 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 
 			if (menu != null) {
 				if (calibrationSelected == MedtronicConstants.CALIBRATION_MANUAL) {
-					menu.getItem(3).setVisible(false);
-					menu.getItem(4).setVisible(true);
-				} else {
-					menu.getItem(3).setVisible(false);
-					menu.getItem(4).setVisible(false);
-				}
-			}
-
-
-			SharedPreferences prefs = PreferenceManager
-					.getDefaultSharedPreferences(getBaseContext());
-			if (prefs.contains("calibrationType")) {
-				String type = prefs.getString("calibrationType", "3");
-				if ("3".equalsIgnoreCase(type)) {
+					menu.getItem(1).setVisible(true);
 					menu.getItem(2).setVisible(false);
-					if (menu != null) {
-						menu.getItem(3).setVisible(false);
-						menu.getItem(4).setVisible(true);
-					}
-				} else if ("2".equalsIgnoreCase(type)) {
+				} else {
+					menu.getItem(1).setVisible(false);
 					menu.getItem(2).setVisible(true);
-					if (menu != null) {
-						menu.getItem(3).setVisible(false);
-						menu.getItem(4).setVisible(false);
-					}
-				} else {
-					menu.getItem(2).setVisible(false);
-					if (menu != null) {
-						menu.getItem(3).setVisible(false);
-						menu.getItem(4).setVisible(false);
-					}
 				}
 			}
-			menu.getItem(1).setVisible(true);
-
 
 			if (!sharedPreferences.getBoolean("IUNDERSTAND", false)) {
 				synchronized (mHandlerActiveLock) {
