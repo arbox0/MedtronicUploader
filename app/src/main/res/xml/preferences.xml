@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory android:title="Monitor">
+         <com.nightscout.android.utils.CustomSwitchPreference
+	            android:title="mmol/l"
+	            android:key="mmolxl"
+	            android:disableDependentsState="false"
+	            android:switchTextOn="mmol/l"
+	            android:switchTextOff="mg/dl"
+	            android:summaryOn="mmol/l. Values are shown and setted in mmol/l"
+	            android:summaryOff="mg/dl. Values are shown and setted in mg/dl">
+	    </com.nightscout.android.utils.CustomSwitchPreference>
+
+        <ListPreference
+        android:key="monitor_type"
+        android:disableDependentsState="false"
+        android:title="Type"
+        android:summary="Select item from array"
+        android:entries="@array/types"
+        android:entryValues="@array/types_values"
+        android:defaultValue="0"
+        />
+        <EditTextPreference
+            android:title="Pump ID"
+            android:key="medtronic_cgm_id"
+            android:dialogTitle="Enter your Guardian/Pump ID"/>
+         <EditTextPreference
+            android:title="Glucometer ID"
+            android:key="glucometer_cgm_id"
+            android:dialogTitle="Enter your Glucometer ID"/>
+          <EditTextPreference
+            android:title="Sensor ID"
+            android:key="sensor_cgm_id"
+            android:dialogTitle="Enter your Sensor ID"/>
+        <ListPreference
+        android:key="calibrationType"
+        android:disableDependentsState="false"
+        android:title="Calibration Type"
+        android:summary="Select item from array"
+        android:entries="@array/calibrationTypes"
+        android:entryValues="@array/calib_types_values"
+        android:defaultValue="3"
+        />
+
+          <ListPreference
+        android:key="glucSrcTypes"
+        android:disableDependentsState="false"
+        android:title="Glucose Value Source"
+        android:summary="Select item from array"
+        android:entries="@array/sourceTypes"
+        android:entryValues="@array/calib_types_values"
+        android:defaultValue="1"
+        />
+
+
+    </PreferenceCategory>
+    <PreferenceCategory android:title="Sharing">    
+
+    <EditTextPreference
+            android:title="API Base URL"
+            android:key="API Base URL"
+            android:dialogTitle="Enter Base API URL"
+            android:defaultValue="http://{YOUR-API-SERVER}/api/v1/"
+            android:dialogMessage="This only the base URL, the uploader will automatically append /entries for the POST of CGM data and /gdentries for the POST of glucometer data values">
+    </EditTextPreference>
+
+    <com.nightscout.android.utils.CustomSwitchPreference
+            android:title="Wifi Hack"
+            android:key="EnableWifiHack"
+            android:disableDependentsState="false"
+            android:defaultValue="false"
+            android:summaryOn="Wifi will be disabled if there is a timeout (poor wifi signal/access point), this will allow mobile data to be used instead"
+            android:summaryOff="The uploader won't try to disable Wifi even if there is a timeout"
+            >
+    </com.nightscout.android.utils.CustomSwitchPreference>
+
+    </PreferenceCategory>
+     <PreferenceCategory android:title="Disclaimer">
+	    <com.nightscout.android.utils.CustomSwitchPreference
+	            android:title="I UNDERSTAND"
+	            android:key="IUNDERSTAND"
+	            android:disableDependentsState="false"
+	            android:switchTextOn="YES"
+	            android:switchTextOff="NO"
+	            android:summaryOn="Activated. Nightscout should not be used to make medical decisions. There is no support or any warranty of any kind. The quality and performance of the project is with you. This is a project that was created and is supported completely by volunteers"
+	            android:summaryOff="Deactivated. Nightscout should not be used to make medical decisions. There is no support or any warranty of any kind. The quality and performance of the project is with you. This is a project that was created and is supported completely by volunteers">
+	    </com.nightscout.android.utils.CustomSwitchPreference>
+	      <Preference 
+		 android:key="version"
+		 android:title="@string/version" />
+   		 </PreferenceCategory>
+    <PreferenceCategory android:title="Debug">
+    <ListPreference
+        android:key="logLevel"
+        android:disableDependentsState="false"
+        android:title="Logging Level"
+        android:summary="Select item from array"
+        android:entries="@array/levelList"
+        android:entryValues="@array/calib_types_values"
+        android:defaultValue="1"
+        />
+     </PreferenceCategory>
+</PreferenceScreen>
