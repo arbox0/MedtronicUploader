@@ -1,6 +1,6 @@
 # MedtronicUploader
 
-See "Medtronic_NigthScout_Manual.pdf"
+See "Medtronic_NightScout_Manual.pdf"
 
 Special thanks to https://github.com/ksksue/PhysicaloidLibrary
 
