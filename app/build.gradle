@@ -29,8 +29,8 @@ def gitVersionName = { ->
 }
 
 android {
-    compileSdkVersion 23
-    buildToolsVersion '26.0.2'
+    compileSdkVersion 27
+    buildToolsVersion '27.0.3'
 
     lintOptions {
           abortOnError false
@@ -39,7 +39,7 @@ android {
     defaultConfig {
         applicationId "com.nightscout.android"
         minSdkVersion 21
-        targetSdkVersion 23
+        targetSdkVersion 27
         versionCode gitVersionCode()
         versionName gitVersionName()
         useLibrary 'org.apache.http.legacy'
