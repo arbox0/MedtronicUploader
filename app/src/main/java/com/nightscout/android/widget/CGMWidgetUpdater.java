@@ -25,9 +25,8 @@ import com.nightscout.android.upload.MedtronicSensorRecord;
 import com.nightscout.android.upload.Record;
 
 public class CGMWidgetUpdater extends Service{
-	
-	public static int UPDATE_FREQUENCY_SEC = 10;
-	@Override  
+
+    @Override
     public void onCreate()  
     {  
         super.onCreate();  

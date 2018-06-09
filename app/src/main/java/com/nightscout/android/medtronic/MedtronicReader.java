@@ -5,6 +5,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -227,6 +228,10 @@ public class MedtronicReader {
 		}
 	}
 
+	public List<String> getKnownDevices()
+	{
+		return Collections.unmodifiableList(knownDevices);
+	}
 	/**
 	 * This method checks if the message received has its source in one of the
 	 * devices registered.
@@ -380,10 +385,8 @@ public class MedtronicReader {
 
 	/**
 	 * This method reads from the serial device, and process the answer
-	 * 
-	 * @param context
-	 * @return String, for debug or notification purposes
-	 */
+	 *
+	 * */
 	public ArrayList<byte[]> readFromReceiver(int size) {
 		ArrayList<byte[]> bufferedMessages = null;
 		byte[] readFromDevice = new byte[1024];
@@ -833,7 +836,6 @@ public class MedtronicReader {
 			return;
 		default:
 			Log.e(TAG, "Undecoded Command");
-			return;
 		}
 	}
 
@@ -896,8 +898,6 @@ public class MedtronicReader {
 	/**
 	 * This method process the Manual Calibration message
 	 * 
-	 * @param readData
-	 * @return String, for debug or notification purposes
 	 */
 	public void processManualCalibrationDataMessage(float value,
 			boolean instant, boolean doCalibration) {
@@ -1827,8 +1827,7 @@ public class MedtronicReader {
 			synchronized (listLock) {
 				auxEndOffset = endOffset;
 				auxStartOffset = startOffset;
-				aux = new ArrayList<E>();
-				aux.addAll(list);
+				aux = new ArrayList<E>(list);
 
 			}
 			int auxSize = size;

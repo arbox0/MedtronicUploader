@@ -15,6 +15,7 @@ import java.io.IOException;
  *      href="http://www.usb.org/developers/devclass_docs/usbcdc11.pdf">Universal
  *      Serial Bus Class Definitions for Communication Devices, v1.1</a>
  */
+@SuppressWarnings("ALL")
 public class CdcAcmSerialDriver extends CommonUsbSerialDriver {
 
     private final String TAG = CdcAcmSerialDriver.class.getSimpleName();

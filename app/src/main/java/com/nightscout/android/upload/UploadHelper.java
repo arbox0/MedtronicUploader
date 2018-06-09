@@ -43,7 +43,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
     private static final int SOCKET_TIMEOUT = 60 * 1000;
     private static final int CONNECTION_TIMEOUT = 30 * 1000;
 
-    Context context;
+    private Context context;
 
     private List<JSONObject> recordsNotUploadedListJson = new ArrayList<JSONObject>();
 

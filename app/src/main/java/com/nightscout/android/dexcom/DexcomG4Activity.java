@@ -71,8 +71,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 
     private Handler mHandler = new Handler();
 
-    private int maxRetries = 20;
-    private int retryCount = 0;
+	private int retryCount = 0;
     EditText input ;
 
     private TextView mTitleTextView;
@@ -273,7 +272,8 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
         		if (!mHandlerActive)
         			return;
 		        if (!isMyServiceRunning()) {
-		            if (retryCount < maxRetries) {
+					int maxRetries = 20;
+					if (retryCount < maxRetries) {
 		            	stopCGMServices();
 		            	startCGMServices();    		
 		                mTitleTextView.setTextColor(Color.YELLOW);
@@ -302,8 +302,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 			            	
 			            	
 			            
-			            	DecimalFormat df =  null;
-			            	df = new DecimalFormat("#.##");
+			            	DecimalFormat df = new DecimalFormat("#.##");
 
 			            	if (auxRecord instanceof MedtronicSensorRecord){
 

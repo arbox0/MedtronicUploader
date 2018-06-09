@@ -633,8 +633,12 @@ public class MedtronicCGMService extends Service implements
 
 
 			ArrayList<byte[]> bufferedMessages = new ArrayList<>();
+			List<String> devices = medtronicReader.getKnownDevices();
+			String device = devices.get(0);
 
-			byte deviceData[] = {(byte) 0x21, (byte) 0x22, (byte) 0x23};
+			//byte deviceData[] = {(byte) 0x21, (byte) 0x22, (byte) 0x23};
+			byte deviceData[] = HexDump.hexStringToByteArray(device);
+
 			bufferedMessages.add(TestUSBData.fakeSensorData(deviceData,5500));
 
 
@@ -732,10 +736,10 @@ public class MedtronicCGMService extends Service implements
 			synchronized (isUploadingLock) {
 				
 				try {
-					ArrayList<byte[]> bufferedMessages2Process = new ArrayList<byte[]>();
+					ArrayList<byte[]> bufferedMessages2Process;
 
 					synchronized (buffMessagesLock) {
-						bufferedMessages2Process.addAll(bufferedMessages);
+						bufferedMessages2Process = new ArrayList<byte[]>(bufferedMessages);
 						bufferedMessages.clear();
 					}
 					Log.d(TAG,"I am going to process "+ bufferedMessages2Process.size()+" Messages");
