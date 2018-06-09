@@ -6,11 +6,6 @@
             android:title="Preferences">
     </item>
 
-     <item
-            android:id="@+id/calibMan"
-            android:orderInCategory="100"
-            android:title="Manual Calibration.">
-    </item>
     <item
             android:id="@+id/instantCalib"
             android:orderInCategory="100"
