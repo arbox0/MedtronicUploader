@@ -798,7 +798,6 @@ public class MedtronicCGMService extends Service implements
                 for (int i = 0; (i < info.length); i++) {
 
                     if (info[i].getState() == NetworkInfo.State.CONNECTED) {
-                        Log.d(TAG,"INTERNET: connected!");
                         return true; 
                     }
                 }
