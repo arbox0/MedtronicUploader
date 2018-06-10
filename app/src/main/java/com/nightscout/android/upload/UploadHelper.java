@@ -158,6 +158,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
             String[] uriParts = baseURI.split("@");
             String error = null;
 
+            //noinspection IfCanBeSwitch
             if (uriParts.length == 1) {
                 error = "Passphrase is required in REST API URL";
             } else if (uriParts.length == 2) {

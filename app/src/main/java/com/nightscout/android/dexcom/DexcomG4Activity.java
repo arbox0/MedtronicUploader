@@ -177,9 +177,9 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	            			 sb1.append(st.toString()).append("\n");
 	            		 }
 	            		 Log.e(TAG, "Error approving gluc. value \n "+sb1.toString());
-	                	 if (ISDEBUG){
-	                		 display.setText(display.getText()+"Error approving gluc. value\n", BufferType.EDITABLE);
-	                	 }
+
+	            		 display.setText(display.getText()+"Error approving gluc. value\n", BufferType.EDITABLE);
+
 	                 }
 	    		}
 	    	}
@@ -204,9 +204,9 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	            			 sb1.append(st.toString()).append("\n");
 	            		 }
 	            		 Log.e(TAG, "Error approving gluc. value \n "+sb1.toString());
-	                	 if (ISDEBUG){
-	                		 display.setText(display.getText()+"Error approving gluc. value\n", BufferType.EDITABLE);
-	                	 }
+
+	            		 display.setText(display.getText()+"Error approving gluc. value\n", BufferType.EDITABLE);
+
 	                 }
 	    		}
     	  }
@@ -231,9 +231,9 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
         			 sb1.append(st.toString()).append("\n");
         		 }
         		 Log.e(TAG,"Error Registering Client Service Connection\n"+sb1.toString());
-            	if (ISDEBUG){
-            		display.setText(display.getText()+"Error Registering Client Service Connection\n", BufferType.EDITABLE);
-            	}
+
+        		 display.setText(display.getText()+"Error Registering Client Service Connection\n", BufferType.EDITABLE);
+
                 // In this case the service has crashed before we could even do anything with it
             }
         }
@@ -243,9 +243,9 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
             mService = null;
             bService = null;
             Log.i(TAG,"Service Disconnected\n");
-            if (ISDEBUG){
-            	display.setText(display.getText()+"Service Disconnected\n", BufferType.EDITABLE);
-            }
+
+            display.setText(display.getText()+"Service Disconnected\n", BufferType.EDITABLE);
+
         }
     };
 
@@ -309,10 +309,10 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 				            		}
 			            		}else
 			            			log.info("mmolxl false --> "+record.bGValue);
-				            	mDumpTextView.setTextColor(Color.WHITE);
+
 				                mDumpTextView.setText("\n" + record.displayTime + "\n" + record.bGValue + "  " + record.trendArrow + "\n");
 				            }else{
-				            	mDumpTextView.setTextColor(Color.WHITE);
+
 				            	if (auxRecord == null || auxRecord.displayTime == null)
 				            		mDumpTextView.setText("\n---\n---\n---\n");
 				            	else
@@ -377,8 +377,6 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 				record.trendArrow = "---";
 			}
 
-			mDumpTextView.setTextColor(Color.WHITE);
-			mSensorValue.setTextColor(Color.WHITE);
 			if (record.displayDateTime == 0) {
 				mDumpTextView.setText("\n" + record.displayTime + "\n" + calib + "\n");
 				mSensorValue.setText(record.bGValue + "  " + record.trendArrow + "\n");
@@ -491,23 +489,20 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	        	menu.getItem(2).setVisible(true);
 	        }
         }
-        if (ISDEBUG){
-        	lnr3.addView(b2);
-        }
+
+        lnr3.addView(b2);
         lnr.addView(lnr3);
         lnr.addView(lnr2);
         display = new TextView(this);
-        if (ISDEBUG){
-	        display.setText("", BufferType.EDITABLE);
-	        display.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
-	        display.setKeyListener(null);
-	        display.setBackgroundColor(Color.BLACK);
-	        display.setTextColor(Color.WHITE);
-	        display.setMovementMethod(new ScrollingMovementMethod());
-	        display.setMaxLines(10);
+        display.setText("", BufferType.EDITABLE);
+        display.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        display.setKeyListener(null);
+
+        display.setMovementMethod(new ScrollingMovementMethod());
+        display.setMaxLines(10);
 	        
-	        lnr2.addView(display);
-        }
+        lnr2.addView(display);
+
         b2.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -619,11 +614,10 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
             		}
         		}else
         			log.info("mmolxl false --> "+record.bGValue);
-				mDumpTextView.setTextColor(Color.WHITE);
+
 				mDumpTextView.setText("\n" + record.displayTime + "\n"
 						+ record.bGValue + "  " + record.trendArrow + "\n");
 			} else {
-				mDumpTextView.setTextColor(Color.WHITE);
 				if (auxRecord == null || auxRecord.displayTime == null)
 					mDumpTextView.setText("\n---\n---\n---\n");
 				else
