@@ -81,11 +81,7 @@ public class CGMWidgetUpdater extends Service{
 	    	views.setTextViewText(R.id.sgv_id, record.bGValue+calib);
 	    	views.setTextViewText(R.id.arrow_id, record.trendArrow);
         	
-        }else if (auxRecord instanceof EGVRecord){
-        	EGVRecord record = (EGVRecord)auxRecord;
-        	views.setTextViewText(R.id.sgv_id, record.bGValue);
-	    	views.setTextViewText(R.id.arrow_id, record.trendArrow);
-        }else{
+        } else{
         	views.setTextViewText(R.id.sgv_id, "---");
 	    	views.setTextViewText(R.id.arrow_id, "---");
         }	            

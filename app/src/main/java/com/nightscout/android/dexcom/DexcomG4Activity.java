@@ -267,23 +267,6 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 				MedtronicSensorRecord record = (MedtronicSensorRecord) auxRecord;
 				displaySensor(record, calDate, df);
 
-			} else if (auxRecord instanceof EGVRecord) {
-				EGVRecord record = (EGVRecord) auxRecord;
-				if (prefs.getBoolean("mmolxl", false)) {
-					Float fBgValue = null;
-					try {
-						fBgValue = (float) Integer.parseInt(record.bGValue);
-						log.info("mmolxl true --> " + record.bGValue);
-						record.bGValue = df.format(fBgValue / 18f);
-						log.info("mmolxl/18 true --> " + record.bGValue);
-					} catch (Exception e) {
-
-					}
-				} else
-					log.info("mmolxl false --> " + record.bGValue);
-
-				mDumpTextView.setText("\n" + record.displayTime + "\n"
-						+ record.bGValue + "  " + record.trendArrow + "\n");
 			} else {
 				if (auxRecord == null || auxRecord.displayTime == null)
 					mDumpTextView.setText("\n---\n---\n---\n");
