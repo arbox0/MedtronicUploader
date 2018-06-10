@@ -249,7 +249,53 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
         }
     };
 
+	private void updateSensorDisplay() {
+		try {
+			Record auxRecord = getLastRecord();
 
+			long calDate = -1;
+			if (settings.contains("lastCalibrationDate")) {
+				calDate = settings.getLong("lastCalibrationDate", -1);
+			}
+			SharedPreferences prefs = PreferenceManager
+					.getDefaultSharedPreferences(getBaseContext());
+
+			DecimalFormat df = new DecimalFormat("#.##");
+
+			if (auxRecord instanceof MedtronicSensorRecord) {
+
+				MedtronicSensorRecord record = (MedtronicSensorRecord) auxRecord;
+				displaySensor(record, calDate, df);
+
+			} else if (auxRecord instanceof EGVRecord) {
+				EGVRecord record = (EGVRecord) auxRecord;
+				if (prefs.getBoolean("mmolxl", false)) {
+					Float fBgValue = null;
+					try {
+						fBgValue = (float) Integer.parseInt(record.bGValue);
+						log.info("mmolxl true --> " + record.bGValue);
+						record.bGValue = df.format(fBgValue / 18f);
+						log.info("mmolxl/18 true --> " + record.bGValue);
+					} catch (Exception e) {
+
+					}
+				} else
+					log.info("mmolxl false --> " + record.bGValue);
+
+				mDumpTextView.setText("\n" + record.displayTime + "\n"
+						+ record.bGValue + "  " + record.trendArrow + "\n");
+			} else {
+				if (auxRecord == null || auxRecord.displayTime == null)
+					mDumpTextView.setText("\n---\n---\n---\n");
+				else
+					mDumpTextView.setText("\n" + auxRecord.displayTime
+							+ "\n---\n---\n");
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 
     //All I'm really doing here is creating a simple activity to launch and maintain the service
     private Runnable updateDataView = new Runnable() {
@@ -277,50 +323,8 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 			            mTitleTextView.setTextColor(Color.GREEN);
 			            mTitleTextView.setText("CGM Service Started");
 			            b1.setText("Stop Uploading CGM Data");
-			            Record auxRecord =  DexcomG4Activity.this.loadClassFile(new File(getBaseContext().getFilesDir(), "save.bin"));
-			            long calDate = -1;
-			            try{
-			            	if (settings.contains("lastCalibrationDate")){
-			            		 calDate = settings.getLong("lastCalibrationDate", -1);
-			            	}
-			            	SharedPreferences prefs = PreferenceManager
-			        				.getDefaultSharedPreferences(getBaseContext());
-			            	
-			            	
-			            
-			            	DecimalFormat df = new DecimalFormat("#.##");
+			            updateSensorDisplay();
 
-			            	if (auxRecord instanceof MedtronicSensorRecord){
-
-								MedtronicSensorRecord record = (MedtronicSensorRecord) auxRecord;
-								displaySensor(record, calDate,df);
-
-			                }else if (auxRecord instanceof EGVRecord){
-				            	EGVRecord record = (EGVRecord)auxRecord;
-				            	if (prefs.getBoolean("mmolxl", false)){
-			            			Float fBgValue = null;
-				            		try{
-				            			fBgValue =  (float)Integer.parseInt(record.bGValue);
-				            			log.info("mmolxl true --> "+record.bGValue);
-				            				record.bGValue = df.format(fBgValue/18f);
-				            				log.info("mmolxl/18 true --> "+record.bGValue);
-				            		}catch (Exception e){
-				            			
-				            		}
-			            		}else
-			            			log.info("mmolxl false --> "+record.bGValue);
-
-				                mDumpTextView.setText("\n" + record.displayTime + "\n" + record.bGValue + "  " + record.trendArrow + "\n");
-				            }else{
-
-				            	if (auxRecord == null || auxRecord.displayTime == null)
-				            		mDumpTextView.setText("\n---\n---\n---\n");
-				            	else
-				            		mDumpTextView.setText("\n" + auxRecord.displayTime + "\n---\n---\n");
-				            }	
-			            }catch (Exception e){
-			            	e.printStackTrace();
-			            }
 			            	            
 		        	}else{
 		        		b1.setText("Start Uploading CGM Data");
@@ -578,56 +582,17 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 
     }
 
+    private Record getLastRecord()
+	{
+		return DexcomG4Activity.this.loadClassFile(new File(getBaseContext().getFilesDir(), "save.bin"));
+	}
+
 	@Override
 	protected void onResume() {
 		log.info("ON RESUME!");
 		super.onResume();
 		// Refresh the status
-		try {
-			Record auxRecord = DexcomG4Activity.this.loadClassFile(new File(
-					getBaseContext().getFilesDir(), "save.bin"));
-			long calDate = -1;
-			if (settings.contains("lastCalibrationDate")) {
-				calDate = settings.getLong("lastCalibrationDate", -1);
-			}
-			SharedPreferences prefs = PreferenceManager
-					.getDefaultSharedPreferences(getBaseContext());
-
-			DecimalFormat df = new DecimalFormat("#.##");
-
-			if (auxRecord instanceof MedtronicSensorRecord) {
-
-				MedtronicSensorRecord record = (MedtronicSensorRecord) auxRecord;
-				displaySensor(record, calDate,df);
-
-			} else if (auxRecord instanceof EGVRecord) {
-				EGVRecord record = (EGVRecord) auxRecord;
-				if (prefs.getBoolean("mmolxl", false)){
-        			Float fBgValue = null;
-            		try{
-            			fBgValue =  (float)Integer.parseInt(record.bGValue);
-            			log.info("mmolxl true --> "+record.bGValue);
-            				record.bGValue = df.format(fBgValue/18f);
-            				log.info("mmolxl/18 true --> "+record.bGValue);
-            		}catch (Exception e){
-            			
-            		}
-        		}else
-        			log.info("mmolxl false --> "+record.bGValue);
-
-				mDumpTextView.setText("\n" + record.displayTime + "\n"
-						+ record.bGValue + "  " + record.trendArrow + "\n");
-			} else {
-				if (auxRecord == null || auxRecord.displayTime == null)
-					mDumpTextView.setText("\n---\n---\n---\n");
-				else
-					mDumpTextView.setText("\n" + auxRecord.displayTime
-							+ "\n---\n---\n");
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-
+		updateSensorDisplay();
 	}
 
     //Check to see if service is running

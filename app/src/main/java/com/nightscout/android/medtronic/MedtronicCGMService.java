@@ -515,7 +515,7 @@ public class MedtronicCGMService extends Service implements
 				}
 				if (connected) {
 					if (!isOnline())
-						sendErrorMessageToUI("NET connection error");
+						sendErrorMessageToUI("Internet connection error");
 					if (!listenerAttached) {
 						Log.d(TAG, "!listener attached readByListener triggered");
 						mSerial.clearReadListener();
