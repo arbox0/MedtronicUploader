@@ -104,15 +104,12 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
         public void handleMessage(Message msg) {
             switch (msg.what) {
             case MedtronicConstants.MSG_MEDTRONIC_CGM_MESSAGE_RECEIVED:
-            	/*if (msgsDisplayed > 8){
-            		display.setText("", BufferType.EDITABLE);
-            		msgsDisplayed = 0;
-            	}*/
+
             	Log.i(TAG,  msg.getData().getString("data")+"\n");
-            	if (ISDEBUG){
+
 	                display.append(msg.getData().getString("data")+"\n");
 	                msgsDisplayed++;
-            	}
+
             	mHandler.removeCallbacks(updateDataView);
 	        	mHandler.post(updateDataView);
                 break;
@@ -136,19 +133,15 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	        	mHandler.post(updateDataView);
                 break;
             case MedtronicConstants.MSG_MEDTRONIC_CGM_ERROR_RECEIVED:
-            	Log.i(TAG,  msg.getData().getString("data")+"\n");
-            	if (ISDEBUG){
-	            	if (msgsDisplayed > 8){
-	            		display.setText("", BufferType.EDITABLE);
-	            		msgsDisplayed = 0;
-	            	}
+            	Log.e(TAG,  msg.getData().getString("data")+"\n");
+
 	            	String sText = display.getText().toString();
 	            	String sError = msg.getData().getString("data");
 	            	if (!(sText.indexOf(sError) >= 0)){
 	            		display.setText(display.getText()+"Medtronic CGM Message: " + sError +"\n", BufferType.EDITABLE);
 	            		msgsDisplayed++;
 	            	}
-            	}
+
                 break;
             case MedtronicConstants.MSG_MEDTRONIC_CALIBRATION_DONE:
             	Log.i(TAG,  MedtronicConstants.MSG_MEDTRONIC_CALIBRATION_DONE+"\n");

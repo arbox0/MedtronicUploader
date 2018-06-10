@@ -142,35 +142,16 @@ public class MedtronicCGMService extends Service implements
 					String value = msg.getData().getString("sgv");
 					if (value == null || value.equals("")) {
 						value = prefs.getString("manual_sgv", "");
-						if (value.indexOf(",") >= 0)
-							value = value.replace(",", ".");
 					}
-					log.debug("Manual Calibration Received SGV " + value);
+					Log.d(TAG, "Manual Calibration Received SGV " + value);
 					try {
-						Float val = null;
-						if (medtronicReader != null && value != null && !value.equals("")) {
-							if (prefs.getBoolean("mmolxl", false)) {
-								try {
-									if (value.indexOf(".") > -1) {
-										val = Float.parseFloat(value);
-										medtronicReader.processManualCalibrationDataMessage(val, false, true);
-									} else {
-										medtronicReader.processManualCalibrationDataMessage(Integer.parseInt(value), false, true);
-									}
-									sendMessageCalibrationDoneToUI();
-								} catch (Exception e) {
-									sendExceptionToUI("Error parsing Calibration", e);
-								}
-							} else {
-								if (value.indexOf(".") > -1) {
-									val = Float.parseFloat(value);
-									medtronicReader.processManualCalibrationDataMessage(val.intValue(), false, true);
-								} else {
-									medtronicReader.processManualCalibrationDataMessage(Integer.parseInt(value), false, true);
-								}
-								sendMessageCalibrationDoneToUI();
-							}
+						if (medtronicReader != null && !value.equals("")) {
+						    medtronicReader.processManualCalibrationDataMessage(Float.parseFloat(value), false, true);
+						    sendMessageCalibrationDoneToUI();
 						}
+						else {
+                            sendErrorMessageToUI("Calibration value empty");
+                        }
 					} catch (Exception e) {
 						sendExceptionToUI("Error parsing Calibration", e);
 					}
@@ -179,49 +160,25 @@ public class MedtronicCGMService extends Service implements
 					value = msg.getData().getString("sgv");
 					if (value == null || value.equals("")) {
 						value = prefs.getString("instant_sgv", "");
-						if (value.indexOf(",") >= 0)
-							value = value.replace(",", ".");
 					}
 					Log.d(TAG, "Instant Calibration received SGV " + value);
 					try {
-						Float val = null;
 						if (medtronicReader != null && !value.equals("")) {
 							if (prefs.getBoolean("mmolxl", false)) {
-								try {
-									if (value.indexOf(".") > -1) {
-										val = Float.parseFloat(value);
-										medtronicReader.calculateInstantCalibration(val * 18f);
-									} else {
-										medtronicReader.calculateInstantCalibration(Integer.parseInt(value) * 18f);
-									}
-									sendMessageCalibrationDoneToUI();
-								} catch (Exception e) {
-									sendExceptionToUI("Error parsing Calibration", e);
-								}
+								medtronicReader.calculateInstantCalibration(Float.parseFloat(value) * 18f);
+								sendMessageCalibrationDoneToUI();
 							} else {
-								if (value.indexOf(".") > -1) {
-									val = Float.parseFloat(value);
-									medtronicReader.calculateInstantCalibration(val.intValue());
-								} else {
-									medtronicReader.calculateInstantCalibration(Integer.parseInt(value));
-								}
+							    medtronicReader.calculateInstantCalibration(Float.parseFloat(value));
 								sendMessageCalibrationDoneToUI();
 							}
 						} else {
-							sendErrorMessageToUI("Error parsing Calibration");
+							sendErrorMessageToUI("Calibration value empty");
 						}
 					} catch (Exception e) {
 						sendExceptionToUI("Error parsing Calibration", e);
 					}
 					break;
-				case MedtronicConstants.MSG_MEDTRONIC_SEND_GET_PUMP_INFO:
-					sendMessageToUI("Retrieving Pump info...");
-					break;
-				case MedtronicConstants.MSG_MEDTRONIC_SEND_GET_SENSORCAL_FACTOR:
-					sendMessageToUI("Retrieve calibration factor...Now!");
-					log.debug("Retrieve calibration factor...Now!");
 
-					break;
 				case MedtronicConstants.MSG_MEDTRONIC_CGM_REQUEST_PERMISSION:
 					openUsbSerial(false);
 					break;
