@@ -622,7 +622,6 @@ public class MedtronicReader {
 		} else {
 			Log.i(TAG,
 					"I don't have to listen to this. This message comes from another source: " + HexDump.dumpHexString(readData));
-			log.debug("I don't have to listen to this message. This message comes from another source.");
 
 		}
 
@@ -1316,10 +1315,8 @@ public class MedtronicReader {
 		lastSensorValueDate = d.getTime();
 		editor.putLong("lastSensorValueDate", lastSensorValueDate);
 		editor.commit();
-		log.debug("12");
 
-		Log.i("Medtronic", "BYE!!!!");
-		log.debug("sensorprocessed end expected "
+		Log.i(TAG, "sensorprocessed end expected "
 				+ HexDump.toHexString(expectedSensorSortNumber));
 
 	}

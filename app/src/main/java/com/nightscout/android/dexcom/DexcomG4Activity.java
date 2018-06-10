@@ -104,44 +104,37 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
         public void handleMessage(Message msg) {
             switch (msg.what) {
             case MedtronicConstants.MSG_MEDTRONIC_CGM_MESSAGE_RECEIVED:
-
             	Log.i(TAG,  msg.getData().getString("data")+"\n");
-
-	                display.append(msg.getData().getString("data")+"\n");
-	                msgsDisplayed++;
-
+            	display.append(msg.getData().getString("data")+"\n");
+            	msgsDisplayed++;
             	mHandler.removeCallbacks(updateDataView);
 	        	mHandler.post(updateDataView);
                 break;
             case MedtronicConstants.MSG_MEDTRONIC_CGM_CLEAR_DISPLAY:
-            	if (ISDEBUG){
-	            	display.setText("", BufferType.EDITABLE);
-	        		msgsDisplayed = 0;
-            	}
+                display.setText("", BufferType.EDITABLE);
+                msgsDisplayed = 0;
         		break;
             case MedtronicConstants.MSG_MEDTRONIC_CGM_NO_PERMISSION:
+                Log.e(TAG, "Message received - no USB permission");
                 usbAllowedPermission = false;
                 mHandler.removeCallbacks(updateDataView);
 	        	mHandler.post(updateDataView);
                 break;
             case MedtronicConstants.MSG_MEDTRONIC_GLUCMEASURE_DETECTED:
-            	showUseCalibConfirmation(msg.getData().getFloat("data"), msg.getData().getBoolean("calibrating"), msg.getData().getBoolean("isCalFactorFromPump"));
+            	Log.i(TAG, "Glucometer measurement detected");
+                showUseCalibConfirmation(msg.getData().getFloat("data"), msg.getData().getBoolean("calibrating"), msg.getData().getBoolean("isCalFactorFromPump"));
             	break;
             case MedtronicConstants.MSG_MEDTRONIC_CGM_USB_GRANTED:
+                Log.i(TAG, "Message received - USB permission granted");
                 usbAllowedPermission = true;
                 mHandler.removeCallbacks(updateDataView);
 	        	mHandler.post(updateDataView);
                 break;
             case MedtronicConstants.MSG_MEDTRONIC_CGM_ERROR_RECEIVED:
             	Log.e(TAG,  msg.getData().getString("data")+"\n");
-
-	            	String sText = display.getText().toString();
-	            	String sError = msg.getData().getString("data");
-	            	if (!(sText.indexOf(sError) >= 0)){
-	            		display.setText(display.getText()+"Medtronic CGM Message: " + sError +"\n", BufferType.EDITABLE);
-	            		msgsDisplayed++;
-	            	}
-
+            	String sError = msg.getData().getString("data");
+            	display.setText(display.getText()+"Medtronic CGM Message: " + sError +"\n", BufferType.EDITABLE);
+            	msgsDisplayed++;
                 break;
             case MedtronicConstants.MSG_MEDTRONIC_CALIBRATION_DONE:
             	Log.i(TAG,  MedtronicConstants.MSG_MEDTRONIC_CALIBRATION_DONE+"\n");
@@ -149,7 +142,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
  	        	mHandler.post(updateDataView);
                 break;
 			case MedtronicConstants.MSG_MEDTRONIC_FAKE:
-				Log.i(TAG,  MedtronicConstants.MSG_MEDTRONIC_FAKE+"\n");
+				Log.i(TAG, "Fake message sent / " + MedtronicConstants.MSG_MEDTRONIC_FAKE+"\n");
 				mHandler.removeCallbacks(updateDataView);
 				mHandler.post(updateDataView);
 				break;
