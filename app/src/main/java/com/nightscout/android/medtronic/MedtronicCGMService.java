@@ -658,30 +658,27 @@ public class MedtronicCGMService extends Service implements
 	 * class This class process all the messages received after being correctly
 	 * parsed.
 	 */
-	private Runnable reloadLostRecords = new Runnable() {
-		public void run() {
+    private Runnable reloadLostRecords = new Runnable() {
+        public void run() {
 
-			Log.d(TAG, "Reload any lost records from medtronic service");
+            try {
+                JSONArray recordsNotUploadedJson = new JSONArray(settings.getString("recordsNotUploadedJson", "[]"));
+                synchronized (reloadLostLock) {
+                    if (isOnline()) {
+                        if (recordsNotUploadedJson.length() > 0 && !isDestroying) {
+                            Log.i(TAG, "Uploading" + recordsNotUploadedJson.length() + " lost records");
+                            uploader = new UploadHelper(getApplicationContext());
+                        }
+                    }
+                }
+            } catch (JSONException e) {
+                sendExceptionToUI("Error Reloading Lost Records", e);
+            }
 
-			try {
-				JSONArray recordsNotUploadedJson = new JSONArray(settings.getString("recordsNotUploadedJson","[]"));
-				synchronized (reloadLostLock) {
-					if (isOnline()) {
-						Log.d(TAG,"reloadnotuploaded is online -> " + recordsNotUploadedJson.length() + " " + !isDestroying);
-						if (recordsNotUploadedJson.length() > 0 && !isDestroying) {
-							Log.i(TAG, "Uploading" + recordsNotUploadedJson.length() + " lost records");
-							uploader = new UploadHelper(getApplicationContext());
-						}
-					}
-				}
-			} catch (JSONException e) {
-				sendExceptionToUI("Error Reloading Lost Records", e);
-			}
-			
-			if (!isDestroying)
-				mHandlerReloadLost.postDelayed(reloadLostRecords, 60000);
-		}
-	};
+            if (!isDestroying)
+                mHandlerReloadLost.postDelayed(reloadLostRecords, 60000);
+        }
+    };
 	/**
 	 * class This class process all the messages received after being correctly
 	 * parsed.
@@ -802,11 +799,11 @@ public class MedtronicCGMService extends Service implements
                 for (int i = 0; (i < info.length); i++) {
 
                     if (info[i].getState() == NetworkInfo.State.CONNECTED) {
-                        log.debug("INTERNET: connected!");
+                        Log.d(TAG,"INTERNET: connected!");
                         return true; 
                     }
                 }
-				log.debug("INTERNET nothing connected of "+String.valueOf(info.length));
+				Log.d(TAG, "INTERNET nothing connected of "+String.valueOf(info.length));
             }
         }
         return false;
