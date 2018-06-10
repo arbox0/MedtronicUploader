@@ -972,17 +972,13 @@ public class MedtronicReader {
 			int previousCalibrationStatus, float isig,
 			MedtronicSensorRecord record, int added, Date currentTime) {
 		if (previousCalibrationFactor > 0) {
+			record.setUnfilteredGlucose(isig * previousCalibrationFactor);
+			record.setBGValue((applyFilterToRecord(record)) + "");
+			record.isCalibrating = false;
+			record.calibrationFactor = previousCalibrationFactor;
 			if (previousCalibrationStatus != MedtronicConstants.WITHOUT_ANY_CALIBRATION) {
-				record.setUnfilteredGlucose(isig * previousCalibrationFactor);
-				record.setBGValue((applyFilterToRecord(record)) + "");
-				record.isCalibrating = false;
-				record.calibrationFactor = previousCalibrationFactor;
 				record.calibrationStatus = previousCalibrationStatus;
 			} else {
-				record.setUnfilteredGlucose(isig * previousCalibrationFactor);
-				record.setBGValue((applyFilterToRecord(record)) + "");
-				record.isCalibrating = false;
-				record.calibrationFactor = previousCalibrationFactor;
 				record.calibrationStatus = MedtronicConstants.LAST_CALIBRATION_FAILED_USING_PREVIOUS;
 			}
 		}
@@ -1051,23 +1047,23 @@ public class MedtronicReader {
 	}
 
 	public void calculateInstantCalibration(float currentMeasure) {
-		log.debug("Instant Calibration");
+		Log.d(TAG,"Instant Calibration");
 		if (previousRecord != null && previousRecord.isig != 0) {
-			log.debug("I  have isig " + previousRecord.isig);
+			Log.d(TAG, "I  have isig " + previousRecord.isig);
 			calibrationFactor = currentMeasure / previousRecord.isig;
-			log.debug("Instant Calibration result " + calibrationFactor);
+			Log.d(TAG,"Instant Calibration result " + calibrationFactor);
 			if (calibrationFactor > 0) {
 				previousRecord.bGValue = "" + ((int) currentMeasure);
-				log.debug("Instant Calibration Success!! ");
+				Log.d(TAG,"Instant Calibration Success!! ");
 				calibrationStatus = MedtronicConstants.CALIBRATED;
 				lastCalibrationDate = System.currentTimeMillis();
 				isCalibrating = false;
 				previousRecord.isCalibrating = false;
 				previousRecord.calibrationStatus = calibrationStatus;
-				log.debug("10");
+
 
 				SharedPreferences.Editor editor = settings.edit();
-				log.debug("change instant lastCalibrationDate");
+				Log.d(TAG, "change instant lastCalibrationDate");
 				editor.putLong("lastCalibrationDate", lastCalibrationDate);
 				editor.putBoolean("isCalibrating", false);
 				editor.putFloat("calibrationFactor", calibrationFactor);
@@ -1078,7 +1074,7 @@ public class MedtronicReader {
 			return;
 		} else{
 			sendErrorMessageToUI("I can't calibrate, I don't have any ISIG stored yet.");
-			log.debug("I dont have isig");
+			Log.d(TAG,"I dont have isig");
 		}
 		if (previousRecord == null)
 			previousRecord = new MedtronicSensorRecord();
@@ -1089,9 +1085,7 @@ public class MedtronicReader {
 			calibrationStatus = MedtronicConstants.WITHOUT_ANY_CALIBRATION;
 		}
 		previousRecord.calibrationStatus = calibrationStatus;
-		log.debug("11");
-
-		log.debug("Instant Calibration Failure!! ");
+		Log.d(TAG, "Instant Calibration Failure!! ");
 	}
 
 	/**

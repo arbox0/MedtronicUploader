@@ -207,7 +207,7 @@ public class MedtronicCGMService extends Service implements
 
      */
 	private void sendMessageToUI(String valuetosend) {
-		Log.i("medtronicCGMService", valuetosend);
+		Log.i("medtronicCGMService", "Sent message to UI" + valuetosend);
 		DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss - ");
 		//get current date time with Date()
 		Date date = new Date();
@@ -242,8 +242,7 @@ public class MedtronicCGMService extends Service implements
      *
      */
 	private void sendErrorMessageToUI(String valuetosend) {
-		Log.e("medtronicCGMService", valuetosend);
-		log.error("Send Error Message to UI "+ valuetosend);
+		Log.e("medtronicCGMService", "Sent error message to UI: " + valuetosend);
 		if (mClients != null && mClients.size() > 0) {
 			for (int i = mClients.size() - 1; i >= 0; i--) {
 				try {
@@ -396,9 +395,9 @@ public class MedtronicCGMService extends Service implements
      			Float fBgValue;
 				try{
 					fBgValue =  (float)Integer.parseInt(record.bGValue);
-					log.info("mmolxl true --> "+record.bGValue);
+					Log.i(TAG, "mmolxl true --> "+record.bGValue);
 					record.bGValue = df.format(fBgValue/18f);
-					log.info("mmolxl/18 true --> "+record.bGValue);
+					Log.i(TAG, "mmolxl/18 true --> "+record.bGValue);
 				}catch (Exception e){
 
 				}
