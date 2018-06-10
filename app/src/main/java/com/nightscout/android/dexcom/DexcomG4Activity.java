@@ -302,8 +302,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 			            	
 			            	
 			            
-			            	DecimalFormat df =  null;
-			            	df = new DecimalFormat("#.##");
+			            	DecimalFormat df = new DecimalFormat("#.##");
 
 			            	if (auxRecord instanceof MedtronicSensorRecord){
 
@@ -719,7 +718,65 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
                 startActivity(intent);
                 break;
 
-
+            case R.id.calibMan:{
+            	
+            	log.debug("Manual Calibration");
+            	AlertDialog.Builder alert = new AlertDialog.Builder(ctx);
+	        	alert.setTitle("Manual Calibration");
+	        	alert.setMessage("Insert your glucose value in mg/dl (only natural numbers)");
+	    
+	        	if (prefs.getBoolean("mmolxl", false)){
+	        		alert.setMessage("Insert your glucose value in mmol/l (only 2 decimals)");
+	        		log.debug("mmol/l");
+	        	}
+	        		
+	        		
+	        	// Set an EditText view to get user input 
+	        	input = new EditText(ctx);
+	        	input.setInputType(InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);
+	        	alert.setView(input);
+	
+	        	alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+	        	public void onClick(DialogInterface dialog, int whichButton) {
+	        	  String value = input.getText().toString();
+	        	  log.debug("Manual Calibration send "+value);
+	        	  if (mService == null && bService != null) {
+             		 mService = new Messenger(bService);
+             	 }
+	        	  if (mService != null){
+		            	 try {
+		                     Message msg = Message.obtain(null, MedtronicConstants.MSG_MEDTRONIC_SEND_MANUAL_CALIB_VALUE);
+		                     Bundle b = new Bundle();
+		 					 b.putString("sgv", value);
+		 					 prefs.edit().putString("manual_sgv", value).commit();
+		 					 msg.setData(b);
+		                     msg.replyTo = mMessenger;
+		                     mService.send(msg);
+		                 } catch (RemoteException e) {
+		                	 StringBuffer sb1 = new StringBuffer("");
+		            		 sb1.append("EXCEPTION!!!!!! "+ e.getMessage()+" "+e.getCause());
+		            		 for (StackTraceElement st : e.getStackTrace()){
+		            			 sb1.append(st.toString()).append("\n");
+		            		 }
+		            		 Log.e(TAG, "Error sending Manual Calibration\n "+sb1.toString());
+		                	 if (ISDEBUG){
+		                		 display.setText(display.getText()+"Error sending Manual Calibration\n", BufferType.EDITABLE);
+		                	 }
+		                     // In this case the service has crashed before we could even do anything with it
+		                 }
+	            	}
+	        	  }
+	        	});
+	
+	        	alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+	        	  public void onClick(DialogInterface dialog, int whichButton) {
+	        	    // Canceled.
+	        	  }
+	        	});
+	
+	        	alert.show();
+            }
+            	break;
             case R.id.instantCalib:{
             	log.debug("Instant Calibration ");
             	AlertDialog.Builder alert2 = new AlertDialog.Builder(ctx);

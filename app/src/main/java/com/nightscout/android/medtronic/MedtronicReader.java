@@ -100,6 +100,8 @@ public class MedtronicReader {
 	SharedPreferences prefs = null;
 	Integer calibrationSelected = MedtronicConstants.CALIBRATION_GLUCOMETER;
 
+	Handler mHandlerSensorCalibration = null;
+
 	/**
 	 * Constructor
 	 * 
@@ -895,7 +897,7 @@ public class MedtronicReader {
 	}
 	/**
 	 * This method process the Manual Calibration message
-	 *
+	 * 
 	 */
 	public void processManualCalibrationDataMessage(float value,
 			boolean instant, boolean doCalibration) {
@@ -909,7 +911,7 @@ public class MedtronicReader {
 		Date d = new Date();
 		lastGlucometerRecord.lastDate = d.getTime();
 		lastGlucometerDate = d.getTime();
-
+		calculateDate(lastGlucometerRecord, d, 0);
 		if (!instant && doCalibration) {
 			if (HexDump.unsignedByte(expectedSensorSortNumber) == HexDump
 					.unsignedByte((byte) 0xff)) {
@@ -1426,7 +1428,7 @@ public class MedtronicReader {
 		 * if (!tz.inDaylightTime(new Date())) timeAdd = timeAdd - 3600000L;
 		 */
 		Date display = new Date(timeAdd);
-		record.displayTime = new SimpleDateFormat("yyyy/MM/dd hh:mm:ss aa",
+		record.displayTime = new SimpleDateFormat("MM/dd/yyy hh:mm:ss aa",
 				Locale.getDefault()).format(display);
 		if (record instanceof MedtronicSensorRecord) {
 			((MedtronicSensorRecord) record).displayDateTime = display
