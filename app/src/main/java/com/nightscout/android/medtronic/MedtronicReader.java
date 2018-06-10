@@ -32,6 +32,9 @@ import com.nightscout.android.upload.MedtronicPumpRecord;
 import com.nightscout.android.upload.MedtronicSensorRecord;
 import com.nightscout.android.upload.Record;
 import com.physicaloid.lib.Physicaloid;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.ObjectOutputStream;
 
 /**
  * Class: MedtronicReader This class manages all read operations over all the
@@ -47,7 +50,7 @@ public class MedtronicReader {
 			.getName());
 	private static final String TAG = MedtronicReader.class.getSimpleName();
 	public Physicaloid mSerialDevice;
-
+	private Context context;
 
 	protected byte[] idPump = null;
 	protected byte[] notFinishedRead = null;
@@ -114,7 +117,7 @@ public class MedtronicReader {
 				MedtronicConstants.PREFS_NAME, 0);
 
 		this.mClients = mClients;
-
+		this.context = context;
 		knownDevices = new ArrayList<String>();
 		mSerialDevice = device;
 		prefs = PreferenceManager.getDefaultSharedPreferences(context);
@@ -481,10 +484,12 @@ public class MedtronicReader {
 							MedtronicSensorRecord auxRecord = new MedtronicSensorRecord();
 
 							auxRecord.isCalibrating = calibrationSelectedAux == MedtronicConstants.CALIBRATION_GLUCOMETER;
+							writeLocalCSV(auxRecord, context);
 							Log.d(TAG, "No previous record - 1");
 
 						} else {
 							previousRecord.isCalibrating = calibrationSelectedAux == MedtronicConstants.CALIBRATION_GLUCOMETER;
+							writeLocalCSV(previousRecord, context);
 							Log.d(TAG, "Has previous record - 2");
 
 						}
@@ -547,11 +552,11 @@ public class MedtronicReader {
 						MedtronicSensorRecord auxRecord = new MedtronicSensorRecord();
 						calculateDate(auxRecord, new Date(), 0);
 						Log.d(TAG, "no previous record - 3");
-
+						writeLocalCSV(auxRecord, context);
 					} else {
 						calculateDate(previousRecord, new Date(), 0);
 						Log.d(TAG, "previous record - 4");
-
+						writeLocalCSV(previousRecord, context);
 					}
 					sendMessageToUI("sensor data wUp.");
 					editor.commit();
@@ -1061,6 +1066,7 @@ public class MedtronicReader {
 				previousRecord.isCalibrating = false;
 				previousRecord.calibrationStatus = calibrationStatus;
 
+ 				writeLocalCSV(previousRecord, context);
 
 				SharedPreferences.Editor editor = settings.edit();
 				Log.d(TAG, "change instant lastCalibrationDate");
@@ -1085,6 +1091,8 @@ public class MedtronicReader {
 			calibrationStatus = MedtronicConstants.WITHOUT_ANY_CALIBRATION;
 		}
 		previousRecord.calibrationStatus = calibrationStatus;
+		writeLocalCSV(previousRecord, context);
+
 		Log.d(TAG, "Instant Calibration Failure!! ");
 	}
 
@@ -1309,6 +1317,7 @@ public class MedtronicReader {
 		lastSensorValueDate = d.getTime();
 		editor.putLong("lastSensorValueDate", lastSensorValueDate);
 		editor.commit();
+	 	writeLocalCSV(previousRecord, context);
 
 		Log.i(TAG, "sensorprocessed end expected "
 				+ HexDump.toHexString(expectedSensorSortNumber));
@@ -1878,5 +1887,29 @@ public class MedtronicReader {
 					MedtronicConstants.TIME_5_MIN_IN_MS);
 		}
 	}
+
+
+	private void writeLocalCSV(MedtronicSensorRecord mostRecentData,
+                       Context context) {
+
+               // Write EGV Binary of last (most recent) data
+               try {
+                       if (mostRecentData == null || mostRecentData.bGValue == null)
+                               log.debug("writeLocalCSV SAVING  EMPTY!!");
+                       else
+                               log.debug("writeLocalCSV SAVING --> " + mostRecentData.bGValue);
+                       ObjectOutputStream oos = new ObjectOutputStream(
+					                                       new FileOutputStream(new File(context.getFilesDir(),
+					                                                       "save.bin"))); // Select where you wish to save the
+                       // file...
+                       oos.writeObject(mostRecentData); // write the class as an 'object'
+                       oos.flush(); // flush the stream to insure all of the information
+                       // was written to 'save.bin'
+                       oos.close();// close the stream
+               } catch (Exception e) {
+                       Log.e(TAG, "write to OutputStream failed", e);
+                       log.error("write to OutputStream failed", e);
+               }
+       }
 
 }
