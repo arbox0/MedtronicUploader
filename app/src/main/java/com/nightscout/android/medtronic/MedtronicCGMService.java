@@ -844,7 +844,7 @@ public class MedtronicCGMService extends Service implements
 				if (!mSerial.open()) {
 					Toast.makeText(this, "cannot open / will not open", Toast.LENGTH_SHORT)
 							.show();
-					Log.e(TAG, "mSerial noted opened and will not open");
+					Log.e(TAG, "mSerial not opened and will not open");
 					return;
 				} else {
 					if (!isReloaded && reload)
