@@ -49,7 +49,7 @@ public class MedtronicReader {
 	private Logger log = (Logger) LoggerFactory.getLogger(MedtronicReader.class
 			.getName());
 	private static final String TAG = MedtronicReader.class.getSimpleName();
-	public Physicaloid mSerialDevice;
+
 	private Context context;
 
 	protected byte[] idPump = null;
@@ -108,10 +108,10 @@ public class MedtronicReader {
 	/**
 	 * Constructor
 	 * 
-	 * @param device
+	 *
 	 * @param context
 	 */
-	public MedtronicReader(Physicaloid device, Context context,
+	public MedtronicReader(Context context,
 			ArrayList<Messenger> mClients) {
 		this.settings = context.getSharedPreferences(
 				MedtronicConstants.PREFS_NAME, 0);
@@ -119,7 +119,7 @@ public class MedtronicReader {
 		this.mClients = mClients;
 		this.context = context;
 		knownDevices = new ArrayList<String>();
-		mSerialDevice = device;
+
 		prefs = PreferenceManager.getDefaultSharedPreferences(context);
 
 		if (prefs.contains("calibrationType")) {
@@ -390,34 +390,21 @@ public class MedtronicReader {
 	 * This method reads from the serial device, and process the answer
 	 *
 	 * */
-	public ArrayList<byte[]> readFromReceiver(int size) {
+	public ArrayList<byte[]> readFromReceiver(byte[] readFromDevice) {
 		ArrayList<byte[]> bufferedMessages = null;
-		byte[] readFromDevice = new byte[1024];
-		int read = 0;
-		if (size >= 0) {
-			Log.d(TAG, "readFromReceiver: " + size + " bytes!!");
-			try {
-				read = mSerialDevice.read(readFromDevice);
-			} catch (Exception e) {
-				Log.e(TAG, "Unable to read from serial device", e);
-				return null;
-			}
-		}
-		if (read > 0) {
-			Log.d(TAG, "READ " + read + " bytes: " + HexDump.dumpHexString(readFromDevice, 0, read));
+		Log.d(TAG, "READ " + readFromDevice.length + " bytes: " + HexDump.dumpHexString(readFromDevice));
 
-			SharedPreferences.Editor editor = settings.edit();
-			editor.putLong("lastDestroy", System.currentTimeMillis());
-			editor.commit();
-			try {
+		SharedPreferences.Editor editor = settings.edit();
+		editor.putLong("lastDestroy", System.currentTimeMillis());
+		editor.commit();
+		try {
+			bufferedMessages = parseMessageData(
+					Arrays.copyOfRange(readFromDevice, 0, readFromDevice.length), readFromDevice.length);
+			checkCalibrationOutOfTime();
 
-				bufferedMessages = parseMessageData(
-						Arrays.copyOfRange(readFromDevice, 0, read), read);
-				checkCalibrationOutOfTime();
-			} catch (Exception e) {
-				sendErrorMessageToUI(e.toString());
-				bufferedMessages = new ArrayList<byte[]>();
-			}
+		} catch (Exception e) {
+			sendErrorMessageToUI(e.toString());
+			bufferedMessages = new ArrayList<byte[]>();
 		}
 		return bufferedMessages;
 	}

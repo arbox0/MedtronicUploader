@@ -8,6 +8,7 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.hardware.usb.UsbDevice;
+import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -28,14 +29,14 @@ import android.widget.TextView;
 import android.widget.Toast;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+
+import com.felhr.usbserial.UsbSerialDevice;
+import com.felhr.usbserial.UsbSerialInterface;
 import com.nightscout.android.dexcom.USB.HexDump;
 import com.nightscout.android.upload.GlucometerRecord;
 import com.nightscout.android.upload.MedtronicSensorRecord;
 import com.nightscout.android.upload.Record;
 import com.nightscout.android.upload.UploadHelper;
-import com.physicaloid.lib.Physicaloid;
-import com.physicaloid.lib.usb.driver.uart.ReadLisener;
-import com.physicaloid.lib.usb.driver.uart.UartConfig;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -48,10 +49,13 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+
 /**
  * This class is the service responsible of manage correctly the interface with the enlite.
  * @author lmmarguenda
@@ -65,8 +69,7 @@ public class MedtronicCGMService extends Service implements
 
 	private boolean listenerAttached = false;
 	private UploadHelper uploader;
-
-	private Physicaloid mSerial;
+	private UsbSerialDevice mSerial;
 	private Handler mHandlerCheckSerial = new Handler();// This handler runs readAndUpload Runnable which checks the USB device and NET connection. 
 	private Handler mHandlerRead = new Handler();// this Handler is used to read and parse the messages received from the USB, It is only activated after a Read.
 	private Handler mHandlerProcessRead = new Handler();// this Handler is used to process the messages parsed.
@@ -90,9 +93,9 @@ public class MedtronicCGMService extends Service implements
 	private Object isUploadingLock = new Object();
 	private Object readByListenerSizeLock = new Object();
 	private Object buffMessagesLock = new Object();
-	private Object mSerialLock = new Object();
+
 	private boolean faking = false;
-	private ReadByListener readByListener = new ReadByListener();//Listener to read data
+
 	private boolean isReloaded = false;
 
 	@Override
@@ -376,9 +379,9 @@ public class MedtronicCGMService extends Service implements
       
 		wifiManager = (WifiManager) this.getSystemService(Context.WIFI_SERVICE);
 
-		mSerial = new Physicaloid(this);
-		medtronicReader = new MedtronicReader(mSerial, getBaseContext(),
-				mClients);
+
+
+		medtronicReader = new MedtronicReader(getBaseContext(), mClients);
 		
 		Record auxRecord =  MedtronicCGMService.this.loadClassFile(new File(getBaseContext().getFilesDir(), "save.bin"));
 
@@ -455,26 +458,7 @@ public class MedtronicCGMService extends Service implements
 	
 
 	
-	/**
-	 * Listener which throws a handler that manages the reading from the serial buffer, when a read happens
-	 */
-	private ReadLisener readListener = new ReadLisener() {
 
-		@Override
-		public void onRead(int size) {
-			if (size <= 0) return;
-            Log.d(TAG, "On read received " + size);
-			synchronized (readByListenerSizeLock) {
-				if (readByListener.size > -1)
-					readByListener.size += size;
-				else
-					readByListener.size = size;
-			}
-			mHandlerRead.post(readByListener);
-			
-		}
-
-	};
 	/**
 	 * Runnable.
 	 * It checks that it is a serial device available, and there is Internet connection.
@@ -496,8 +480,7 @@ public class MedtronicCGMService extends Service implements
 					synchronized (checkSerialLock) {
 						Log.d(TAG, "I have lost usb permission changing listener attached to false...");
 						listenerAttached = false;
-						mSerial.clearReadListener();
-						mHandlerRead.removeCallbacks(readByListener);
+
 						sendMessageDisconnectedToUI();
 						if (!mHandlerActive || isDestroying){
 							Log.d(TAG,"destroy readAnd Upload "+ mHandlerActive + " isDes "+ isDestroying);
@@ -510,18 +493,16 @@ public class MedtronicCGMService extends Service implements
 				} else
 					sendMessageConnectedToUI();
 				boolean connected;
-				synchronized (mSerialLock) {
-					connected = isConnected();
-				}
+
+				connected = isConnected();
+
 				if (connected) {
 					if (!isOnline())
 						sendErrorMessageToUI("Internet connection error");
 					if (!listenerAttached) {
 						Log.d(TAG, "!listener attached readByListener triggered");
-						mSerial.clearReadListener();
-						mHandlerRead.removeCallbacks(readByListener);
-						mSerial.addReadListener(readListener);
-						mHandlerRead.post(readByListener);
+
+
 						listenerAttached = true;
 						
 
@@ -544,42 +525,17 @@ public class MedtronicCGMService extends Service implements
 			} catch (Exception e) {
 				sendExceptionToUI("Unable to read from receptor or upload", e);
 			}
-			synchronized (checkSerialLock) {
+
 				if (!mHandlerActive || isDestroying){
 					Log.d(TAG,"destroy readAnd Upload2 "+ mHandlerActive + " isDes "+ isDestroying);
 					return;
 				}
 				mHandlerCheckSerial.removeCallbacks(readAndUpload);
 				mHandlerCheckSerial.postDelayed(readAndUpload,  MedtronicConstants.FIVE_SECONDS__MS);
-			}
+
 		}
 	};
 	
-	/**
-	 * Runnable.
-	 * Executes doReadAndUploadFunction;
-	 */
-	private class ReadByListener implements Runnable {
-		public Integer size = -1;
-		public void run() {
-			int auxSize = 0;
-			synchronized (readByListenerSizeLock) {
-				auxSize = size;
-				size = -1;
-			}
-			if (auxSize >= 0){
-				Log.d(TAG, "Read "+auxSize+" bytes");
-				doReadAndUpload(auxSize);
-				isReloaded = false;
-			}else{
-//				Log.d(TAG, "ReadByListener - nothing to read");
-				if (!isReloaded){
-					openUsbSerial(true);
-					medtronicReader.mSerialDevice = mSerial;
-				}
-			}
-		}
-	}
 
 
 	public void doFakeReadAndUpload() {
@@ -622,30 +578,18 @@ public class MedtronicCGMService extends Service implements
 	/**
 	 * Process all the parsed messages, checks if there is Records to upload and executes the uploader if necessary.
 	 */
-	protected void doReadAndUpload(int size) {
+	protected void doReadAndUpload(byte[] bytes) {
 		try {
-			synchronized (mSerialLock) {
-				if (mSerial.isOpened() && !isDestroying) {
+			Log.d(TAG, "doReadAndUpload");
+			ArrayList<byte[]> bufferedMessages = medtronicReader.readFromReceiver(bytes);
+			if (bufferedMessages != null && bufferedMessages.size() > 0) {
+				Log.d(TAG, "doReadAndUpload: there are " + bufferedMessages.size() + " to process ");
 
-					Log.d(TAG, "doReadAndUpload");
-					ArrayList<byte[]> bufferedMessages = medtronicReader
-							.readFromReceiver(size);
-					if (bufferedMessages != null && bufferedMessages.size() > 0) {
-						Log.d(TAG, "doReadAndUpload: there are "+bufferedMessages.size()+" to process ");
-						synchronized (buffMessagesLock) {
-							processBufferedMessages.bufferedMessages
-									.addAll(bufferedMessages);
-						}
-						if (!isDestroying){
-							log.debug("Stream Received--> order process bufferedMessages ");
-							mHandlerProcessRead.post(processBufferedMessages);
-						}
-					}else{
-						Log.d(TAG, "Nothing to do in doReadAndUpload");
-					}
-
-				}
-
+				processBufferedMessages.bufferedMessages.addAll(bufferedMessages);
+				mHandlerProcessRead.post(processBufferedMessages);
+			}
+			else{
+				Log.d(TAG, "Nothing to do in doReadAndUpload");
 			}
 		} catch (Exception e) {
 			sendExceptionToUI("doReadAndUpload exception", e);
@@ -787,7 +731,7 @@ public class MedtronicCGMService extends Service implements
 	}
 
 	private boolean isConnected() {
-		return mSerial.isOpened() || faking;
+		return mSerial != null || faking;
 	}
 
 	private boolean isOnline() {
@@ -828,43 +772,66 @@ public class MedtronicCGMService extends Service implements
 
 	private void openUsbSerial(boolean reload) {
 		if (faking) return;
+
 		if (mSerial == null) {
-			Toast.makeText(this, "cannot open / null device", Toast.LENGTH_SHORT).show();
-			Log.e(TAG, "mSerial==null");
-			return;
-		}
-		if (mSerial.isOpened() && reload){
-			mSerial.close();
-			mSerial.clearReadListener();
-			listenerAttached = false;
-		}
-		
-		synchronized (mSerialLock) {
-			if (!mSerial.isOpened()) {
-				if (!mSerial.open()) {
-					Toast.makeText(this, "cannot open / will not open", Toast.LENGTH_SHORT)
-							.show();
-					Log.e(TAG, "mSerial not opened and will not open");
-					return;
-				} else {
-					if (!isReloaded && reload)
-						isReloaded = true;
-					boolean dtrOn = true;
-					boolean rtsOn = false;
-					mSerial.setConfig(new UartConfig(57600, 8, 1, 0, dtrOn,
-							rtsOn));
-					if (!reload)
-						Toast.makeText(this, "connected", Toast.LENGTH_SHORT)
-							.show();
+			UsbManager usbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
+			UsbDevice device;
+			UsbDeviceConnection connection;
+
+			HashMap<String, UsbDevice> usbDevices = usbManager.getDeviceList();
+			if (!usbDevices.isEmpty()) {
+				boolean keep = true;
+				device = null;
+				connection = null;
+				for (Map.Entry<String, UsbDevice> entry : usbDevices.entrySet()) {
+					device = entry.getValue();
+					int deviceVID = device.getVendorId();
+					int devicePID = device.getProductId();
+					if (deviceVID != 0x1d6b || (devicePID != 0x0001 || devicePID != 0x0002 || devicePID != 0x0003)) {
+						// Excludes USB hubs
+						Log.d(TAG, "Device: vendor " + deviceVID + " - ID " + devicePID);
+						connection = usbManager.openDevice(device);
+						keep = false;
+					} else {
+						connection = null;
+						device = null;
+					}
+
+					if (!keep)
+						break;//stop search on first usb device
 				}
+
+				if (device != null && connection != null) mSerial = UsbSerialDevice.createUsbSerialDevice(device, connection);
 			}
-		}
-		if (!listenerAttached && reload) {
-			mSerial.addReadListener(readListener);
-			listenerAttached = true;
+			if (mSerial == null) {
+				Toast.makeText(this, "cannot open / null device", Toast.LENGTH_SHORT).show();
+				Log.e(TAG, "mSerial==null");
+				return;
+			}
+
+			if (mSerial.open()) {
+
+				mSerial.setBaudRate(57600);
+				mSerial.setDataBits(8);
+				mSerial.setParity(0);
+				mSerial.setStopBits(1);
+
+				mSerial.read(mCallback);
+
+
+				Toast.makeText(this, "connected", Toast.LENGTH_SHORT)
+						.show();
+			}
+			else {
+				Toast.makeText(this, "couldn't open device", Toast.LENGTH_SHORT)
+						.show();
+				Log.e(TAG, "could not open device)");
+			}
 		}
 
 	}
+
+
 
 	 //Deserialize the EGVRecord (most recent) value
     public Record loadClassFile(File f) {
@@ -887,13 +854,13 @@ public class MedtronicCGMService extends Service implements
     }
 	
 	private void closeUsbSerial() {
-		mSerial.clearReadListener();
-		mHandlerRead.removeCallbacks(readByListener);
+
+
 		mHandlerProcessRead.removeCallbacks(processBufferedMessages);
 
 		mHandlerReviewParameters.removeCallbacks(checker);
 		listenerAttached = false;
-		mSerial.close();
+
 	}
 
 	/**
@@ -994,7 +961,7 @@ public class MedtronicCGMService extends Service implements
 							mHandlerActive = false;
 
 						}
-						medtronicReader = new MedtronicReader(mSerial,
+						medtronicReader = new MedtronicReader(
 								getBaseContext(), mClients);
 						medtronicReader.idPump = newIdPump;
 						synchronized (checkSerialLock) {
@@ -1033,5 +1000,15 @@ public class MedtronicCGMService extends Service implements
 		}
 	}
 
+
+	private UsbSerialInterface.UsbReadCallback mCallback = new UsbSerialInterface.UsbReadCallback() {
+
+		@Override
+		public void onReceivedData(byte[] arg0)
+		{
+			doReadAndUpload(arg0);
+					// Code here :)
+		}
+	};
 
 }
