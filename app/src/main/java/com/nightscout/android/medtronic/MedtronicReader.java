@@ -984,14 +984,11 @@ public class MedtronicReader {
 	}
 
 	public void calculateInstantCalibration(float currentMeasure) {
-		Log.d(TAG,"Instant Calibration");
 		if (previousRecord != null && previousRecord.isig != 0) {
-			Log.d(TAG, "I  have isig " + previousRecord.isig);
 			calibrationFactor = currentMeasure / previousRecord.isig;
-			Log.d(TAG,"Instant Calibration result " + calibrationFactor);
+			Log.d(TAG,"Instant Calibration result " + calibrationFactor + "; ISIG is " + previousRecord.isig);
 			if (calibrationFactor > 0) {
 				previousRecord.bGValue = "" + ((int) currentMeasure);
-				Log.d(TAG,"Instant Calibration Success!! ");
 				calibrationStatus = MedtronicConstants.CALIBRATED;
 				lastCalibrationDate = System.currentTimeMillis();
 				isCalibrating = false;
@@ -1001,16 +998,15 @@ public class MedtronicReader {
  				writeLocalCSV(previousRecord, context);
 
 				SharedPreferences.Editor editor = settings.edit();
-				Log.d(TAG, "change instant lastCalibrationDate");
+
 				editor.putLong("lastCalibrationDate", lastCalibrationDate);
-				editor.putBoolean("isCalibrating", false);
+				editor.putBoolean("isCalibrating", isCalibrating);
 				editor.putFloat("calibrationFactor", calibrationFactor);
-				editor.putInt("calibrationStatus",
-							calibrationStatus);
+				editor.putInt("calibrationStatus", calibrationStatus);
 				editor.apply();
 			}
-			return;
-		} else{
+		}
+		else {
 			sendErrorMessageToUI("I can't calibrate, I don't have any recent stored sensor reading yet. Try again after sensor transmits again.");
 			Log.d(TAG,"I dont have ISIG from a previous record.");
 		}
