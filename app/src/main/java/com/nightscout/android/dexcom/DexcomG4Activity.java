@@ -113,10 +113,6 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
                 mHandler.removeCallbacks(updateDataView);
 	        	mHandler.post(updateDataView);
                 break;
-            case MedtronicConstants.MSG_MEDTRONIC_GLUCMEASURE_DETECTED:
-            	Log.i(TAG, "Glucometer measurement detected");
-                showUseCalibConfirmation(msg.getData().getFloat("data"), msg.getData().getBoolean("calibrating"), msg.getData().getBoolean("isCalFactorFromPump"));
-            	break;
             case MedtronicConstants.MSG_MEDTRONIC_CGM_USB_GRANTED:
                 Log.i(TAG, "Message received - USB permission granted");
                 usbAllowedPermission = true;
@@ -144,68 +140,6 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
             }
         }
     }
-	private void showUseCalibConfirmation(final float num, final boolean calibrate, final boolean isCalFactorFromPump){
-		AlertDialog.Builder alert = new AlertDialog.Builder(ctx);
-    	alert.setTitle("Calibration Detected!!!");
-    	alert.setMessage("Do you want to use the received glucometer value for calibration?");
-
-    	alert.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-	    	public void onClick(DialogInterface dialog, int whichButton) {
-	    		if (mService != null){
-	            	 try {
-	                     Message msg = Message.obtain(null, MedtronicConstants.MSG_MEDTRONIC_GLUCMEASURE_APPROVED);
-	                     Bundle b = new Bundle();
-	                	 b.putBoolean("approved", true);
-	 					 b.putFloat("data", num);
-	 					 b.putBoolean("calibrating", calibrate);
-	 					 b.putBoolean("isCalFactorFromPump", isCalFactorFromPump);
-	 					 msg.setData(b);
-	                     msg.replyTo = mMessenger;
-	                     mService.send(msg);
-	                 } catch (RemoteException e) {
-	                	 StringBuffer sb1 = new StringBuffer("");
-	            		 sb1.append("EXCEPTION!!!!!! "+ e.getMessage()+" "+e.getCause());
-	            		 for (StackTraceElement st : e.getStackTrace()){
-	            			 sb1.append(st.toString()).append("\n");
-	            		 }
-	            		 Log.e(TAG, "Error approving gluc. value \n "+sb1.toString());
-
-	            		 display.setText(display.getText()+"Error approving gluc. value\n", BufferType.EDITABLE);
-
-	                 }
-	    		}
-	    	}
-    	});
-
-    	alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-    	  public void onClick(DialogInterface dialog, int whichButton) {
-    		  if (mService != null){
-	            	 try {
-	                     Message msg = Message.obtain(null, MedtronicConstants.MSG_MEDTRONIC_GLUCMEASURE_APPROVED);
-	                     Bundle b = new Bundle();
-	 					
-	 					 b.putBoolean("approved", false);
-	 					
-	 					 msg.setData(b);
-	                     msg.replyTo = mMessenger;
-	                     mService.send(msg);
-	                 } catch (RemoteException e) {
-	                	 StringBuffer sb1 = new StringBuffer("");
-	            		 sb1.append("EXCEPTION!!!!!! "+ e.getMessage()+" "+e.getCause());
-	            		 for (StackTraceElement st : e.getStackTrace()){
-	            			 sb1.append(st.toString()).append("\n");
-	            		 }
-	            		 Log.e(TAG, "Error approving gluc. value \n "+sb1.toString());
-
-	            		 display.setText(display.getText()+"Error approving gluc. value\n", BufferType.EDITABLE);
-
-	                 }
-	    		}
-    	  }
-    	});
-
-    	alert.show();
-	}
 
     private ServiceConnection mConnection = new ServiceConnection() {
         public void onServiceConnected(ComponentName className, IBinder service) {

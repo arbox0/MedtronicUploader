@@ -114,24 +114,7 @@ public class MedtronicCGMService extends Service implements
 				case MedtronicConstants.MSG_UNREGISTER_CLIENT:
 					mClients.remove(msg.replyTo);
 					break;
-				case MedtronicConstants.MSG_MEDTRONIC_GLUCMEASURE_APPROVED:
-					if (msg.getData().getBoolean("approved"))
-						medtronicReader.approveGlucValueForCalibration(msg.getData().getFloat("data"), msg.getData().getBoolean("calibrating"), msg.getData().getBoolean("isCalFactorFromPump"));
-					else {
-						medtronicReader.lastGlucometerRecord = new GlucometerRecord();
-						medtronicReader.lastGlucometerRecord.numGlucometerValue = msg.getData().getFloat("data");
-						medtronicReader.lastGlucometerValue = msg.getData().getFloat("data");
-						Date d = new Date();
-						medtronicReader.lastGlucometerRecord.lastDate = d.getTime();
-						medtronicReader.lastGlucometerDate = d.getTime();
-						medtronicReader.calculateDate(medtronicReader.lastGlucometerRecord, d, 0);
-						SharedPreferences.Editor editor = settings.edit();
-						editor.putFloat("lastGlucometerValue", medtronicReader.lastGlucometerValue);
-						editor.putLong("glucometerLastDate", d.getTime());
-						editor.commit();
-					}
 
-					break;
 				case MedtronicConstants.MSG_MEDTRONIC_SEND_MANUAL_CALIB_VALUE:
 					String value = msg.getData().getString("sgv");
 					if (value == null || value.equals("")) {
