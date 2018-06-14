@@ -71,7 +71,6 @@ public class MedtronicReader {
 	public Boolean expectedSensorSortNumberLock = false; // expectedSensorSortNumber
 	// Lock for
 	// synchronize
-	public float previousValue = -1f; // last sensor value read
 	public MedtronicSensorRecord previousRecord = null; // last sensor record
 	public Byte lastCommandSend = null; // last command sent from this
 	public Object sendingCommandLock = new Object();
@@ -174,9 +173,6 @@ public class MedtronicReader {
                     this.calibrationFactor);
 		if (settings.contains("lastCalibrationDate"))
 			lastCalibrationDate = settings.getLong("lastCalibrationDate", 0);
-		if (settings.contains("previousValue"))
-			previousValue = settings.getFloat("previousValue",
-                    this.previousValue);
 		if (settings.contains("expectedSensorSortNumber")
 				&& settings.getString("expectedSensorSortNumber", "").length() > 0) {
 			expectedSensorSortNumber = HexDump.hexStringToByteArray(settings
@@ -481,7 +477,6 @@ public class MedtronicReader {
 					SharedPreferences.Editor editor = settings
 							.edit();
 					editor.remove("lastGlucometerMessage");
-					editor.remove("previousValue");
 					editor.remove("expectedSensorSortNumber");
 					editor.remove("isCalibrating");
 					calibrationStatus = MedtronicConstants.WITHOUT_ANY_CALIBRATION;
@@ -1069,7 +1064,6 @@ public class MedtronicReader {
 
 		int added = 8;
 		int firstMeasureByte = firstByteAfterDeviceId(readData);
-		int currentMeasure = -1;
 		float isig = 0;
 
 		if (firstMeasureByte < 0)
@@ -1099,6 +1093,8 @@ public class MedtronicReader {
 				}
 				lastElementsAdded++;
 
+
+
 				int ub = readData[firstMeasureByte + 4 + i] & 0xff;
 				int lb = readData[firstMeasureByte + 5 + i] & 0xff;
 				int num = lb + (ub << 8);
@@ -1108,7 +1104,6 @@ public class MedtronicReader {
 				isig = calculateISIG(num, adjustement);
 				record.setIsig(isig);
 				if (i == 0) {
-					currentMeasure = num;
 					calibratingCurrentElement(difference, isig, readData,
 							firstMeasureByte + 3, record, num, d);
 				} else {
@@ -1145,7 +1140,6 @@ public class MedtronicReader {
 					isig = calculateISIG(num, adjustement);
 					record.setIsig(isig);
 					record.isCalibrating = isCalibrating;
-					currentMeasure = num;
 					calibratingCurrentElement(difference, isig, readData,
 							firstMeasureByte + 3, record, num, d);
 					lastRecordsInMemory.add(record);
@@ -1221,7 +1215,6 @@ public class MedtronicReader {
 						isig = calculateISIG(num, adjustement);
 						record.setIsig(isig);
 						if (i == 0) {
-							currentMeasure = num;
 							calibratingCurrentElement(difference, isig,
 									readData, firstMeasureByte + 3, record,
 									num, d);
@@ -1245,7 +1238,6 @@ public class MedtronicReader {
 					isig = calculateISIG(num, adjustement);
 					record.setIsig(isig);
 					record.isCalibrating = isCalibrating;
-					currentMeasure = num;
 					calibratingCurrentElement(difference, isig, readData,
 							firstMeasureByte + 3, record, num, d);
 					lastRecordsInMemory.add(record);
@@ -1257,7 +1249,7 @@ public class MedtronicReader {
 			Log.i("Medtronic", "Fill next expected");
 			expectedSensorSortNumber = readData[firstMeasureByte + 3];
 		}
-		previousValue = currentMeasure;
+
 		// I must recalculate next message!!!!
 		synchronized (expectedSensorSortNumberLock) {
 			expectedSensorSortNumber = calculateNextSensorSortNameFrom(1,
@@ -1265,7 +1257,6 @@ public class MedtronicReader {
 		}
 
 		SharedPreferences.Editor editor = settings.edit();
-		editor.putFloat("previousValue", previousValue);
 		editor.putString("expectedSensorSortNumber",
 				HexDump.toHexString(expectedSensorSortNumber));
 		editor.putInt("calibrationStatus", calibrationStatus);
