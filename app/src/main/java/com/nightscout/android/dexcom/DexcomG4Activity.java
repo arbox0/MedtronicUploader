@@ -183,8 +183,6 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 			if (settings.contains("lastCalibrationDate")) {
 				calDate = settings.getLong("lastCalibrationDate", -1);
 			}
-			SharedPreferences prefs = PreferenceManager
-					.getDefaultSharedPreferences(getBaseContext());
 
 			DecimalFormat df = new DecimalFormat("#.##");
 
@@ -628,8 +626,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
             	
 	        	alert2.setTitle("Instant Calibration");
 	        	alert2.setMessage("Insert pump value in mg/dl (only natural numbers)");
-	        	prefs = PreferenceManager
-        				.getDefaultSharedPreferences(getBaseContext());
+
 	        	if (prefs.getBoolean("mmolxl", false)){
 	        		alert2.setMessage("Insert pump value in mmol/l (only 2 decimals)");
 	        		Log.d(TAG, "Instant Calibration mmol/l");
@@ -658,7 +655,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 		                     Message msg = Message.obtain(null, MedtronicConstants.MSG_MEDTRONIC_SEND_INSTANT_CALIB_VALUE);
 		                     Bundle b = new Bundle();
 		 					 b.putString("sgv", value);
-		 					 prefs.edit().putString("instant_sgv", value).commit();
+		 					 prefs.edit().putString("instant_sgv", value).apply();
 		 					 msg.setData(b);
 		                     msg.replyTo = mMessenger;
 		                     mService.send(msg);
