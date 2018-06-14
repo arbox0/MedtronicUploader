@@ -1011,21 +1011,9 @@ public class MedtronicReader {
 			}
 			return;
 		} else{
-			sendErrorMessageToUI("I can't calibrate, I don't have any ISIG stored yet.");
-			Log.d(TAG,"I dont have isig");
+			sendErrorMessageToUI("I can't calibrate, I don't have any recent stored sensor reading yet. Try again after sensor transmits again.");
+			Log.d(TAG,"I dont have ISIG from a previous record.");
 		}
-		if (previousRecord == null)
-			previousRecord = new MedtronicSensorRecord();
-		if (calibrationStatus != MedtronicConstants.WITHOUT_ANY_CALIBRATION
-				&& calibrationFactor != -1f) {
-			calibrationStatus = MedtronicConstants.LAST_CALIBRATION_FAILED_USING_PREVIOUS;
-		} else {
-			calibrationStatus = MedtronicConstants.WITHOUT_ANY_CALIBRATION;
-		}
-		previousRecord.calibrationStatus = calibrationStatus;
-		writeLocalCSV(previousRecord, context);
-
-		Log.d(TAG, "Instant Calibration Failure!! ");
 	}
 
 	/**
