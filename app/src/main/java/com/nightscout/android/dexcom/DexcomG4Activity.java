@@ -589,7 +589,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 		                     Message msg = Message.obtain(null, MedtronicConstants.MSG_MEDTRONIC_SEND_MANUAL_CALIB_VALUE);
 		                     Bundle b = new Bundle();
 		 					 b.putString("sgv", value);
-		 					 prefs.edit().putString("manual_sgv", value).commit();
+		 					 prefs.edit().putString("manual_sgv", value).apply();
 		 					 msg.setData(b);
 		                     msg.replyTo = mMessenger;
 		                     mService.send(msg);
