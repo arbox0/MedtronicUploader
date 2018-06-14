@@ -356,7 +356,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
     }
 
     private void populateV1APIEntry(JSONObject json, Record oRecord) throws Exception {
-        Date date = DATE_FORMAT.parse(oRecord.displayTime);
+        Date date = oRecord.getDate();
         json.put("date", date.getTime());
 
         if (oRecord instanceof GlucometerRecord) {

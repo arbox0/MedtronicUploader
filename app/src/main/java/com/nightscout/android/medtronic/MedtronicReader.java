@@ -399,7 +399,7 @@ public class MedtronicReader {
 					);
 					if (lastMedtronicPumpRecord == null) {
 						lastMedtronicPumpRecord = new MedtronicPumpRecord();
-						calculateDate(lastMedtronicPumpRecord,
+						setRecordDateHistoric(lastMedtronicPumpRecord,
 								new Date(), 0);
 						lastMedtronicPumpRecord.deviceId = prefs
 								.getString("medtronic_cgm_id", "");
@@ -495,7 +495,7 @@ public class MedtronicReader {
 					if (!prefs.getBoolean("isWarmingUp", false)) {
 						if (lastMedtronicPumpRecord == null) {
 							lastMedtronicPumpRecord = new MedtronicPumpRecord();
-							calculateDate(lastMedtronicPumpRecord,
+							setRecordDateHistoric(lastMedtronicPumpRecord,
 									new Date(), 0);
 							lastMedtronicPumpRecord.deviceId = prefs
 									.getString("medtronic_cgm_id",
@@ -509,11 +509,11 @@ public class MedtronicReader {
 
 					if (previousRecord == null) {
 						MedtronicSensorRecord auxRecord = new MedtronicSensorRecord();
-						calculateDate(auxRecord, new Date(), 0);
+						setRecordDateHistoric(auxRecord, new Date(), 0);
 						Log.d(TAG, "no previous record - 3");
 						writeLocalCSV(auxRecord, context);
 					} else {
-						calculateDate(previousRecord, new Date(), 0);
+						setRecordDateHistoric(previousRecord, new Date(), 0);
 						Log.d(TAG, "previous record - 4");
 						writeLocalCSV(previousRecord, context);
 					}
@@ -530,7 +530,7 @@ public class MedtronicReader {
 						if (prefs.getBoolean("isWarmingUp", false)) {
 							if (lastMedtronicPumpRecord == null) {
 								lastMedtronicPumpRecord = new MedtronicPumpRecord();
-								calculateDate(
+								setRecordDateHistoric(
 										lastMedtronicPumpRecord,
 										new Date(), 0);
 								lastMedtronicPumpRecord.deviceId = prefs
@@ -552,7 +552,7 @@ public class MedtronicReader {
 					if (prefs.getBoolean("isWarmingUp", false)) {
 						if (lastMedtronicPumpRecord == null) {
 							lastMedtronicPumpRecord = new MedtronicPumpRecord();
-							calculateDate(lastMedtronicPumpRecord,
+							setRecordDateHistoric(lastMedtronicPumpRecord,
 									new Date(), 0);
 							lastMedtronicPumpRecord.deviceId = prefs
 									.getString("medtronic_cgm_id",
@@ -845,9 +845,9 @@ public class MedtronicReader {
 		lastGlucometerRecord.numGlucometerValue = num;
 		lastGlucometerValue = num;
 		Date d = new Date();
-		lastGlucometerRecord.lastDate = d.getTime();
+		lastGlucometerRecord.setDate(d);
 		lastGlucometerDate = d.getTime();
-		calculateDate(lastGlucometerRecord, d, 0);
+		setRecordDateHistoric(lastGlucometerRecord, d, 0);
 		if (!instant && doCalibration) {
 			if (HexDump.unsignedByte(expectedSensorSortNumber) == HexDump
 					.unsignedByte((byte) 0xff)) {
@@ -919,7 +919,7 @@ public class MedtronicReader {
 				record.calibrationStatus = MedtronicConstants.LAST_CALIBRATION_FAILED_USING_PREVIOUS;
 			}
 		}
-		calculateDate(record, currentTime, added);
+		setRecordDateHistoric(record, currentTime, added);
 	}
 
 	/**
@@ -979,10 +979,15 @@ public class MedtronicReader {
 				record.calibrationStatus = MedtronicConstants.LAST_CALIBRATION_FAILED_USING_PREVIOUS;
 			}
 		}
-		calculateDate(record, currentTime, 0);
+		setRecordDateHistoric(record, currentTime, 0);
 		previousRecord = record;
 	}
 
+	/*
+
+	Apply calibration to all upcoming data, immediately.
+
+	 */
 	public void calculateInstantCalibration(float currentMeasure) {
 		if (previousRecord != null && previousRecord.isig != 0) {
 			calibrationFactor = currentMeasure / previousRecord.isig;
@@ -1008,7 +1013,7 @@ public class MedtronicReader {
 		}
 		else {
 			sendErrorMessageToUI("I can't calibrate, I don't have any recent stored sensor reading yet. Try again after sensor transmits again.");
-			Log.d(TAG,"I dont have ISIG from a previous record.");
+			Log.d(TAG,"Could not instant calibrate. I dont have ISIG from a previous record yet.");
 		}
 	}
 
@@ -1123,7 +1128,7 @@ public class MedtronicReader {
 				if (previousRecord != null || lastSensorValueDate > 0) {
 					long timeDiff = 0;
 					if (previousRecord != null)
-						timeDiff = d.getTime() - previousRecord.displayDateTime;
+						timeDiff = d.getTime() - previousRecord.getDate().getTime();
 					else
 						timeDiff = d.getTime() - lastSensorValueDate;
 					if (timeDiff > (MedtronicConstants.TIME_30_MIN_IN_MS + MedtronicConstants.TIME_10_MIN_IN_MS)) {
@@ -1315,7 +1320,7 @@ public class MedtronicReader {
 	 *            , index of this reading respectively the initTime reading.
 	 *            Each increment subtracts 5 minutes to "initTime"
 	 */
-	public void calculateDate(Record record, Date initTime, int subtract) {
+	public void setRecordDateHistoric(Record record, Date initTime, int subtract) {
 
 		long milliseconds = initTime.getTime();
 
@@ -1337,11 +1342,9 @@ public class MedtronicReader {
 		 * if (!tz.inDaylightTime(new Date())) timeAdd = timeAdd - 3600000L;
 		 */
 		Date display = new Date(timeAdd);
-		record.displayTime = new SimpleDateFormat("MM/dd/yyy hh:mm:ss aa",
-				Locale.getDefault()).format(display);
+
 		if (record instanceof MedtronicSensorRecord) {
-			((MedtronicSensorRecord) record).displayDateTime = display
-					.getTime();
+			((MedtronicSensorRecord) record).setDate(display);
 		}
 	}
 
@@ -1463,14 +1466,10 @@ public class MedtronicReader {
 						.get(i);
 				Date prevDate = null;
 				Date date = null;
-				try {
-					prevDate = formatter.parse(prevRecord.displayTime);
-					date = formatter.parse(record.displayTime);
-					dateDif += (prevDate.getTime() - date.getTime());
-					Log.d(TAG, "DATE_diff " + dateDif);
-				} catch (ParseException e1) {
-					Log.e(TAG, "Bad current or previous value for date", e1);
-				}
+
+				prevDate = prevRecord.getDate();
+				date = record.getDate();
+				dateDif += (prevDate.getTime() - date.getTime());
 
 				float prevRecordValue = 0;
 				float recordValue = 0;

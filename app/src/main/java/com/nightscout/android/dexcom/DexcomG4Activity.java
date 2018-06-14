@@ -192,10 +192,10 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 				displaySensor(record, calDate, df);
 
 			} else {
-				if (auxRecord == null || auxRecord.displayTime == null)
+				if (auxRecord == null || auxRecord.getDate() == null)
 					mDumpTextView.setText("\n---\n---\n---\n");
 				else
-					mDumpTextView.setText("\n" + auxRecord.displayTime
+					mDumpTextView.setText("\n" + auxRecord.getDate()
 							+ "\n---\n---\n");
 			}
 
@@ -288,16 +288,12 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 				record.trendArrow = "---";
 			}
 
-			if (record.displayDateTime == 0) {
-				mDumpTextView.setText("\n" + record.displayTime + "\n" + calib + "\n");
-				mSensorValue.setText(record.bGValue + "  " + record.trendArrow + "\n");
-			} else {
-				mDumpTextView.setText("Last record received:\n"  + (System.currentTimeMillis() - record.displayDateTime) / 60000 + " min. ago\nat: " + dateFormat.format(new Date(record.displayDateTime)) + "\n"+
+			mDumpTextView.setText("Last record received:\n"  + (System.currentTimeMillis() - record.getDate().getTime()) / 60000 + " min. ago\nat: " + dateFormat.format(record.getDate()) + "\n"+
 						calib + "\n");
-				mSensorValue.setText(record.bGValue + "  " + record.trendArrow + "\n");
+			mSensorValue.setText(record.bGValue + "  " + record.trendArrow + "\n");
 
 
-			}
+
 		}
 
 	private class  BatteryReceiver extends BroadcastReceiver {
