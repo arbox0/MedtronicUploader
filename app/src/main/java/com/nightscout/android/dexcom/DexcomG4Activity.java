@@ -7,7 +7,6 @@ import java.text.DateFormat;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import org.slf4j.LoggerFactory;
 
 import android.app.Activity;
 import android.app.ActivityManager;
@@ -45,7 +44,6 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.TextView.BufferType;
-import ch.qos.logback.classic.Logger;
 
 import com.nightscout.android.BuildConfig;
 import com.nightscout.android.R;
@@ -62,7 +60,6 @@ import com.bugfender.sdk.Bugfender;
 
 /* Main activity for the DexcomG4Activity program */
 public class DexcomG4Activity extends Activity implements OnSharedPreferenceChangeListener, OnEulaAgreedTo{
-	private Logger log = (Logger)LoggerFactory.getLogger(DexcomG4Activity.class.getName());
 	//CGMs supported
 	
     private static final String TAG = DexcomG4Activity.class.getSimpleName();
@@ -96,7 +93,6 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
     final Context ctx = this;
     SharedPreferences settings = null;
     SharedPreferences prefs = null;
-    private static final boolean ISDEBUG = true;
    
     class IncomingHandler extends Handler {
         @Override
@@ -327,14 +323,14 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 				Float fBgValue = null;
 				try {
 					fBgValue = (float) Integer.parseInt(record.bGValue);
-					log.info("mmolxl true --> " + record.bGValue);
+					Log.i(TAG,"mmolxl true --> " + record.bGValue);
 					record.bGValue = df.format(fBgValue / 18f);
-					log.info("mmolxl/18 true --> " + record.bGValue);
+					Log.i(TAG,"mmolxl/18 true --> " + record.bGValue);
 				} catch (Exception e) {
 
 				}
 			} else
-				log.info("mmolxl false --> " + record.bGValue);
+				Log.i(TAG,"mmolxl false --> " + record.bGValue);
 			boolean isCalibrating = record.isCalibrating;
 			String calib = "---";
 			if (isCalibrating) {
@@ -555,7 +551,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 
     @Override
     protected void onPause() {
-    	log.info("ON PAUSE!");
+    	Log.i(TAG,"ON PAUSE!");
         super.onPause();
 
     }
@@ -567,7 +563,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 
 	@Override
 	protected void onResume() {
-		log.info("ON RESUME!");
+		Log.i(TAG, "ON RESUME!");
 		super.onResume();
 		// Refresh the status
 		updateSensorDisplay();
@@ -643,14 +639,14 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 
             case R.id.calibMan:{
             	
-            	log.debug("Manual Calibration");
+            	Log.d(TAG, "Manual Calibration");
             	AlertDialog.Builder alert = new AlertDialog.Builder(ctx);
 	        	alert.setTitle("Manual Calibration");
 	        	alert.setMessage("Insert your glucose value in mg/dl (only natural numbers)");
 	    
 	        	if (prefs.getBoolean("mmolxl", false)){
 	        		alert.setMessage("Insert your glucose value in mmol/l (only 2 decimals)");
-	        		log.debug("mmol/l");
+	        		Log.d(TAG,"mmol/l");
 	        	}
 	        		
 	        		
@@ -662,7 +658,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	        	alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
 	        	public void onClick(DialogInterface dialog, int whichButton) {
 	        	  String value = input.getText().toString();
-	        	  log.debug("Manual Calibration send "+value);
+	        	  Log.d(TAG, "Manual Calibration send "+value);
 	        	  if (mService == null && bService != null) {
              		 mService = new Messenger(bService);
              	 }
@@ -682,9 +678,9 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 		            			 sb1.append(st.toString()).append("\n");
 		            		 }
 		            		 Log.e(TAG, "Error sending Manual Calibration\n "+sb1.toString());
-		                	 if (ISDEBUG){
-		                		 display.setText(display.getText()+"Error sending Manual Calibration\n", BufferType.EDITABLE);
-		                	 }
+
+		            		 display.setText(display.getText()+"Error sending Manual Calibration\n", BufferType.EDITABLE);
+
 		                     // In this case the service has crashed before we could even do anything with it
 		                 }
 	            	}
@@ -701,7 +697,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
             }
             	break;
             case R.id.instantCalib:{
-            	log.debug("Instant Calibration ");
+            	Log.d(TAG, "Instant Calibration ");
             	AlertDialog.Builder alert2 = new AlertDialog.Builder(ctx);
             	
 	        	alert2.setTitle("Instant Calibration");
@@ -710,7 +706,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
         				.getDefaultSharedPreferences(getBaseContext());
 	        	if (prefs.getBoolean("mmolxl", false)){
 	        		alert2.setMessage("Insert pump value in mmol/l (only 2 decimals)");
-	        		log.debug("Instant Calibration mmol/l");
+	        		Log.d(TAG, "Instant Calibration mmol/l");
 	        	}
 	        	// Set an EditText view to get user input 
 	        	input = new EditText(ctx);
@@ -730,7 +726,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	        	alert2.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
 	        	public void onClick(DialogInterface dialog, int whichButton) {
 	        	  String value = input.getText().toString();
-	        	  log.debug("Instant Calibration send "+value);
+	        	  Log.d(TAG, "Instant Calibration send "+value);
 	        	  if (mService != null){
 		            	 try {
 		                     Message msg = Message.obtain(null, MedtronicConstants.MSG_MEDTRONIC_SEND_INSTANT_CALIB_VALUE);
@@ -747,9 +743,9 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 		            			 sb1.append(st.toString()).append("\n");
 		            		 }
 		            		 Log.e(TAG, "Error sending Instant Calibration\n "+sb1.toString());
-		                	 if (ISDEBUG){
-		                		 display.setText(display.getText()+"Error sending Instant Calibration\n", BufferType.EDITABLE);
-		                	 }
+
+		                	 display.setText(display.getText()+"Error sending Instant Calibration\n", BufferType.EDITABLE);
+
 		           
 		                 }
 	            	}
@@ -796,7 +792,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
     @Override
     protected void onDestroy() {
     	Log.i(TAG, "onDestroy called");
-    	log.info("onDestroy called");
+
     	PreferenceManager.getDefaultSharedPreferences(getBaseContext()).unregisterOnSharedPreferenceChangeListener(this);
     	unregisterReceiver(mArrow);
         synchronized (mHandlerActiveLock) {

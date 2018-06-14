@@ -10,7 +10,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-import org.slf4j.LoggerFactory;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -23,8 +22,6 @@ import android.preference.PreferenceManager;
 
 import android.text.TextUtils;
 import android.util.Log;
-
-import ch.qos.logback.classic.Logger;
 
 import com.nightscout.android.dexcom.USB.HexDump;
 import com.nightscout.android.upload.GlucometerRecord;
@@ -45,8 +42,6 @@ import java.io.ObjectOutputStream;
  * 
  */
 public class MedtronicReader {
-	private Logger log = (Logger) LoggerFactory.getLogger(MedtronicReader.class
-			.getName());
 	private static final String TAG = MedtronicReader.class.getSimpleName();
 
 	private Context context;
@@ -151,7 +146,7 @@ public class MedtronicReader {
 					while (sensorID != null && sensorID.length() > 6) {
 						sensorID = sensorID.substring(1);
 					}
-					log.debug("SensorID inserted "
+					Log.d(TAG, "SensorID inserted "
 							+ prefs.getString("sensor_cgm_id", "0")
 							+ " transformed to " + sensorID);
 					knownDevices.add(sensorID);
@@ -242,7 +237,7 @@ public class MedtronicReader {
 	private boolean isMessageFromMyDevices(byte[] readData) {
 		int initByte = firstByteOfDeviceId(readData);
 		if (initByte < 0 || readData.length < initByte){
-			log.error("Error checking initByte and received length, I can't check If is from 'My devices'");
+			Log.e(TAG, "Error checking initByte and received length, I can't check If is from 'My devices'");
 			return false;
 		}
 		for (String knownDevice : knownDevices) {
@@ -251,7 +246,7 @@ public class MedtronicReader {
 				nBytes++;
 			}
 			if (readData.length < (nBytes + initByte)){
-				log.error("Error checking received length, I can't check If is from 'My devices'");
+				Log.e(TAG, "Error checking received length, I can't check If is from 'My devices'");
 				return false;
 			}
 			String deviceCode = HexDump.toHexString(readData, initByte, nBytes);
@@ -259,7 +254,7 @@ public class MedtronicReader {
 			if (knownDevice.toLowerCase().equals(deviceCode.toLowerCase()))
 				return true;
 			else
-				log.error("Current Known Device "+knownDevice+" Message Received From "+deviceCode);
+				Log.e(TAG, "Current Known Device "+knownDevice+" Message Received From "+deviceCode);
 		}
 		Log.i(TAG, "Message received from unknown device: " + HexDump.dumpHexString(readData) + " I am expecting any of: " + TextUtils.join(", ", knownDevices));
 		return false;
@@ -573,7 +568,7 @@ public class MedtronicReader {
 						break;
 					}
 					Log.i(TAG, "process sensor2");
-					log.debug("SENSOR DATA RECEIVED");
+
 					if (prefs.getBoolean("isWarmingUp", false)) {
 						if (lastMedtronicPumpRecord == null) {
 							lastMedtronicPumpRecord = new MedtronicPumpRecord();
@@ -868,7 +863,6 @@ public class MedtronicReader {
 		else{
 			sendMessageToUI(
 					"Glucometer Detected!!..Waiting 15 min. to retrieve calibration factor...");
-			log.debug("Glucometer Detected!!..Waiting 15 min. to retrieve calibration factor...");
 			Log.d(TAG,"glucometer handler or glucometer runnable is null");
 			lastGlucometerRecord = new GlucometerRecord();
 			lastGlucometerRecord.numGlucometerValue = num;
@@ -934,10 +928,10 @@ public class MedtronicReader {
 			if (previousRecord == null) {
 				MedtronicSensorRecord auxRecord = new MedtronicSensorRecord();
 				auxRecord.isCalibrating = !instant;
-				log.debug("8");
+
 			} else {
 				previousRecord.isCalibrating = !instant;
-				log.debug("9");
+
 			}
 			editor.putBoolean("isCalibrating", !instant);
 			editor.commit();
@@ -1005,7 +999,7 @@ public class MedtronicReader {
 							record.calibrationStatus = calibrationStatus;
 							lastCalibrationDate = currentTime.getTime();
 							SharedPreferences.Editor editor = settings.edit();
-							log.debug("change lastCalibrationDate");
+
 							editor.putLong("lastCalibrationDate",
 									lastCalibrationDate);
 							editor.commit();
@@ -1188,7 +1182,6 @@ public class MedtronicReader {
 				}
 			} else {
 				Log.i("Medtronic", "NOT Expected sensor number received!!");
-				log.debug("SENSOR MEASURE, NOT Expected sensor measure received!!");
 				int dataLost = -1;
 				if (previousRecord != null || lastSensorValueDate > 0) {
 					long timeDiff = 0;
@@ -1225,8 +1218,6 @@ public class MedtronicReader {
 						dataLost = 10;
 						added = 8;
 					}
-					log.debug("SENSOR MEASURE, I am going to retrieve "
-							+ (dataLost) + " previous values");
 					dataLost *= 2;
 					lastElementsAdded = 0;
 					// I must read ALL THE MEASURES
@@ -1879,9 +1870,9 @@ public class MedtronicReader {
                // Write EGV Binary of last (most recent) data
                try {
                        if (mostRecentData == null || mostRecentData.bGValue == null)
-                               log.debug("writeLocalCSV SAVING  EMPTY!!");
+                               Log.d(TAG, "writeLocalCSV SAVING  EMPTY!!");
                        else
-                               log.debug("writeLocalCSV SAVING --> " + mostRecentData.bGValue);
+                               Log.d(TAG, "writeLocalCSV SAVING --> " + mostRecentData.bGValue);
                        ObjectOutputStream oos = new ObjectOutputStream(
 					                                       new FileOutputStream(new File(context.getFilesDir(),
 					                                                       "save.bin"))); // Select where you wish to save the
@@ -1892,7 +1883,6 @@ public class MedtronicReader {
                        oos.close();// close the stream
                } catch (Exception e) {
                        Log.e(TAG, "write to OutputStream failed", e);
-                       log.error("write to OutputStream failed", e);
                }
        }
 

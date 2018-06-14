@@ -19,7 +19,6 @@ import org.apache.http.params.HttpParams;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import org.slf4j.LoggerFactory;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -27,7 +26,6 @@ import android.os.AsyncTask;
 import android.preference.PreferenceManager;
 import android.util.Log;
 
-import ch.qos.logback.classic.Logger;
 
 import com.nightscout.android.dexcom.DexcomG4Activity;
 import com.nightscout.android.dexcom.EGVRecord;
@@ -36,7 +34,7 @@ import com.nightscout.android.medtronic.MedtronicReader;
 
 public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 
-    private Logger log = (Logger) LoggerFactory.getLogger(MedtronicReader.class.getName());
+
     private static final String TAG = "UploadHelper";
     private SharedPreferences settings = null;// common application preferences
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("MM/dd/yyyy hh:mm:ss aa", Locale.getDefault());
@@ -98,13 +96,11 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 
             long start = System.currentTimeMillis();
             Log.i(TAG, String.format("Starting upload of %s record using a REST API", records.length));
-            log.info(String.format("Starting upload of %s record using a REST API", records.length));
             doRESTUpload(prefs, records);
             Log.i(TAG, String.format("Finished upload of %s record using a REST API in %s ms", records.length, System.currentTimeMillis() - start));
-            log.info(String.format("Finished upload of %s record using a REST API in %s ms", records.length, System.currentTimeMillis() - start));
 
         } catch (Exception e) {
-            log.error("ERROR uploading data!!!!!", e);
+            Log.e(TAG,"ERROR uploading data!!!!!", e);
         }
 
 
@@ -114,7 +110,6 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
     protected void onPostExecute(Long result) {
         super.onPostExecute(result);
         Log.i(TAG, "Post execute, Result: " + result + ", Status: FINISHED");
-        log.info("Post execute, Result: " + result + ", Status: FINISHED");
 
     }
 
@@ -130,7 +125,6 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
             }
         } catch (Exception e) {
             Log.e(TAG, "Unable to process API Base URL setting: " + baseURLSettings, e);
-            log.error("Unable to process API Base URL setting: " + baseURLSettings, e);
             return;
         }
 
@@ -139,8 +133,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                 doRESTUploadTo(baseURI, records);
             } catch (Exception e) {
                 Log.e(TAG, "Unable to do REST API Upload to: " + baseURI, e);
-                log.error("Unable to do REST API Upload to: " + baseURI, e);
-            }
+             }
         }
     }
 
@@ -251,7 +244,6 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                     postURL += "entries";
                 }
                 Log.i(TAG, "postURL: " + postURL);
-                log.info("postURL: " + postURL);
 
                 HttpPost post = new HttpPost(postURL);
 
@@ -331,7 +323,6 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                             recordsNotUploadedListJson.add(recordsNotUploadedJson.getJSONObject(i));
                         }
                     }
-                    log.debug("retrieve older json records -->" + recordsNotUploadedJson.length());
 
                 } catch (Exception e) {
                     Log.i(TAG, "ERROR RETRIEVING OLDER LISTs, I HAVE LOST THEM");
