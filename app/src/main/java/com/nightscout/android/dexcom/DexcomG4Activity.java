@@ -529,8 +529,6 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
         this.menu = menu;
         inflater.inflate(R.menu.menu, menu);
 
-		SharedPreferences prefs = PreferenceManager
-				.getDefaultSharedPreferences(getBaseContext());
 		if (prefs.contains("calibrationType")) {
 			String type = prefs.getString("calibrationType", "3");
 			if ("3".equalsIgnoreCase(type))
@@ -727,10 +725,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	            startService(service);
         	}
 			mHandlerActive = false;
-			SharedPreferences.Editor editor = getBaseContext().getSharedPreferences(MedtronicConstants.PREFS_NAME, 0).edit();
-			editor.putLong("lastDestroy", System.currentTimeMillis());
-			editor.commit();
-        	super.onDestroy();
+			super.onDestroy();
 		}
     }
 
