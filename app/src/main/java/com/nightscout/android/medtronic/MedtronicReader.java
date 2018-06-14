@@ -374,9 +374,6 @@ public class MedtronicReader {
 		ArrayList<byte[]> bufferedMessages = null;
 		Log.d(TAG, "READ " + readFromDevice.length + " bytes: " + HexDump.dumpHexString(readFromDevice));
 
-		SharedPreferences.Editor editor = settings.edit();
-		editor.putLong("lastDestroy", System.currentTimeMillis());
-		editor.commit();
 		try {
 			bufferedMessages = parseMessageData(
 					Arrays.copyOfRange(readFromDevice, 0, readFromDevice.length), readFromDevice.length);
@@ -427,7 +424,7 @@ public class MedtronicReader {
 						editor.putString(
 								"lastGlucometerMessage",
 								HexDump.toHexString(lastGlucometerMessage));
-						editor.commit();
+						editor.apply();
 					} else {
 						boolean isEqual = Arrays
 								.equals(lastGlucometerMessage,
@@ -468,7 +465,7 @@ public class MedtronicReader {
 							sendMessageToUI("isCalibrating");
 						sendMessageToUI("glucometer data received");
 
-						editor.commit();
+						editor.apply();
 					}
 
 				}
@@ -526,7 +523,7 @@ public class MedtronicReader {
 						writeLocalCSV(previousRecord, context);
 					}
 					sendMessageToUI("sensor data wUp.");
-					editor.commit();
+					editor.apply();
 					break;
 				}
 				case MedtronicConstants.MEDTRONIC_SENSOR2:
@@ -550,7 +547,7 @@ public class MedtronicReader {
 							SharedPreferences.Editor editor1 = prefs
 									.edit();
 							editor1.putBoolean("isWarmingUp", false);
-							editor1.commit();
+							editor1.apply();
 						}
 						Log.d(TAG,"Sensor value received, but value is took only by pump logs");
 						break;
@@ -570,7 +567,7 @@ public class MedtronicReader {
 						SharedPreferences.Editor editor = prefs
 								.edit();
 						editor.remove("isWarmingUp");
-						editor.commit();
+						editor.apply();
 					}
 					boolean calculateCalibration = false;
 					if (isCalibrating) {
@@ -583,7 +580,7 @@ public class MedtronicReader {
 						SharedPreferences.Editor editor = settings
 								.edit();
 						editor.putBoolean("isCalibrating", false);
-						editor.commit();
+						editor.apply();
 					}
 					sendMessageToUI("sensor data value received");
 					break;
@@ -857,7 +854,7 @@ public class MedtronicReader {
 			SharedPreferences.Editor editor = settings.edit();
 			editor.putFloat("lastGlucometerValue", lastGlucometerValue);
 			editor.putLong("glucometerLastDate", d.getTime());
-			editor.commit();
+			editor.apply();
 		}
 	}
 	/**
@@ -917,9 +914,9 @@ public class MedtronicReader {
 
 			}
 			editor.putBoolean("isCalibrating", !instant);
-			editor.commit();
+			editor.apply();
 		}
-		editor.commit();
+		editor.apply();
 		Log.i(TAG, "Manual calibration:" + num);
 	}
 
@@ -985,7 +982,7 @@ public class MedtronicReader {
 
 							editor.putLong("lastCalibrationDate",
 									lastCalibrationDate);
-							editor.commit();
+							editor.apply();
 							calibrated = true;
 						}
 					}
@@ -1036,7 +1033,7 @@ public class MedtronicReader {
 				editor.putFloat("calibrationFactor", calibrationFactor);
 				editor.putInt("calibrationStatus",
 							calibrationStatus);
-				editor.commit();
+				editor.apply();
 			}
 			return;
 		} else{
@@ -1274,7 +1271,7 @@ public class MedtronicReader {
 		editor.putInt("calibrationStatus", calibrationStatus);
 		lastSensorValueDate = d.getTime();
 		editor.putLong("lastSensorValueDate", lastSensorValueDate);
-		editor.commit();
+		editor.apply();
 	 	writeLocalCSV(previousRecord, context);
 
 		Log.i(TAG, "sensorprocessed end expected "
@@ -1417,7 +1414,7 @@ public class MedtronicReader {
 				editor.putFloat("calibrationFactor", calibrationFactor);
 				editor.putInt("calibrationStatus",
 						calibrationStatus);
-				editor.commit();
+				editor.apply();
 			} else {
 				if (calibrationStatus != MedtronicConstants.WITHOUT_ANY_CALIBRATION
 						&& currentIndex != expectedSensorSortNumber) {
@@ -1429,7 +1426,7 @@ public class MedtronicReader {
 				SharedPreferences.Editor editor = settings.edit();
 				editor.remove("expectedSensorSortNumberForCalibration0");
 				editor.remove("expectedSensorSortNumberForCalibration1");
-				editor.commit();
+				editor.apply();
 			}
 		} else if (difference >= MedtronicConstants.TIME_20_MIN_IN_MS) {
 			if (isSensorMeasureInRange(currentIndex,
@@ -1443,7 +1440,7 @@ public class MedtronicReader {
 				editor.putFloat("calibrationFactor", calibrationFactor);
 				editor.putInt("calibrationStatus",
 						calibrationStatus);
-				editor.commit();
+				editor.apply();
 			} else {
 				if (calibrationStatus != MedtronicConstants.WITHOUT_ANY_CALIBRATION)
 					calibrationStatus = MedtronicConstants.LAST_CALIBRATION_FAILED_USING_PREVIOUS;
@@ -1453,7 +1450,7 @@ public class MedtronicReader {
 				SharedPreferences.Editor editor = settings.edit();
 				editor.remove("expectedSensorSortNumberForCalibration0");
 				editor.remove("expectedSensorSortNumberForCalibration1");
-				editor.commit();
+				editor.apply();
 			}
 			isCalibrating = false;
 		} else {
@@ -1476,7 +1473,7 @@ public class MedtronicReader {
 				editor.remove("expectedSensorSortNumberForCalibration1");
 				editor.putInt("calibrationStatus",
 						calibrationStatus);
-				editor.commit();
+				editor.apply();
 			}
 		}
 	}
