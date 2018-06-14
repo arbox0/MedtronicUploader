@@ -581,20 +581,13 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 
     //Deserialize the EGVRecord (most recent) value
     public Record loadClassFile(File f) {
-    	 ObjectInputStream ois = null;
-        try {
-            ois = new ObjectInputStream(new FileInputStream(f));
+    	try {
+			ObjectInputStream ois = new ObjectInputStream(new FileInputStream(f));
             Object o = ois.readObject();
             ois.close();
             return (Record) o;
         } catch (Exception ex) {
             Log.w(TAG, " unable to loadEGVRecord");
-            try{
-	            if (ois != null)
-	            	ois.close();
-            }catch(Exception e){
-            	Log.e(TAG, " Error closing ObjectInputStream");
-            }
         }
         return new Record();
     }
