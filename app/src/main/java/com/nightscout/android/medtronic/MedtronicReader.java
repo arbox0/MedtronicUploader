@@ -1,7 +1,6 @@
 package com.nightscout.android.medtronic;
 
 import java.text.DateFormat;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -910,7 +909,7 @@ public class MedtronicReader {
 			MedtronicSensorRecord record, int added, Date currentTime) {
 		if (previousCalibrationFactor > 0) {
 			record.setUnfilteredGlucose(isig * previousCalibrationFactor);
-			record.setBGValue((applyFilterToRecord(record)) + "");
+			record.setBGValue((applyFilterToRecord(record)) );
 			record.isCalibrating = false;
 			record.calibrationFactor = previousCalibrationFactor;
 			if (previousCalibrationStatus != MedtronicConstants.WITHOUT_ANY_CALIBRATION) {
@@ -946,7 +945,7 @@ public class MedtronicReader {
 						if (calibrationStatus != MedtronicConstants.WITHOUT_ANY_CALIBRATION
 								&& calibrationStatus != MedtronicConstants.LAST_CALIBRATION_FAILED_USING_PREVIOUS
 								&& calibrationStatus != MedtronicConstants.CALIBRATION_MORE_THAN_12H_OLD) {
-							record.setBGValue(((int) lastGlucometerValue) + "");
+							record.setBGValue( lastGlucometerValue );
 							record.setUnfilteredGlucose(lastGlucometerValue);
 							record.calibrationFactor = calibrationFactor;
 							record.isCalibrating = false;
@@ -967,13 +966,13 @@ public class MedtronicReader {
 
 			if (calibrationStatus != MedtronicConstants.WITHOUT_ANY_CALIBRATION) {
 				record.setUnfilteredGlucose(isig * calibrationFactor);
-				record.setBGValue((applyFilterToRecord(record)) + "");
+				record.setBGValue(applyFilterToRecord(record));
 				record.isCalibrating = false;
 				record.calibrationFactor = calibrationFactor;
 				record.calibrationStatus = calibrationStatus;
 			} else {
 				record.setUnfilteredGlucose(isig * calibrationFactor);
-				record.setBGValue((applyFilterToRecord(record)) + "");
+				record.setBGValue(applyFilterToRecord(record));
 				record.isCalibrating = false;
 				record.calibrationFactor = calibrationFactor;
 				record.calibrationStatus = MedtronicConstants.LAST_CALIBRATION_FAILED_USING_PREVIOUS;
@@ -993,7 +992,7 @@ public class MedtronicReader {
 			calibrationFactor = currentMeasure / previousRecord.isig;
 			Log.d(TAG,"Instant Calibration result " + calibrationFactor + "; ISIG is " + previousRecord.isig);
 			if (calibrationFactor > 0) {
-				previousRecord.bGValue = "" + ((int) currentMeasure);
+				previousRecord.setBGValue(currentMeasure);
 				calibrationStatus = MedtronicConstants.CALIBRATED;
 				lastCalibrationDate = System.currentTimeMillis();
 				isCalibrating = false;
@@ -1473,16 +1472,10 @@ public class MedtronicReader {
 
 				float prevRecordValue = 0;
 				float recordValue = 0;
-				try {
-					prevRecordValue = Float.parseFloat(prevRecord.bGValue);
-				} catch (Exception e) {
-					Log.e(TAG, "Bad previous bGValue: " + prevRecord.bGValue, e);
-				}
-				try {
-					recordValue = Float.parseFloat(record.bGValue);
-				} catch (Exception e) {
-					Log.e(TAG, "Bad current bGValue: " + record.bGValue, e);
-				}
+
+				prevRecordValue = prevRecord.getBGValue();
+				recordValue = record.getBGValue();
+
 
 				if (prevRecordValue > 0 && recordValue <= 0) {
 					Log.d(TAG, "AdjustRecordValue prev " + prevRecordValue
@@ -1802,10 +1795,10 @@ public class MedtronicReader {
 
                // Write EGV Binary of last (most recent) data
                try {
-                       if (mostRecentData == null || mostRecentData.bGValue == null)
+                       if (mostRecentData == null || mostRecentData.getBGValue() == 0)
                                Log.d(TAG, "writeLocalCSV SAVING  EMPTY!!");
                        else
-                               Log.d(TAG, "writeLocalCSV SAVING --> " + mostRecentData.bGValue);
+                               Log.d(TAG, "writeLocalCSV SAVING --> " + mostRecentData.getBGValue());
                        ObjectOutputStream oos = new ObjectOutputStream(
 					                                       new FileOutputStream(new File(context.getFilesDir(),
 					                                                       "save.bin"))); // Select where you wish to save the

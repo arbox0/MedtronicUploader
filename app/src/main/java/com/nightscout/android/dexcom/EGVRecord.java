@@ -5,7 +5,7 @@ import java.io.Serializable;
 import com.nightscout.android.upload.Record;
 
 public class EGVRecord extends Record implements Serializable {
-    public String bGValue = "---";
+    private float bGValue = 0;
     public String trend ="---";
     public String trendArrow = "---";
 
@@ -13,10 +13,15 @@ public class EGVRecord extends Record implements Serializable {
     private static final long serialVersionUID = 4654897646L;	
     
     
-    public void setBGValue (String input) {
+    public void setBGValue (float input) {
     	this.bGValue = input;
     }
-    
+
+
+    public float getBGValue () {
+        return bGValue;
+    }
+
     public void setTrend (String input) {
     	this.trend = input;
     }

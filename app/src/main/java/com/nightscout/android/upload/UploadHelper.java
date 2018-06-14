@@ -367,7 +367,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
         } else if (oRecord instanceof EGVRecord) {
             EGVRecord record = (EGVRecord) oRecord;
             json.put("device", getSelectedDeviceName());
-            json.put("sgv", Integer.parseInt(record.bGValue));
+            json.put("sgv", (int) record.getBGValue());
             json.put("direction", record.trend);
             if (oRecord instanceof MedtronicSensorRecord) {
                 json.put("isig", ((MedtronicSensorRecord) record).isig);

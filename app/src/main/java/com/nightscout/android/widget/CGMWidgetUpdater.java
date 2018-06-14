@@ -74,10 +74,10 @@ public class CGMWidgetUpdater extends Service{
 	    		calib = MedtronicConstants.getWidgetCalAppend(record.calibrationStatus);
 	    	if (prefs.getBoolean("isWarmingUp",false)){
 	    		calib = "";
-	    		record.bGValue = "W._Up";
+	    		record.setBGValue(0);
 	    		record.trendArrow="---";
 	    	}
-	    	views.setTextViewText(R.id.sgv_id, record.bGValue+calib);
+	    	views.setTextViewText(R.id.sgv_id, record.getBGValue()+calib);
 	    	views.setTextViewText(R.id.arrow_id, record.trendArrow);
         	
         } else{

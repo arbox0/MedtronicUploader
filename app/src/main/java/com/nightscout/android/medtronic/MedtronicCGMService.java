@@ -344,38 +344,19 @@ public class MedtronicCGMService extends Service implements
 
 
 		medtronicReader = new MedtronicReader(getBaseContext(), mClients);
-		
-		Record auxRecord =  MedtronicCGMService.this.loadClassFile(new File(getBaseContext().getFilesDir(), "save.bin"));
+		Record auxRecord = null;
+		medtronicReader.previousRecord = null;
 
-     	SharedPreferences prefs = PreferenceManager
- 				.getDefaultSharedPreferences(getBaseContext());
-     
-     	DecimalFormat df = new DecimalFormat("#.##");
+		try {
+			auxRecord =  MedtronicCGMService.this.loadClassFile(new File(getBaseContext().getFilesDir(), "save.bin"));
+		}
+		catch (Exception e) {
+			Log.e(TAG, "couldn't load last record during onCreate", e);
+		}
 
-     	if (auxRecord instanceof MedtronicSensorRecord){
-            	
-			MedtronicSensorRecord record = (MedtronicSensorRecord) auxRecord;
-     		
-     		if (prefs.getBoolean("mmolxl", false)){
-     			Float fBgValue;
-				try{
-					fBgValue =  (float)Integer.parseInt(record.bGValue);
-					Log.i(TAG, "mmolxl true --> "+record.bGValue);
-					record.bGValue = df.format(fBgValue/18f);
-					Log.i(TAG, "mmolxl/18 true --> "+record.bGValue);
-				}catch (Exception e){
-
-				}
-     		}else
-     			Log.i(TAG,"mmolxl false --> "+record.bGValue);
-
-
-    	    	if (prefs.getBoolean("isWarmingUp",false)){
-    	    		record.bGValue = "W_Up";
-    	    		record.trendArrow="---";
-    	    	}
-    	    	medtronicReader.previousRecord = record;           	
-            }
+     	if (auxRecord instanceof MedtronicSensorRecord) {
+			medtronicReader.previousRecord = (MedtronicSensorRecord) auxRecord;
+     	}
 
         checker = medtronicReader.new CalibrationStatusChecker(mHandlerReviewParameters);
 		mHandlerReviewParameters.postDelayed(checker, MedtronicConstants.TIME_5_MIN_IN_MS);
@@ -406,7 +387,7 @@ public class MedtronicCGMService extends Service implements
 
 			SharedPreferences.Editor editor = settings.edit();
 			editor.putLong("lastDestroy", System.currentTimeMillis());
-			editor.commit();
+			editor.apply();
 			closeUsbSerial();
 			mHandlerActive = false;
 			unregisterReceiver(mUsbReceiver);

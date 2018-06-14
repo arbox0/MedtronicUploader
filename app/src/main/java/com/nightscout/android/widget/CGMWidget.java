@@ -46,7 +46,7 @@ public class CGMWidget extends AppWidgetProvider {
 	    	    		calib = "*";
 	    	    	else
 	    	    		calib = MedtronicConstants.getWidgetCalAppend(record.calibrationStatus);
-	    	    	views.setTextViewText(R.id.sgv_id, record.bGValue+calib);
+	    	    	views.setTextViewText(R.id.sgv_id, record.getBGValue()+calib);
 	    	    	views.setTextViewText(R.id.arrow_id, record.trendArrow);
 	            	
 	            } else{
