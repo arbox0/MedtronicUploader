@@ -154,8 +154,6 @@ public class MedtronicReader {
 				catch(NumberFormatException nfe){
 					sendErrorMessageToUI("Sensor ID is incorrect - needs to be a number.  Ignored.");
 				}
-
-
 			}
 		}
 
@@ -211,16 +209,6 @@ public class MedtronicReader {
 			}
 		}
 		checkCalibrationOutOfTime();
-		if (settings.contains("last_read")) {
-			String lastRead = settings.getString("lastRead", "");
-			if (lastRead.length() > 0) {
-				byte[] last_read = HexDump.hexStringToByteArray(lastRead);
-				ArrayList<byte[]> bufferedMessages = parseMessageData(
-						last_read, last_read.length);
-				if (bufferedMessages != null && bufferedMessages.size() > 0)
-					processBufferedMessages(bufferedMessages);
-			}
-		}
 	}
 
 	public List<String> getKnownDevices()
@@ -372,7 +360,7 @@ public class MedtronicReader {
 				calibrationStatus = MedtronicConstants.CALIBRATION_MORE_THAN_12H_OLD;
 				SharedPreferences.Editor editor = settings.edit();
 				editor.putInt("calibrationStatus", calibrationStatus);
-				editor.commit();
+				editor.apply();
 			}
 		}
 
@@ -654,9 +642,7 @@ public class MedtronicReader {
 		} catch (Exception ex2) {
 			sendErrorMessageToUI(ex2.toString());
 		}
-		SharedPreferences.Editor editor = settings.edit();
-		editor.remove("last_read");
-		editor.commit();
+
 	}
 
 	/**
@@ -683,10 +669,7 @@ public class MedtronicReader {
 			}
 			notFinishedRead = null;
 		}
-		SharedPreferences.Editor editor = settings.edit();
-		editor.putString("last_read", HexDump.toHexString(Arrays.copyOfRange(
-				readBuffer, 0, readBuffer.length)));
-		editor.commit();
+
 		int i = 0;
 		if (crcErrorBytesToDiscard > 0)
 			i = crcErrorBytesToDiscard;
