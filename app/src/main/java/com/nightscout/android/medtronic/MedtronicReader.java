@@ -31,7 +31,6 @@ import com.nightscout.android.upload.GlucometerRecord;
 import com.nightscout.android.upload.MedtronicPumpRecord;
 import com.nightscout.android.upload.MedtronicSensorRecord;
 import com.nightscout.android.upload.Record;
-import com.physicaloid.lib.Physicaloid;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.ObjectOutputStream;
@@ -102,8 +101,6 @@ public class MedtronicReader {
 	SharedPreferences settings = null;
 	SharedPreferences prefs = null;
 	Integer calibrationSelected = MedtronicConstants.CALIBRATION_GLUCOMETER;
-
-	Handler mHandlerSensorCalibration = null;
 
 	/**
 	 * Constructor

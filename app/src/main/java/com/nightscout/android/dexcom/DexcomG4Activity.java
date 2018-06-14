@@ -82,8 +82,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
     private TextView display;
     private Menu menu = null;
     private Intent service = null;
-    private int msgsDisplayed = 0;
-    public static int batLevel = 0;
+	public static int batLevel = 0;
     BatteryReceiver mArrow;
     IBinder bService = null;
     Messenger mService = null;
@@ -106,14 +105,12 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
             case MedtronicConstants.MSG_MEDTRONIC_CGM_MESSAGE_RECEIVED:
             	Log.i(TAG,  msg.getData().getString("data")+"\n");
             	display.append(msg.getData().getString("data")+"\n");
-            	msgsDisplayed++;
             	mHandler.removeCallbacks(updateDataView);
 	        	mHandler.post(updateDataView);
                 break;
             case MedtronicConstants.MSG_MEDTRONIC_CGM_CLEAR_DISPLAY:
                 display.setText("", BufferType.EDITABLE);
-                msgsDisplayed = 0;
-        		break;
+				break;
             case MedtronicConstants.MSG_MEDTRONIC_CGM_NO_PERMISSION:
                 Log.e(TAG, "Message received - no USB permission");
                 usbAllowedPermission = false;
@@ -134,7 +131,6 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
             	Log.e(TAG,  msg.getData().getString("data")+"\n");
             	String sError = msg.getData().getString("data");
             	display.setText(display.getText()+"Medtronic CGM Message: " + sError +"\n", BufferType.EDITABLE);
-            	msgsDisplayed++;
                 break;
             case MedtronicConstants.MSG_MEDTRONIC_CALIBRATION_DONE:
             	Log.i(TAG,  MedtronicConstants.MSG_MEDTRONIC_CALIBRATION_DONE+"\n");
@@ -495,8 +491,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
             public void onClick(View v) {
             	display.setText("", BufferType.EDITABLE);
             	display.setKeyListener(null);
-            	msgsDisplayed = 0;
-            }
+			}
         });
 
 

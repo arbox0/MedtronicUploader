@@ -16,7 +16,6 @@ import android.widget.RemoteViews;
 
 import com.nightscout.android.R;
 import com.nightscout.android.dexcom.DexcomG4Activity;
-import com.nightscout.android.dexcom.EGVRecord;
 import com.nightscout.android.medtronic.MedtronicConstants;
 import com.nightscout.android.upload.MedtronicSensorRecord;
 import com.nightscout.android.upload.Record;

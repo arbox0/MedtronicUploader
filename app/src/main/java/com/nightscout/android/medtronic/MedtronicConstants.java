@@ -19,9 +19,9 @@ public class MedtronicConstants {
     public static final int TIME_12_HOURS_IN_MS = 43200000;
     public static final String PREFS_NAME = "MyPrefsFile";
     public static final float SENSOR_CONVERSION_CONSTANT_VALUE = 160.72f;
-    public static final float SENSOR_CONVERSION_CONSTANT_VALUE2 = Float.valueOf("5.8E-4").floatValue();
-    public static final float SENSOR_CONVERSION_CONSTANT_VALUE3 = Float.valueOf("6.25E-6").floatValue();
-    public static final float SENSOR_CONVERSION_CONSTANT_VALUE4 = Float.valueOf("1.5E-6").floatValue();
+    public static final float SENSOR_CONVERSION_CONSTANT_VALUE2 = Float.valueOf("5.8E-4");
+    public static final float SENSOR_CONVERSION_CONSTANT_VALUE3 = Float.valueOf("6.25E-6");
+    public static final float SENSOR_CONVERSION_CONSTANT_VALUE4 = Float.valueOf("1.5E-6");
     public static final int SENSOR_CONVERSION_CONSTANT_VALUE5 = 65536;
 
     

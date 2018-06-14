@@ -64,14 +64,12 @@ import ch.qos.logback.classic.Logger;
 public class MedtronicCGMService extends Service implements
 		OnSharedPreferenceChangeListener {
 
-	private Logger log = (Logger) LoggerFactory.getLogger(MedtronicReader.class.getName());
 	private static final String TAG = MedtronicCGMService.class.getSimpleName();
 
 	private boolean listenerAttached = false;
 	private UploadHelper uploader;
 	private UsbSerialDevice mSerial;
 	private Handler mHandlerCheckSerial = new Handler();// This handler runs readAndUpload Runnable which checks the USB device and NET connection. 
-	private Handler mHandlerRead = new Handler();// this Handler is used to read and parse the messages received from the USB, It is only activated after a Read.
 	private Handler mHandlerProcessRead = new Handler();// this Handler is used to process the messages parsed.
 	private Handler mHandlerReviewParameters = new Handler();
 	private boolean mHandlerActive = false;
@@ -84,19 +82,15 @@ public class MedtronicCGMService extends Service implements
 	private final Messenger mMessenger = new Messenger(new IncomingHandler()); // Target we publish for clients to send messages to IncomingHandler.
 	private SharedPreferences prefs = null;// common application preferences
 	private int calibrationSelected = MedtronicConstants.CALIBRATION_GLUCOMETER;//calibration Selected
-	private Handler mHandlerSensorCalibration = new Handler();// this Handler is used to ask for SensorCalibration.
 	private Handler mHandlerReloadLost = new Handler();// this Handler is used to upload records which upload failed due to a network error.
 	private boolean connectedSent = false;
 	private boolean isDestroying = false;
 	private Object reloadLostLock = new Object();
 	private Object checkSerialLock = new Object();
 	private Object isUploadingLock = new Object();
-	private Object readByListenerSizeLock = new Object();
 	private Object buffMessagesLock = new Object();
 
 	private boolean faking = false;
-
-	private boolean isReloaded = false;
 
 	@Override
 	public IBinder onBind(Intent intent) {
@@ -183,7 +177,7 @@ public class MedtronicCGMService extends Service implements
 					break;
 
 				case MedtronicConstants.MSG_MEDTRONIC_CGM_REQUEST_PERMISSION:
-					openUsbSerial(false);
+					openUsbSerial();
 					break;
 				default:
 					super.handleMessage(msg);
@@ -216,7 +210,7 @@ public class MedtronicCGMService extends Service implements
 		Date date = new Date();
 		valuetosend = dateFormat.format(date) + valuetosend;
 
-		log.debug("send Message To UI -> "+valuetosend);
+		Log.d(TAG,"send Message To UI -> "+valuetosend);
 		if (mClients != null && mClients.size() > 0) {
 			for (int i = mClients.size() - 1; i >= 0; i--) {
 				try {
@@ -275,7 +269,7 @@ public class MedtronicCGMService extends Service implements
 	private void sendMessageConnectedToUI() {
 		Log.i("medtronicCGMService", "Connected");
 		if (!connectedSent){
-			log.debug("Send Message Connected to UI");
+			Log.d(TAG, "Send Message Connected to UI");
 			connectedSent = true;
 		}
 		for (int i = mClients.size() - 1; i >= 0; i--) {
@@ -349,18 +343,7 @@ public class MedtronicCGMService extends Service implements
 		prefs.edit().remove("isCheckedWUP").commit();
 		prefs.registerOnSharedPreferenceChangeListener(this);
 		
-		int level = Integer.parseInt(prefs.getString("logLevel", "1"));
-		switch (level) {
-			case 2:
-				log.setLevel(Level.INFO);
-				break;
-			case 3:
-				log.setLevel(Level.DEBUG);
-				break;
-			default:
-				log.setLevel(Level.ERROR);
-				break;
-		}
+
 
         if (prefs.contains("monitor_type")){
         	String type = prefs.getString("monitor_type", "1");
@@ -414,9 +397,8 @@ public class MedtronicCGMService extends Service implements
     	    	}
     	    	medtronicReader.previousRecord = record;           	
             }
-		
-		medtronicReader.mHandlerSensorCalibration = mHandlerSensorCalibration;
-		checker = medtronicReader.new CalibrationStatusChecker(mHandlerReviewParameters);
+
+        checker = medtronicReader.new CalibrationStatusChecker(mHandlerReviewParameters);
 		mHandlerReviewParameters.postDelayed(checker, MedtronicConstants.TIME_5_MIN_IN_MS);
 		IntentFilter filter = new IntentFilter();
 		filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
@@ -440,7 +422,7 @@ public class MedtronicCGMService extends Service implements
 		}
 		synchronized (checkSerialLock) {
 			Log.i(TAG, "onDestroy called");
-			log.debug("Medtronic Service onDestroy called");
+
 			mHandlerCheckSerial.removeCallbacks(readAndUpload);
 
 			SharedPreferences.Editor editor = settings.edit();
@@ -509,7 +491,7 @@ public class MedtronicCGMService extends Service implements
 					}
 
 				} else {
-					openUsbSerial(false);
+					openUsbSerial();
 					connected = isConnected();
 
 					if (!connected)
@@ -554,19 +536,19 @@ public class MedtronicCGMService extends Service implements
 			bufferedMessages.add(TestUSBData.fakeSensorData(deviceData,5500));
 
 
-			log.debug("Stream Received");
+			Log.d(TAG, "Fake Stream Received");
 			if (bufferedMessages.size() > 0) {
-				log.debug("Stream Received--> There are " + bufferedMessages.size() + " to process ");
+				Log.d(TAG, "Fake Stream Received--> There are " + bufferedMessages.size() + " to process ");
 				synchronized (buffMessagesLock) {
 					processBufferedMessages.bufferedMessages
 							.addAll(bufferedMessages);
 				}
 				if (!isDestroying) {
-					log.debug("Stream Received--> order process bufferedMessages ");
+					Log.d(TAG, "Stream Received--> order process bufferedMessages ");
 					mHandlerProcessRead.post(processBufferedMessages);
 				}
 			} else {
-				log.debug("NULL doReadAndUpload");
+				Log.d(TAG, "NULL doReadAndUpload");
 			}
 
 		} catch (Exception e) {
@@ -770,7 +752,7 @@ public class MedtronicCGMService extends Service implements
 
 	}
 
-	private void openUsbSerial(boolean reload) {
+	private void openUsbSerial() {
 		if (faking) return;
 
 		if (mSerial == null) {
@@ -886,15 +868,7 @@ public class MedtronicCGMService extends Service implements
 			String key) {
 		try {
 
-			if (key.equalsIgnoreCase("logLevel")){
-				String level = sharedPreferences.getString("logLevel", "1");
-				if ("2".equalsIgnoreCase(level))
-					log.setLevel(Level.INFO);
-		    	else if ("3".equalsIgnoreCase(level))
-		    		log.setLevel(Level.DEBUG);
-		    	else  
-		    		log.setLevel(Level.ERROR);
-			}
+
 			if (sharedPreferences.contains("monitor_type") && key.equalsIgnoreCase("monitor_type")){
 	        	String type = sharedPreferences.getString("monitor_type", "1");
 	        	if ("2".equalsIgnoreCase(type)){
