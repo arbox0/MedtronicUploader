@@ -830,28 +830,7 @@ public class MedtronicReader {
 	}
 
 	
-	
-	public void approveGlucValueForCalibration(float num, boolean calibrate, boolean isSensorFactorFromPump){
-		if (!isSensorFactorFromPump) {
-			processManualCalibrationDataMessage(num, false, calibrate);
-		}
-		else{
-			sendMessageToUI(
-					"Glucometer Detected!!..Waiting 15 min. to retrieve calibration factor...");
-			Log.d(TAG,"glucometer handler or glucometer runnable is null");
-			lastGlucometerRecord = new GlucometerRecord();
-			lastGlucometerRecord.numGlucometerValue = num;
-			lastGlucometerValue = num;
-			Date d = new Date();
-			lastGlucometerRecord.lastDate = d.getTime();
-			lastGlucometerDate = d.getTime();
-			calculateDate(lastGlucometerRecord, d, 0);
-			SharedPreferences.Editor editor = settings.edit();
-			editor.putFloat("lastGlucometerValue", lastGlucometerValue);
-			editor.putLong("glucometerLastDate", d.getTime());
-			editor.apply();
-		}
-	}
+
 	/**
 	 * This method process the Manual Calibration message
 	 * 
