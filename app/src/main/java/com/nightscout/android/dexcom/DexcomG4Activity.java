@@ -435,8 +435,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 					mService.send(msg);
 				}
 				catch (RemoteException re) {
-
-
+					Log.e(TAG, "Remote exception sending fake message");
 				}
 			}
 		});

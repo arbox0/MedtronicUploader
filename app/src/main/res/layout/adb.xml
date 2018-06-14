@@ -32,7 +32,7 @@
         <TextView
             android:id="@+id/demoText"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
             android:textSize="40px"
 
  			android:gravity="center" />

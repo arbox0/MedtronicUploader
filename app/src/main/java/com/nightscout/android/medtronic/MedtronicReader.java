@@ -143,7 +143,7 @@ public class MedtronicReader {
 				try {
 					String sensorID = HexDump.toHexString(Integer.parseInt(prefs
 							.getString("sensor_cgm_id", "0")));
-					while (sensorID != null && sensorID.length() > 6) {
+					while (sensorID.length() > 6) {
 						sensorID = sensorID.substring(1);
 					}
 					Log.d(TAG, "SensorID inserted "

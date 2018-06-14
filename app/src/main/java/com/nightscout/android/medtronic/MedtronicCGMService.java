@@ -33,7 +33,6 @@ import java.text.SimpleDateFormat;
 import com.felhr.usbserial.UsbSerialDevice;
 import com.felhr.usbserial.UsbSerialInterface;
 import com.nightscout.android.dexcom.USB.HexDump;
-import com.nightscout.android.upload.GlucometerRecord;
 import com.nightscout.android.upload.MedtronicSensorRecord;
 import com.nightscout.android.upload.Record;
 import com.nightscout.android.upload.UploadHelper;
@@ -749,7 +748,7 @@ public class MedtronicCGMService extends Service implements
 					device = entry.getValue();
 					int deviceVID = device.getVendorId();
 					int devicePID = device.getProductId();
-					if (deviceVID != 0x1d6b || (devicePID != 0x0001 || devicePID != 0x0002 || devicePID != 0x0003)) {
+					if (deviceVID != 0x1d6b && devicePID != 0x0001 && devicePID != 0x0002 && devicePID != 0x0003) {
 						// Excludes USB hubs
 						Log.d(TAG, "Device: vendor " + deviceVID + " - ID " + devicePID);
 						connection = usbManager.openDevice(device);
@@ -935,7 +934,7 @@ public class MedtronicCGMService extends Service implements
 							if (prefs.getString("sensor_cgm_id", "").length() > 0) {
 								String sensorID = HexDump.toHexString(Integer.parseInt(prefs
 										.getString("sensor_cgm_id", "0")));
-								while (sensorID != null && sensorID.length() > 6) {
+								while (sensorID.length() > 6) {
 									sensorID = sensorID.substring(1);
 								}
 								if (!medtronicReader.knownDevices.contains(sensorID)){

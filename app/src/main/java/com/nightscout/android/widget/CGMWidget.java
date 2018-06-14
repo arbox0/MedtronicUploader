@@ -70,7 +70,7 @@ public class CGMWidget extends AppWidgetProvider {
 	                service = PendingIntent.getService(context, 0, in, PendingIntent.FLAG_CANCEL_CURRENT);  
 	            }  
 	      
-	            m.setRepeating(AlarmManager.RTC, TIME.getTime().getTime(), 1000 * 30, service);  
+	            m.setRepeating(AlarmManager.RTC, TIME.getTime().getTime(), 1000 * 60, service);
 	        }
 	    }
 	 @Override  

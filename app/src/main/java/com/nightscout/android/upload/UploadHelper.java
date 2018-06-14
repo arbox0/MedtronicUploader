@@ -30,7 +30,6 @@ import android.util.Log;
 import com.nightscout.android.dexcom.DexcomG4Activity;
 import com.nightscout.android.dexcom.EGVRecord;
 import com.nightscout.android.medtronic.MedtronicConstants;
-import com.nightscout.android.medtronic.MedtronicReader;
 
 public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 
