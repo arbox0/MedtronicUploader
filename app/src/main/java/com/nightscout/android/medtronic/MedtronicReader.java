@@ -398,8 +398,7 @@ public class MedtronicReader {
 					);
 					if (lastMedtronicPumpRecord == null) {
 						lastMedtronicPumpRecord = new MedtronicPumpRecord();
-						setRecordDateHistoric(lastMedtronicPumpRecord,
-								new Date(), 0);
+						lastMedtronicPumpRecord.setDate(new Date());
 						lastMedtronicPumpRecord.deviceId = prefs
 								.getString("medtronic_cgm_id", "");
 					}
@@ -494,8 +493,7 @@ public class MedtronicReader {
 					if (!prefs.getBoolean("isWarmingUp", false)) {
 						if (lastMedtronicPumpRecord == null) {
 							lastMedtronicPumpRecord = new MedtronicPumpRecord();
-							setRecordDateHistoric(lastMedtronicPumpRecord,
-									new Date(), 0);
+							lastMedtronicPumpRecord.setDate(new Date());
 							lastMedtronicPumpRecord.deviceId = prefs
 									.getString("medtronic_cgm_id",
 											"");
@@ -508,11 +506,11 @@ public class MedtronicReader {
 
 					if (previousRecord == null) {
 						MedtronicSensorRecord auxRecord = new MedtronicSensorRecord();
-						setRecordDateHistoric(auxRecord, new Date(), 0);
+						auxRecord.setDate(new Date());
 						Log.d(TAG, "no previous record - 3");
 						writeLocalCSV(auxRecord, context);
 					} else {
-						setRecordDateHistoric(previousRecord, new Date(), 0);
+						previousRecord.setDate(new Date());
 						Log.d(TAG, "previous record - 4");
 						writeLocalCSV(previousRecord, context);
 					}
@@ -529,9 +527,7 @@ public class MedtronicReader {
 						if (prefs.getBoolean("isWarmingUp", false)) {
 							if (lastMedtronicPumpRecord == null) {
 								lastMedtronicPumpRecord = new MedtronicPumpRecord();
-								setRecordDateHistoric(
-										lastMedtronicPumpRecord,
-										new Date(), 0);
+								lastMedtronicPumpRecord.setDate(new Date());
 								lastMedtronicPumpRecord.deviceId = prefs
 										.getString(
 												"medtronic_cgm_id",
@@ -551,8 +547,7 @@ public class MedtronicReader {
 					if (prefs.getBoolean("isWarmingUp", false)) {
 						if (lastMedtronicPumpRecord == null) {
 							lastMedtronicPumpRecord = new MedtronicPumpRecord();
-							setRecordDateHistoric(lastMedtronicPumpRecord,
-									new Date(), 0);
+							lastMedtronicPumpRecord.setDate(new Date());
 							lastMedtronicPumpRecord.deviceId = prefs
 									.getString("medtronic_cgm_id",
 											"");
@@ -846,7 +841,7 @@ public class MedtronicReader {
 		Date d = new Date();
 		lastGlucometerRecord.setDate(d);
 		lastGlucometerDate = d.getTime();
-		setRecordDateHistoric(lastGlucometerRecord, d, 0);
+
 		if (!instant && doCalibration) {
 			if (HexDump.unsignedByte(expectedSensorSortNumber) == HexDump
 					.unsignedByte((byte) 0xff)) {
@@ -978,7 +973,7 @@ public class MedtronicReader {
 				record.calibrationStatus = MedtronicConstants.LAST_CALIBRATION_FAILED_USING_PREVIOUS;
 			}
 		}
-		setRecordDateHistoric(record, currentTime, 0);
+		record.setDate(currentTime);
 		previousRecord = record;
 	}
 
