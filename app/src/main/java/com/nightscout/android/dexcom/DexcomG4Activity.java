@@ -184,12 +184,10 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 				calDate = settings.getLong("lastCalibrationDate", -1);
 			}
 
-			DecimalFormat df = new DecimalFormat("#.##");
-
 			if (auxRecord instanceof MedtronicSensorRecord) {
 
 				MedtronicSensorRecord record = (MedtronicSensorRecord) auxRecord;
-				displaySensor(record, calDate, df);
+				displaySensor(record, calDate);
 
 			} else {
 				if (auxRecord == null || auxRecord.getDate() == null)
@@ -249,7 +247,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	};
 
 
-		private void displaySensor(MedtronicSensorRecord record, long calDate, DecimalFormat df) {
+		private void displaySensor(MedtronicSensorRecord record, long calDate) {
 			DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
 			if (prefs.getBoolean("mmolxl", false)) {
 				float fBgValue = record.getBGValue();

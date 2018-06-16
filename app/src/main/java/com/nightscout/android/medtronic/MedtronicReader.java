@@ -1326,8 +1326,6 @@ public class MedtronicReader {
 	 */
 	public Float getGlucoseDifferentialIn(int size, CircleList<Record> list) {
 		List<Record> auxList = list.getListFromTail(size);
-		SimpleDateFormat formatter = new SimpleDateFormat(
-				"MM/dd/yyyy hh:mm:ss a", Locale.getDefault());
 		if (auxList.size() == size) {
 			Log.d(TAG, "I Have the correct size");
 			for (int i = 1; i < size; i++) {
