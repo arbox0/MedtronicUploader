@@ -319,7 +319,7 @@ public class MedtronicCGMService extends Service implements
 
 		settings = getSharedPreferences(MedtronicConstants.PREFS_NAME, 0);
 		prefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
-		prefs.edit().remove("isCheckedWUP").commit();
+
 		prefs.registerOnSharedPreferenceChangeListener(this);
 		
 
@@ -603,11 +603,7 @@ public class MedtronicCGMService extends Service implements
 						listToUpload.add(medtronicReader.lastGlucometerRecord);
 						medtronicReader.lastGlucometerRecord = null;
 					}
-					// upload device info if available
-					if (medtronicReader.lastMedtronicPumpRecord != null) {
-						listToUpload.add(medtronicReader.lastMedtronicPumpRecord);
-						medtronicReader.lastMedtronicPumpRecord = null;
-					}
+
 	
 	
 					Record[] params = new Record[listToUpload.size()];

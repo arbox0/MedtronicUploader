@@ -278,11 +278,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 			}
 			calib += "" + lastCal + tail;
 			calib += "\nat: " + dateFormat.format(new Date(calDate)) + "\n";
-			if (prefs.getBoolean("isWarmingUp", false)) {
-				calib = "";
-				record.setBGValue(0);
-				record.trendArrow = "---";
-			}
+
 
 			mDumpTextView.setText("Last record received:\n"  + (System.currentTimeMillis() - record.getDate().getTime()) / 60000 + " min. ago\nat: " + dateFormat.format(record.getDate()) + "\n"+
 						calib + "\n");

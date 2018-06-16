@@ -24,7 +24,6 @@ import android.util.Log;
 
 import com.nightscout.android.dexcom.USB.HexDump;
 import com.nightscout.android.upload.GlucometerRecord;
-import com.nightscout.android.upload.MedtronicPumpRecord;
 import com.nightscout.android.upload.MedtronicSensorRecord;
 import com.nightscout.android.upload.Record;
 import java.io.File;
@@ -48,9 +47,7 @@ public class MedtronicReader {
 	protected byte[] idPump = null;
 	protected byte[] notFinishedRead = null;
 
-	public MedtronicPumpRecord lastMedtronicPumpRecord = null;// last medtronic
-	// pump info
-	// received
+
 	public int crcErrorBytesToDiscard = 0;
 	public boolean isCalibrating = false;
 	public int calibrationStatus = MedtronicConstants.WITHOUT_ANY_CALIBRATION;
@@ -392,21 +389,10 @@ public class MedtronicReader {
 			Log.d(TAG, "IS FROM MY DEVICES");
 			switch (readData[2]) {
 				case MedtronicConstants.MEDTRONIC_PUMP:
-					Log.d(TAG, "IS A PUMP MESSAGE");
-
-					processPumpDataMessage(readData
-					);
-					if (lastMedtronicPumpRecord == null) {
-						lastMedtronicPumpRecord = new MedtronicPumpRecord();
-						lastMedtronicPumpRecord.setDate(new Date());
-						lastMedtronicPumpRecord.deviceId = prefs
-								.getString("medtronic_cgm_id", "");
-					}
-					lastMedtronicPumpRecord.isWarmingUp = prefs
-							.getBoolean("isWarmingUp", false);
+					Log.d(TAG, "Pump message received");
+					processPumpDataMessage(readData);
 					break;
 				case MedtronicConstants.MEDTRONIC_GL: {
-					//if (calibrationSelectedAux == MedtronicConstants.CALIBRATION_GLUCOMETER) {
 					Log.d(TAG, "GLUCOMETER DATA RECEIVED");
 					if (lastGlucometerMessage == null
 							|| lastGlucometerMessage.length == 0) {
@@ -464,114 +450,16 @@ public class MedtronicReader {
 
 				}
 				break;
-				case MedtronicConstants.MEDTRONIC_SENSOR1: {
-					Log.d(TAG, "SENSOR1 DATA RECEIVED");
-					if (prefs.getString("glucSrcTypes", "1")
-							.equals("2")) {
-						Log.d(TAG, "Sensor value received, but value is took only by pump logs");
-						break;
-					}
-					Log.d(TAG, "WARMING_UP");
-					SharedPreferences.Editor editor = settings
-							.edit();
-					editor.remove("lastGlucometerMessage");
-					editor.remove("expectedSensorSortNumber");
-					editor.remove("isCalibrating");
-					calibrationStatus = MedtronicConstants.WITHOUT_ANY_CALIBRATION;
-					editor.putInt(
-							"calibrationStatus",
-							MedtronicConstants.WITHOUT_ANY_CALIBRATION);
-					editor.remove("calibrationFactor");
-					Log.d(TAG, "remove lastCalibrationDate");
-					editor.remove("lastCalibrationDate");
-					editor.remove("lastGlucometerValue");
-					editor.remove("lastGlucometerDate");
-					editor.remove("expectedSensorSortNumber");
-					editor.remove("expectedSensorSortNumberForCalibration0");
-					editor.remove("expectedSensorSortNumberForCalibration1");
-					editor.remove("isCheckedWUP");
-					if (!prefs.getBoolean("isWarmingUp", false)) {
-						if (lastMedtronicPumpRecord == null) {
-							lastMedtronicPumpRecord = new MedtronicPumpRecord();
-							lastMedtronicPumpRecord.setDate(new Date());
-							lastMedtronicPumpRecord.deviceId = prefs
-									.getString("medtronic_cgm_id",
-											"");
-						}
-
-						editor.putBoolean("isWarmingUp", true);
-
-						lastMedtronicPumpRecord.isWarmingUp = true;
-					}
-
-					if (previousRecord == null) {
-						MedtronicSensorRecord auxRecord = new MedtronicSensorRecord();
-						auxRecord.setDate(new Date());
-						Log.d(TAG, "no previous record - 3");
-						writeLocalCSV(auxRecord, context);
-					} else {
-						previousRecord.setDate(new Date());
-						Log.d(TAG, "previous record - 4");
-						writeLocalCSV(previousRecord, context);
-					}
-					sendMessageToUI("sensor data wUp.");
-					editor.apply();
-					break;
-				}
+				case MedtronicConstants.MEDTRONIC_SENSOR1:
 				case MedtronicConstants.MEDTRONIC_SENSOR2:
-					Log.d(TAG, "SENSOR2 DATA RECEIVED");
-					if (lastMedtronicPumpRecord != null)
-						lastMedtronicPumpRecord.isWarmingUp = false;
+					Log.d(TAG, "SENSOR DATA RECEIVED");
 					if (prefs.getString("glucSrcTypes", "1")
 							.equals("2")) {
-						if (prefs.getBoolean("isWarmingUp", false)) {
-							if (lastMedtronicPumpRecord == null) {
-								lastMedtronicPumpRecord = new MedtronicPumpRecord();
-								lastMedtronicPumpRecord.setDate(new Date());
-								lastMedtronicPumpRecord.deviceId = prefs
-										.getString(
-												"medtronic_cgm_id",
-												"");
-							}
-							lastMedtronicPumpRecord.isWarmingUp = false;
-							SharedPreferences.Editor editor1 = prefs
-									.edit();
-							editor1.putBoolean("isWarmingUp", false);
-							editor1.apply();
-						}
 						Log.d(TAG,"Sensor value received, but value is took only by pump logs");
 						break;
 					}
-					Log.i(TAG, "process sensor2");
-
-					if (prefs.getBoolean("isWarmingUp", false)) {
-						if (lastMedtronicPumpRecord == null) {
-							lastMedtronicPumpRecord = new MedtronicPumpRecord();
-							lastMedtronicPumpRecord.setDate(new Date());
-							lastMedtronicPumpRecord.deviceId = prefs
-									.getString("medtronic_cgm_id",
-											"");
-						}
-						lastMedtronicPumpRecord.isWarmingUp = false;
-						SharedPreferences.Editor editor = prefs
-								.edit();
-						editor.remove("isWarmingUp");
-						editor.apply();
-					}
-					boolean calculateCalibration = false;
-					if (isCalibrating) {
-						calculateCalibration = true;
-					}
-
 					processSensorDataMessage(readData);
-
-					if (calculateCalibration && !isCalibrating) {
-						SharedPreferences.Editor editor = settings
-								.edit();
-						editor.putBoolean("isCalibrating", false);
-						editor.apply();
-					}
-					sendMessageToUI("sensor data value received");
+					sendMessageToUI("sensor data value processed");
 					break;
 				default:
 					Log.i(TAG, "No Match");
