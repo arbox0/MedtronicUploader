@@ -636,7 +636,9 @@ public class MedtronicReader {
 		processManualCalibrationDataMessage(num, true, false);
 
 		if (lastGlucometerValue > 0) {
-			isCalibrating = calibrationSelected == MedtronicConstants.CALIBRATION_GLUCOMETER;
+			if (calibrationSelected == MedtronicConstants.CALIBRATION_GLUCOMETER)
+				isCalibrating = true;
+
 			if (previousRecord == null) {
 				MedtronicSensorRecord auxRecord = new MedtronicSensorRecord();
 
@@ -743,6 +745,10 @@ public class MedtronicReader {
 		if (isCalibrating) {
 			if (num > 0) {
 				calculateCalibration(difference, record.isig);
+
+				record.isCalibrating = isCalibrating;
+				record.calibrationStatus = calibrationStatus;
+
 				if (calibrationFactor > 0) {
 					if (!isCalibrating) {
 						if (calibrationStatus != MedtronicConstants.WITHOUT_ANY_CALIBRATION
@@ -751,8 +757,7 @@ public class MedtronicReader {
 							record.setBGValue( lastGlucometerValue );
 							record.setUnfilteredGlucose(lastGlucometerValue);
 							record.calibrationFactor = calibrationFactor;
-							record.isCalibrating = false;
-							record.calibrationStatus = calibrationStatus;
+
 							lastCalibrationDate = currentTime.getTime();
 							SharedPreferences.Editor editor = settings.edit();
 
@@ -921,6 +926,7 @@ public class MedtronicReader {
 				}
 				added--;
 				lastRecordsInMemory.add(record);
+				previousRecord = record;
 				calculateTrendAndArrow(record, lastRecordsInMemory);
 				DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss - ");
 				Log.v(TAG, "Read Record: backposition [" + (added + 1) + "] " + record.getBGValue() + " / " + dateFormat.format(record.getDate()));
@@ -1073,6 +1079,7 @@ public class MedtronicReader {
 			calibrationIsigValue = currentMeasure;
 			calibrationFactor = lastGlucometerValue / calibrationIsigValue;
 			editor.putFloat("calibrationFactor", calibrationFactor);
+
 		}
 		else if (difference >= MedtronicConstants.TIME_30_MIN_IN_MS) {
 			if (calibrationStatus != MedtronicConstants.WITHOUT_ANY_CALIBRATION)

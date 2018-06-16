@@ -121,7 +121,8 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
             	display.setText(display.getText()+"Medtronic CGM Message: " + sError +"\n", BufferType.EDITABLE);
                 break;
             case MedtronicConstants.MSG_MEDTRONIC_CALIBRATION_DONE:
-            	Log.i(TAG,  MedtronicConstants.MSG_MEDTRONIC_CALIBRATION_DONE+"\n");
+            	Log.i(TAG,  "Calibration done message received");
+            	display.setText(display.getText() + "Calibration done\n");
             	mHandler.removeCallbacks(updateDataView);
  	        	mHandler.post(updateDataView);
                 break;
