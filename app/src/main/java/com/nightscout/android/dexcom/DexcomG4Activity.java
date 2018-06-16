@@ -38,10 +38,8 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.view.ViewGroup.LayoutParams;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.TextView.BufferType;
 
@@ -104,9 +102,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
             	mHandler.removeCallbacks(updateDataView);
 	        	mHandler.post(updateDataView);
                 break;
-            case MedtronicConstants.MSG_MEDTRONIC_CGM_CLEAR_DISPLAY:
-                display.setText("", BufferType.EDITABLE);
-				break;
+
             case MedtronicConstants.MSG_MEDTRONIC_CGM_NO_PERMISSION:
                 Log.e(TAG, "Message received - no USB permission");
                 usbAllowedPermission = false;

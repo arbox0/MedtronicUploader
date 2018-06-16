@@ -71,7 +71,6 @@ public class MedtronicConstants {
 	public static final int MSG_REGISTER_CLIENT = 0; 
 	public static final int MSG_UNREGISTER_CLIENT = 1;
 	public static final int MSG_MEDTRONIC_CGM_MESSAGE_RECEIVED = 2;
-    public static final int MSG_MEDTRONIC_CGM_CLEAR_DISPLAY = 4;
 	public static final int MSG_MEDTRONIC_CGM_NO_PERMISSION = 5;
 	public static final int MSG_MEDTRONIC_CGM_USB_GRANTED = 6;
 	public static final int MSG_MEDTRONIC_CGM_REQUEST_PERMISSION = 7;
