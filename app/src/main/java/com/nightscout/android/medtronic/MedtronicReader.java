@@ -7,7 +7,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 
 
 import android.content.Context;
@@ -68,8 +67,7 @@ public class MedtronicReader {
 	// Lock for
 	// synchronize
 	public MedtronicSensorRecord previousRecord = null; // last sensor record
-	public Byte lastCommandSend = null; // last command sent from this
-
+	
 	// the receptor is sending a command
 	// and we have no received the ACK
 
@@ -621,8 +619,6 @@ public class MedtronicReader {
 	public void processPumpDataMessage(byte[] readData) {
 		int commandByte = firstByteAfterDeviceId(readData);
 		if (commandByte < 0)
-			return;
-		if (lastCommandSend == null)
 			return;
 		switch (readData[commandByte]) {
 		case MedtronicConstants.MEDTRONIC_GET_LAST_PAGE:
