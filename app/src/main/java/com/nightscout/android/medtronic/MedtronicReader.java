@@ -72,7 +72,7 @@ public class MedtronicReader {
 	// synchronize
 	public MedtronicSensorRecord previousRecord = null; // last sensor record
 	public Byte lastCommandSend = null; // last command sent from this
-	public Object sendingCommandLock = new Object();
+
 	// the receptor is sending a command
 	// and we have no received the ACK
 
@@ -606,8 +606,6 @@ public class MedtronicReader {
 						break;
 					case MedtronicConstants.COMMAND_ANSWER:
 						Log.d(TAG, "ACK Received");
-						synchronized (sendingCommandLock) {
-						}
 						break;
 					case MedtronicConstants.FILTER_COMMAND:
 						if (readData[0] == (byte) 0x13)
@@ -622,7 +620,7 @@ public class MedtronicReader {
 					}
 					}
 				} else {
-					Log.d(TAG, "CRC ERROR!!! " + HexDump.dumpHexString(readData));
+					Log.d(TAG, "Invalid message start packet:" + HexDump.dumpHexString(readData));
 				}
 			}
 		} catch (Exception ex2) {
