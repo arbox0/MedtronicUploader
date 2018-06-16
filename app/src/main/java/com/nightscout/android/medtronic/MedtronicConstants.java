@@ -44,9 +44,8 @@ public class MedtronicConstants {
     public static final String	CALIBRATED_STR = "Calibrated";
     public static final String	CALIBRATION_MORE_THAN_12H_OLD_STR = "Last Calibration > 12H";
     public static final String	LAST_CALIBRATION_FAILED_USING_PREVIOUS_STR = "Using Prev. Calibration";
-    public static final String	CALIBRATED_IN_15MIN_STR = "Calibrated between 15min. and 20min.";
     public static final String	CALIBRATING_STR = "Calibrating, wait 15 to 20min.";
-    public static final String	CALIBRATING2_STR = "Calibrating, 2 values received wait 5min. more";
+    public static final String	CALIBRATING2_STR = "Calibrating, 2 values received wait 5-10min. more";
 
     public static final byte MEDTRONIC_GET_PUMP_MODEL = (byte)0x8d;
 	public static final byte MEDTRONIC_GET_ALARM_MODE = (byte)0x75;
@@ -88,8 +87,6 @@ public class MedtronicConstants {
 			return CALIBRATED_STR;
 		case LAST_CALIBRATION_FAILED_USING_PREVIOUS:
 			return LAST_CALIBRATION_FAILED_USING_PREVIOUS_STR;
-		case CALIBRATED_IN_15MIN:
-			return CALIBRATED_IN_15MIN_STR;
 		case CALIBRATION_MORE_THAN_12H_OLD:
 			return CALIBRATION_MORE_THAN_12H_OLD_STR;
 		case CALIBRATING:

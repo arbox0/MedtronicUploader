@@ -56,9 +56,7 @@ public class MedtronicReader {
 	public long lastGlucometerDate = 0;
 	public long lastSensorValueDate = 0;
 	public float lastGlucometerValue = -1f;
-	public byte[] expectedSensorSortNumberForCalibration = { (byte) 0xff,
-			(byte) 0xff }; // expected indexes of the next sensor reading for
-	// correct calibration
+
 	public GlucometerRecord lastGlucometerRecord = null;// last glucometer
 	// record read
 	public byte expectedSensorSortNumber = (byte) 0xff; // expected index of the
@@ -173,24 +171,7 @@ public class MedtronicReader {
 		if (settings.contains("lastGlucometerDate")
 				&& settings.getLong("lastGlucometerDate", -1) > 0)
 			lastGlucometerDate = settings.getLong("lastGlucometerDate", -1);
-		if ((settings.contains("expectedSensorSortNumberForCalibration0") && settings
-				.getString("expectedSensorSortNumberForCalibration0", "")
-				.length() > 0)
-				&& settings.contains("expectedSensorSortNumberForCalibration1")
-				&& settings.getString(
-						"expectedSensorSortNumberForCalibration1", "").length() > 0) {
-			expectedSensorSortNumberForCalibration[0] = HexDump
-					.hexStringToByteArray(settings.getString(
-							"expectedSensorSortNumberForCalibration0", ""))[0];
-			expectedSensorSortNumberForCalibration[1] = HexDump
-					.hexStringToByteArray(settings.getString(
-							"expectedSensorSortNumberForCalibration1", ""))[0];
-		} else {
-			if (isCalibrating) {
-				expectedSensorSortNumberForCalibration[0] = (byte) 0x00;
-				expectedSensorSortNumberForCalibration[1] = (byte) 0x71;
-			}
-		}
+
 		checkCalibrationOutOfTime();
 	}
 
@@ -697,29 +678,11 @@ public class MedtronicReader {
 		lastGlucometerRecord.setDate(d);
 		lastGlucometerDate = d.getTime();
 
-		if (!instant && doCalibration) {
-			if (expectedSensorSortNumber == (byte) 0xff) {
-				expectedSensorSortNumberForCalibration[0] = (byte) 0x00;
-				expectedSensorSortNumberForCalibration[1] = (byte) 0x71;
-			} else {
-					expectedSensorSortNumberForCalibration[0] = calculateNextSensorSortNameFrom(
-							6, (byte)  (expectedSensorSortNumber & 0xfe));
-					expectedSensorSortNumberForCalibration[1] = calculateNextSensorSortNameFrom(
-							10, (byte) (expectedSensorSortNumber & 0xfe));
-			}
-		}
+
 		SharedPreferences.Editor editor = settings.edit();
 		editor.putFloat("lastGlucometerValue", num);
 		editor.putLong("glucometerLastDate", d.getTime());
-		if (!instant && doCalibration) {
-			editor.putString("expectedSensorSortNumberForCalibration0", HexDump
-					.toHexString(expectedSensorSortNumberForCalibration[0]));
-			editor.putString("expectedSensorSortNumberForCalibration1", HexDump
-					.toHexString(expectedSensorSortNumberForCalibration[1]));
-		} else {
-			editor.remove("expectedSensorSortNumberForCalibration0");
-			editor.remove("expectedSensorSortNumberForCalibration1");
-		}
+
 		if (lastGlucometerValue > 0) {
 			isCalibrating = !instant && doCalibration;
 			if (previousRecord == null) {
@@ -768,20 +731,18 @@ public class MedtronicReader {
 	 * Apply calibration to the "current" value of the sensor message
 	 * 
 	 * @param difference
-	 * @param readData
-	 * @param index
+
 	 * @param record
 	 * @param num
 	 * @param currentTime
 	 */
-	private void calibratingCurrentElement(long difference,
-			byte[] readData, int index, MedtronicSensorRecord record, int num,
+	private void calibratingCurrentElement(long difference, MedtronicSensorRecord record, int num,
 			Date currentTime) {
 		boolean calibrated = false;
 		// currentMeasure = num;
 		if (isCalibrating) {
 			if (num > 0) {
-				calculateCalibration(difference, record.isig, readData[index]);
+				calculateCalibration(difference, record.isig);
 				if (calibrationFactor > 0) {
 					if (!isCalibrating) {
 						if (calibrationStatus != MedtronicConstants.WITHOUT_ANY_CALIBRATION
@@ -952,9 +913,7 @@ public class MedtronicReader {
 				record.isCalibrating = isCalibrating;
 				record.setIsig(calculateISIG(num, adjustement));
 				if (i == 0) {
-					calibratingCurrentElement(difference,
-							readData, firstMeasureByte + 3, record,
-							num, d);
+					calibratingCurrentElement(difference, record, num, d);
 				} else {
 					calibratingBackwards(previousCalibrationFactor,
 							previousCalibrationStatus, record,
@@ -1099,90 +1058,38 @@ public class MedtronicReader {
 	}
 
 	/**
-	 * This method checks if a calibration is valid.
+	 * This method checks if it is time to use the current sensor as the calibration value.
 	 * 
 	 * @param difference
 	 * @param currentMeasure
-	 * @param currentIndex
 	 */
-	private void calculateCalibration(long difference, float currentMeasure,
-			byte currentIndex) {
+	private void calculateCalibration(long difference, float currentMeasure) {
+		SharedPreferences.Editor editor = settings.edit();
+
 		if (difference >= MedtronicConstants.TIME_15_MIN_IN_MS
-				&& difference < MedtronicConstants.TIME_20_MIN_IN_MS) {
-			if (isSensorMeasureInRange(currentIndex,
-					expectedSensorSortNumberForCalibration)) {
-				isCalibrating = false;
-				calibrationStatus = MedtronicConstants.CALIBRATED;
-				calibrationIsigValue = currentMeasure;
-				SharedPreferences.Editor editor = settings.edit();
-				calibrationFactor = lastGlucometerValue / calibrationIsigValue;
-				editor.remove("expectedSensorSortNumberForCalibration0");
-				editor.remove("expectedSensorSortNumberForCalibration1");
-				editor.putFloat("calibrationFactor", calibrationFactor);
-				editor.putInt("calibrationStatus",
-						calibrationStatus);
-				editor.apply();
-			} else {
-				if (calibrationStatus != MedtronicConstants.WITHOUT_ANY_CALIBRATION
-						&& currentIndex != expectedSensorSortNumber) {
-					calibrationStatus = MedtronicConstants.LAST_CALIBRATION_FAILED_USING_PREVIOUS;
-					isCalibrating = false;
-				} else {
-					calibrationStatus = MedtronicConstants.WITHOUT_ANY_CALIBRATION;
-				}
-				SharedPreferences.Editor editor = settings.edit();
-				editor.remove("expectedSensorSortNumberForCalibration0");
-				editor.remove("expectedSensorSortNumberForCalibration1");
-				editor.apply();
-			}
-		} else if (difference >= MedtronicConstants.TIME_20_MIN_IN_MS) {
-			if (isSensorMeasureInRange(currentIndex,
-					expectedSensorSortNumberForCalibration)) {
-				calibrationStatus = MedtronicConstants.CALIBRATED_IN_15MIN;
-				calibrationIsigValue = currentMeasure;
-				SharedPreferences.Editor editor = settings.edit();
-				calibrationFactor = lastGlucometerValue / calibrationIsigValue;
-				editor.remove("expectedSensorSortNumberForCalibration0");
-				editor.remove("expectedSensorSortNumberForCalibration1");
-				editor.putFloat("calibrationFactor", calibrationFactor);
-				editor.putInt("calibrationStatus",
-						calibrationStatus);
-				editor.apply();
-			} else {
-				if (calibrationStatus != MedtronicConstants.WITHOUT_ANY_CALIBRATION)
-					calibrationStatus = MedtronicConstants.LAST_CALIBRATION_FAILED_USING_PREVIOUS;
-				else {
-					calibrationStatus = MedtronicConstants.WITHOUT_ANY_CALIBRATION;
-				}
-				SharedPreferences.Editor editor = settings.edit();
-				editor.remove("expectedSensorSortNumberForCalibration0");
-				editor.remove("expectedSensorSortNumberForCalibration1");
-				editor.apply();
-			}
+				&& difference < MedtronicConstants.TIME_30_MIN_IN_MS) {
 			isCalibrating = false;
-		} else {
-			if (isCalibrating){
-				if (difference < MedtronicConstants.TIME_5_MIN_IN_MS) {
-					calibrationStatus = MedtronicConstants.CALIBRATING;
-				} else if (difference >= MedtronicConstants.TIME_5_MIN_IN_MS
-						&& difference <= MedtronicConstants.TIME_15_MIN_IN_MS)
-					calibrationStatus = MedtronicConstants.CALIBRATING2;
-				else
-					calibrationStatus = MedtronicConstants.CALIBRATING;
-			}else{
-				if (calibrationStatus != MedtronicConstants.WITHOUT_ANY_CALIBRATION)
-					calibrationStatus = MedtronicConstants.LAST_CALIBRATION_FAILED_USING_PREVIOUS;
-				else {
-					calibrationStatus = MedtronicConstants.WITHOUT_ANY_CALIBRATION;
-				}
-				SharedPreferences.Editor editor = settings.edit();
-				editor.remove("expectedSensorSortNumberForCalibration0");
-				editor.remove("expectedSensorSortNumberForCalibration1");
-				editor.putInt("calibrationStatus",
-						calibrationStatus);
-				editor.apply();
-			}
+			calibrationStatus = MedtronicConstants.CALIBRATED;
+			calibrationIsigValue = currentMeasure;
+			calibrationFactor = lastGlucometerValue / calibrationIsigValue;
+			editor.putFloat("calibrationFactor", calibrationFactor);
 		}
+		else if (difference >= MedtronicConstants.TIME_30_MIN_IN_MS) {
+			if (calibrationStatus != MedtronicConstants.WITHOUT_ANY_CALIBRATION)
+				calibrationStatus = MedtronicConstants.LAST_CALIBRATION_FAILED_USING_PREVIOUS;
+			else
+				calibrationStatus = MedtronicConstants.WITHOUT_ANY_CALIBRATION;
+			isCalibrating = false;
+		}
+		else if (difference <= MedtronicConstants.TIME_5_MIN_IN_MS){
+			calibrationStatus = MedtronicConstants.CALIBRATING;
+		}
+		else {
+			calibrationStatus = MedtronicConstants.CALIBRATING2;
+		}
+
+		editor.putInt("calibrationStatus", calibrationStatus);
+		editor.apply();
 	}
 
 	/**
