@@ -75,7 +75,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	private TextView mSensorValue;
 
 	private TextView mDumpTextView;
-    private Button b1;
+    private Button startStopButton;
     private TextView display;
     private Menu menu = null;
     private Intent service = null;
@@ -150,14 +150,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
                 msg.replyTo = mMessenger;
                 mService.send(msg);
             } catch (RemoteException e) {
-            	
-            	 StringBuffer sb1 = new StringBuffer("");
-        		 sb1.append("EXCEPTION!!!!!! "+ e.getMessage()+" "+e.getCause());
-        		 for (StackTraceElement st : e.getStackTrace()){
-        			 sb1.append(st.toString()).append("\n");
-        		 }
-        		 Log.e(TAG,"Error Registering Client Service Connection\n"+sb1.toString());
-
+        		 Log.e(TAG,"Error Registering Client Service Connection\n", e);
         		 display.setText(display.getText()+"Error Registering Client Service Connection\n", BufferType.EDITABLE);
 
                 // In this case the service has crashed before we could even do anything with it
@@ -176,30 +169,27 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
     };
 
 	private void updateSensorDisplay() {
-		try {
-			Record auxRecord = getLastRecord();
+		Record auxRecord = getLastRecord();
 
-			long calDate = -1;
-			if (settings.contains("lastCalibrationDate")) {
-				calDate = settings.getLong("lastCalibrationDate", -1);
-			}
-
-			if (auxRecord instanceof MedtronicSensorRecord) {
-
-				MedtronicSensorRecord record = (MedtronicSensorRecord) auxRecord;
-				displaySensor(record, calDate);
-
-			} else {
-				if (auxRecord == null || auxRecord.getDate() == null)
-					mDumpTextView.setText("\n---\n---\n---\n");
-				else
-					mDumpTextView.setText("\n" + auxRecord.getDate()
-							+ "\n---\n---\n");
-			}
-
-		} catch (Exception e) {
-			e.printStackTrace();
+		long calDate = -1;
+		if (settings.contains("lastCalibrationDate")) {
+			calDate = settings.getLong("lastCalibrationDate", -1);
 		}
+
+		if (auxRecord instanceof MedtronicSensorRecord) {
+
+			MedtronicSensorRecord record = (MedtronicSensorRecord) auxRecord;
+			displaySensor(record, calDate);
+
+		} else {
+			if (auxRecord == null || auxRecord.getDate() == null)
+				mDumpTextView.setText("\n---\n---\n---\n");
+			else
+				mDumpTextView.setText("\n" + auxRecord.getDate()
+						+ "\n---\n---\n");
+		}
+
+
 	}
 
     //All I'm really doing here is creating a simple activity to launch and maintain the service
@@ -227,12 +217,13 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 		        	if (usbAllowedPermission){
 			            mTitleTextView.setTextColor(Color.GREEN);
 			            mTitleTextView.setText("CGM Service Started");
-			            b1.setText("Stop Uploading CGM Data");
+			            startStopButton.setText("Stop Uploading CGM Data");
 			            updateSensorDisplay();
 
 			            	            
 		        	}else{
-		        		b1.setText("Start Uploading CGM Data");
+
+						startStopButton.setText("Start Uploading CGM Data");
 		                mTitleTextView.setTextColor(Color.RED);
 		                mTitleTextView.setText("CGM Service Stopped");
 		        	}
@@ -335,14 +326,11 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
         registerReceiver(mArrow,mIntentFilter);
         setContentView(R.layout.adb);
         manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-        mTitleTextView = (TextView) findViewById(R.id.demoTitle);
-        mDumpTextView = (TextView) findViewById(R.id.demoText);
+        mTitleTextView = (TextView) findViewById(R.id.status);
+        mDumpTextView = (TextView) findViewById(R.id.sensorDetail);
 		mSensorValue = (TextView) findViewById(R.id.sensorValue);
-        LinearLayout lnr = (LinearLayout) findViewById(R.id.container);
-        LinearLayout lnr2 = new LinearLayout(this);
-        LinearLayout lnr3 = new LinearLayout(this);
-        lnr3.setOrientation(LinearLayout.HORIZONTAL);
-        b1 = new Button(this);
+
+       	startStopButton = (Button) findViewById(R.id.buttonStartStop);
         
         if (!prefs.getBoolean("IUNDERSTAND", false)){
 			 stopCGMServices();
@@ -358,26 +346,18 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
         mTitleTextView.setTextColor(Color.YELLOW);
         mTitleTextView.setText("CGM Service Pending");
 
-        b1.setText("Stop Uploading CGM Data");
-        lnr.addView(b1);
 
-		lnr2.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
-        lnr3.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
-        Button b2 = new Button(this);
-        b2.setText("Clear Log");
-        b2.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT,1.0f));
+        startStopButton.setText("Stop Uploading CGM Data");
 
-		Button b3 = new Button(this);
-		b3.setText("Send test data");
+        Button clearButton = (Button) findViewById(R.id.buttonClear);
 
-		if (BuildConfig.DEBUG) {
-			lnr.addView(b3);
+		Button testButton =  (Button) findViewById(R.id.buttonTest);
+
+        if (!BuildConfig.DEBUG) {
+			testButton.setVisibility(View.GONE);
 		}
-       // b4 = new Button(this);
-       // b4.setText("Calibrate");
-       // b4.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT,1.0f));
-        //lnr3.addView(b4);
-        if (menu != null){
+
+		if (menu != null){
 	        if (calibrationSelected == MedtronicConstants.CALIBRATION_MANUAL){
 	        	menu.getItem(1).setVisible(true);
 	        	menu.getItem(2).setVisible(false);
@@ -387,20 +367,14 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	        }
         }
 
-        lnr3.addView(b2);
-        lnr.addView(lnr3);
-        lnr.addView(lnr2);
-        display = new TextView(this);
+
+        display = (TextView) findViewById(R.id.logView);
         display.setText("", BufferType.EDITABLE);
-        display.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
         display.setKeyListener(null);
-
-        display.setMovementMethod(new ScrollingMovementMethod());
+		display.setMovementMethod(new ScrollingMovementMethod());
         display.setMaxLines(10);
-	        
-        lnr2.addView(display);
 
-        b2.setOnClickListener(new OnClickListener() {
+        clearButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
             	display.setText("", BufferType.EDITABLE);
@@ -409,7 +383,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
         });
 
 
-		b3.setOnClickListener(new OnClickListener() {
+		testButton.setOnClickListener(new OnClickListener() {
 			@Override
 			public void onClick(View v) {
 				try {
@@ -424,16 +398,16 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 			}
 		});
 
-        b1.setOnClickListener(new OnClickListener() {
+        startStopButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
             	synchronized (mHandlerActiveLock) {
-            		 if (b1.getText() == "Stop Uploading CGM Data") {
+            		 if (startStopButton.getText() == "Stop Uploading CGM Data") {
                      	mHandlerActive = false;
                          mHandler.removeCallbacks(updateDataView);
                          keepServiceAlive = false;
                          stopCGMServices();
-                         b1.setText("Start Uploading CGM Data");
+                         startStopButton.setText("Start Uploading CGM Data");
                          mTitleTextView.setTextColor(Color.RED);
                          mTitleTextView.setText("CGM Service Stopped");
                          finish();
@@ -455,7 +429,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
                                  }
                          	 }
                          mHandlerActive = true;
-                         b1.setText("Stop Uploading CGM Data");
+                         startStopButton.setText("Stop Uploading CGM Data");
                      }
 				}
            
@@ -580,13 +554,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 		                     msg.replyTo = mMessenger;
 		                     mService.send(msg);
 		                 } catch (RemoteException e) {
-		                	 StringBuffer sb1 = new StringBuffer("");
-		            		 sb1.append("EXCEPTION!!!!!! "+ e.getMessage()+" "+e.getCause());
-		            		 for (StackTraceElement st : e.getStackTrace()){
-		            			 sb1.append(st.toString()).append("\n");
-		            		 }
-		            		 Log.e(TAG, "Error sending Manual Calibration\n "+sb1.toString());
-
+		                	 Log.e(TAG, "Error sending Manual Calibration\n ", e);
 		            		 display.setText(display.getText()+"Error sending Manual Calibration\n", BufferType.EDITABLE);
 
 		                     // In this case the service has crashed before we could even do anything with it
@@ -644,16 +612,8 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 		                     msg.replyTo = mMessenger;
 		                     mService.send(msg);
 		                 } catch (RemoteException e) {
-		                	 StringBuffer sb1 = new StringBuffer("");
-		            		 sb1.append("EXCEPTION!!!!!! "+ e.getMessage()+" "+e.getCause());
-		            		 for (StackTraceElement st : e.getStackTrace()){
-		            			 sb1.append(st.toString()).append("\n");
-		            		 }
-		            		 Log.e(TAG, "Error sending Instant Calibration\n "+sb1.toString());
-
+		            		 Log.e(TAG, "Error sending Instant Calibration\n ", e);
 		                	 display.setText(display.getText()+"Error sending Instant Calibration\n", BufferType.EDITABLE);
-
-		           
 		                 }
 	            	}
 	        	  }
@@ -779,7 +739,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 					mHandler.removeCallbacks(updateDataView);
 					mHandlerActive = false;
 				}
-				b1.setText("Start Uploading CGM Data");
+				startStopButton.setText("Start Uploading CGM Data");
 				mTitleTextView.setTextColor(Color.RED);
 				mTitleTextView.setText("CGM Service Stopped");
 				stopCGMServices();
@@ -796,7 +756,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 						mHandler.removeCallbacks(updateDataView);
 						mHandlerActive = false;
 					}
-					b1.setText("Start Uploading CGM Data");
+					startStopButton.setText("Start Uploading CGM Data");
 					mTitleTextView.setTextColor(Color.RED);
 					mTitleTextView.setText("CGM Service Stopped");
 					stopCGMServices();

@@ -7,4 +7,7 @@ public class GlucometerRecord  extends Record implements Serializable{
     
     private static final long serialVersionUID = 4654897648L;
 
+    public float getValue() {
+        return numGlucometerValue;
+    }
 }

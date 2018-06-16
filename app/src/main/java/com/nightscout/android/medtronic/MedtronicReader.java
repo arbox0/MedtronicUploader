@@ -67,7 +67,7 @@ public class MedtronicReader {
 	// Lock for
 	// synchronize
 	public MedtronicSensorRecord previousRecord = null; // last sensor record
-	
+
 	// the receptor is sending a command
 	// and we have no received the ACK
 
@@ -84,8 +84,7 @@ public class MedtronicReader {
 	// included).
 	public int lastElementsAdded = 0; // last records read from sensor
 	ArrayList<Messenger> mClients = new ArrayList<Messenger>();
-	private byte[] lastGlucometerMessage = null; // last glucometer message
-	// received
+
 	SharedPreferences settings = null;
 	SharedPreferences prefs = null;
 	Integer calibrationSelected = MedtronicConstants.CALIBRATION_GLUCOMETER;
@@ -158,10 +157,7 @@ public class MedtronicReader {
 					MedtronicConstants.WITHOUT_ANY_CALIBRATION);
 		if (settings.contains("isCalibrating"))
 			isCalibrating = settings.getBoolean("isCalibrating", false);
-		if (settings.contains("lastGlucometerMessage")
-				&& settings.getString("lastGlucometerMessage", "").length() > 0)
-			lastGlucometerMessage = HexDump.hexStringToByteArray(settings
-					.getString("lastGlucometerMessage", ""));
+
 		if (settings.contains("calibrationFactor"))
 			calibrationFactor = settings.getFloat("calibrationFactor",
                     this.calibrationFactor);
@@ -367,6 +363,7 @@ public class MedtronicReader {
 		try {
 			bufferedMessages = parseMessageData(
 					Arrays.copyOfRange(readFromDevice, 0, readFromDevice.length), readFromDevice.length);
+
 			checkCalibrationOutOfTime();
 
 		} catch (Exception e) {
@@ -378,10 +375,7 @@ public class MedtronicReader {
 
 	private void processDataAnswer(byte[] readData)
 	{
-		int calibrationSelectedAux;
 		Log.d(TAG, "processDataAnswer");
-
-		calibrationSelectedAux = calibrationSelected;
 
 		if (isMessageFromMyDevices(readData)) {
 			Log.d(TAG, "IS FROM MY DEVICES");
@@ -390,64 +384,10 @@ public class MedtronicReader {
 					Log.d(TAG, "Pump message received");
 					processPumpDataMessage(readData);
 					break;
-				case MedtronicConstants.MEDTRONIC_GL: {
+				case MedtronicConstants.MEDTRONIC_GL:
 					Log.d(TAG, "GLUCOMETER DATA RECEIVED");
-					if (lastGlucometerMessage == null
-							|| lastGlucometerMessage.length == 0) {
-						lastGlucometerMessage = Arrays
-								.copyOfRange(readData, 0,
-										readData.length);
-						SharedPreferences.Editor editor = settings
-								.edit();
-						editor.putString(
-								"lastGlucometerMessage",
-								HexDump.toHexString(lastGlucometerMessage));
-						editor.apply();
-					} else {
-						boolean isEqual = Arrays
-								.equals(lastGlucometerMessage,
-										readData);
-						if (isEqual
-								&& (System.currentTimeMillis()
-								- lastGlucometerDate < MedtronicConstants.TIME_15_MIN_IN_MS)) {
-							return;
-						}
-						lastGlucometerDate = System
-								.currentTimeMillis();
-						lastGlucometerMessage = Arrays
-								.copyOfRange(readData, 0,
-										readData.length);
-					}
-
 					processGlucometerDataMessage(readData);
-					if (lastGlucometerValue > 0) {
-						isCalibrating = calibrationSelectedAux == MedtronicConstants.CALIBRATION_GLUCOMETER;
-						if (previousRecord == null) {
-							MedtronicSensorRecord auxRecord = new MedtronicSensorRecord();
-
-							auxRecord.isCalibrating = calibrationSelectedAux == MedtronicConstants.CALIBRATION_GLUCOMETER;
-							writeLocalCSV(auxRecord, context);
-							Log.d(TAG, "No previous record - 1");
-
-						} else {
-							previousRecord.isCalibrating = calibrationSelectedAux == MedtronicConstants.CALIBRATION_GLUCOMETER;
-							writeLocalCSV(previousRecord, context);
-							Log.d(TAG, "Has previous record - 2");
-
-						}
-						SharedPreferences.Editor editor = settings
-								.edit();
-
-						editor.putBoolean("isCalibrating", calibrationSelectedAux == MedtronicConstants.CALIBRATION_GLUCOMETER);
-						if (calibrationSelectedAux == MedtronicConstants.CALIBRATION_GLUCOMETER)
-							sendMessageToUI("isCalibrating");
-						sendMessageToUI("glucometer data received");
-
-						editor.apply();
-					}
-
-				}
-				break;
+					break;
 				case MedtronicConstants.MEDTRONIC_SENSOR1:
 				case MedtronicConstants.MEDTRONIC_SENSOR2:
 					Log.d(TAG, "SENSOR DATA RECEIVED");
@@ -696,13 +636,51 @@ public class MedtronicReader {
         int ub = readData[firstMeasureByte]  & 0xff;
         int lb = readData[firstMeasureByte + 1]  & 0xff;
         int num = lb + (ub << 8);
+
+
+		if (lastGlucometerRecord != null
+				&& num == lastGlucometerRecord.getValue()
+				&& lastGlucometerDate > 0
+				&& (System.currentTimeMillis() - lastGlucometerDate < MedtronicConstants.TIME_15_MIN_IN_MS))
+		{
+			Log.d(TAG, String.format("Glucometer is a repeat of previous. reading seen: %d  / %.2f", num, ((float)num )/18.0));
+			return;
+		}
+
 		sendMessageToUI(String.format("Glucometer reading seen: %d  / %.2f", num, ((float)num )/18.0));
 
-        if (num < 0 || num > 1535) {
+		lastGlucometerDate = System.currentTimeMillis();
+
+		if (num < 0 || num > 1535) {
             Log.e(TAG, "Glucometer value under 0 or over 0x5ff. Possible ACK or malfunction.");
             return;
         }
 		processManualCalibrationDataMessage(num, true, false);
+
+		if (lastGlucometerValue > 0) {
+			isCalibrating = calibrationSelected == MedtronicConstants.CALIBRATION_GLUCOMETER;
+			if (previousRecord == null) {
+				MedtronicSensorRecord auxRecord = new MedtronicSensorRecord();
+
+				auxRecord.isCalibrating = isCalibrating;
+				writeLocalCSV(auxRecord, context);
+				Log.d(TAG, "No previous record - 1");
+
+			} else {
+				previousRecord.isCalibrating = isCalibrating;
+				writeLocalCSV(previousRecord, context);
+				Log.d(TAG, "Has previous record - 2");
+
+			}
+			SharedPreferences.Editor editor = settings
+					.edit();
+
+			editor.putBoolean("isCalibrating", isCalibrating);
+			if (isCalibrating) sendMessageToUI("Glucometer data received - and calibrating from it");
+			else sendMessageToUI("Glucometer data received - to use for calibration, go to manual/instant calibration");
+
+			editor.apply();
+		}
 	}
 
 	
@@ -713,10 +691,8 @@ public class MedtronicReader {
 	 */
 	public void processManualCalibrationDataMessage(float value,
 			boolean instant, boolean doCalibration) {
-		float mult = 1f;
-		//if (prefs.getBoolean("mmolxl", false))
-			//mult = 1f/18f;
-		float num = value * mult;
+
+		float num = value;
 		lastGlucometerRecord = new GlucometerRecord();
 		lastGlucometerRecord.numGlucometerValue = num;
 		lastGlucometerValue = num;

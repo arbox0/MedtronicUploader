@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="hello">Hello World, DemoActivity!</string>
+    <string name="title">Nightscout Monitor</string>
+    <string name="status">System Status</string>
+    <string name="dummy">Some bogus values</string>
     <string name="app_name">NightScout</string>
     <string name="arrow_none">---</string>
     <string name="but_contentDesc">Launch Nightscout</string>
@@ -9,8 +11,12 @@
     <string name="eula_accept">Accept</string>
     <string name="eula_refuse">Refuse</string>
     <string name="version">Version: N/A</string>
+    <string name="clear">Clear log</string>
+    <string name="test">Send Test Data</string>
+    <string name="startStop">Start or Stop</string>
 
-	<string-array name="types">
+
+    <string-array name="types">
      <item>Medtronic CGM</item>
     </string-array>
     <string-array name="types_values">
