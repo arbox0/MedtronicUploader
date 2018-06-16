@@ -516,48 +516,50 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
                 break;
 
             case R.id.calibMan:{
-            	
+
             	Log.d(TAG, "Manual Calibration");
             	AlertDialog.Builder alert = new AlertDialog.Builder(ctx);
 	        	alert.setTitle("Manual Calibration");
 	        	alert.setMessage("Insert your glucose value in mg/dl (only natural numbers)");
-	    
-	        	if (prefs.getBoolean("mmolxl", false)){
+
+	        	boolean mmolxl = prefs.getBoolean("mmolxl", false);
+
+	        	if (mmolxl){
 	        		alert.setMessage("Insert your glucose value in mmol/l (only 2 decimals)");
 	        		Log.d(TAG,"mmol/l");
 	        	}
-	        		
 	        		
 	        	// Set an EditText view to get user input 
 	        	input = new EditText(ctx);
 	        	input.setInputType(InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);
 	        	alert.setView(input);
-	
-	        	alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
-	        	public void onClick(DialogInterface dialog, int whichButton) {
-	        	  String value = input.getText().toString();
-	        	  Log.d(TAG, "Manual Calibration send "+value);
-	        	  if (mService == null && bService != null) {
-             		 mService = new Messenger(bService);
-             	 }
-	        	  if (mService != null){
-		            	 try {
-		                     Message msg = Message.obtain(null, MedtronicConstants.MSG_MEDTRONIC_SEND_MANUAL_CALIB_VALUE);
-		                     Bundle b = new Bundle();
-		 					 b.putString("sgv", value);
-		 					 prefs.edit().putString("manual_sgv", value).apply();
-		 					 msg.setData(b);
-		                     msg.replyTo = mMessenger;
-		                     mService.send(msg);
-		                 } catch (RemoteException e) {
-		                	 Log.e(TAG, "Error sending Manual Calibration\n ", e);
-		            		 display.setText(display.getText()+"Error sending Manual Calibration\n", BufferType.EDITABLE);
 
-		                     // In this case the service has crashed before we could even do anything with it
-		                 }
-	            	}
-	        	  }
-	        	});
+                alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int whichButton) {
+                        String value = input.getText().toString();
+                        boolean mmolxl = prefs.getBoolean("mmolxl", false);
+                        float v = Float.parseFloat(value);
+                        Log.d(TAG, "Manual Calibration send "+value);
+                        if (mService == null && bService != null) {
+                            mService = new Messenger(bService);
+                        }
+                        try {
+                            Message msg = Message.obtain(null, MedtronicConstants.MSG_MEDTRONIC_SEND_MANUAL_CALIB_VALUE);
+                            Bundle b = new Bundle();
+                            b.putInt("sgv", (int) (mmolxl ? v * 18 : v));
+                            prefs.edit().putString("manual_sgv", value).apply();
+                            msg.setData(b);
+                            msg.replyTo = mMessenger;
+                            mService.send(msg);
+                        } catch (RemoteException e) {
+                            Log.e(TAG, "Error sending Manual Calibration\n ", e);
+                            display.setText(display.getText()+"Error sending Manual Calibration\n", BufferType.EDITABLE);
+
+                            // In this case the service has crashed before we could even do anything with it
+                        }
+
+                    }
+                });
 	
 	        	alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
 	        	  public void onClick(DialogInterface dialog, int whichButton) {
@@ -597,12 +599,14 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	        	alert2.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
 	        	public void onClick(DialogInterface dialog, int whichButton) {
 	        	  String value = input.getText().toString();
+	        	  boolean mmolxl = prefs.getBoolean("mmolxl", false);
+	        	  float v = Float.parseFloat(value);
 	        	  Log.d(TAG, "Instant Calibration send "+value);
 	        	  if (mService != null){
 		            	 try {
 		                     Message msg = Message.obtain(null, MedtronicConstants.MSG_MEDTRONIC_SEND_INSTANT_CALIB_VALUE);
 		                     Bundle b = new Bundle();
-		 					 b.putString("sgv", value);
+                             b.putInt("sgv", (int) (mmolxl ? v * 18 : v));
 		 					 prefs.edit().putString("instant_sgv", value).apply();
 		 					 msg.setData(b);
 		                     msg.replyTo = mMessenger;

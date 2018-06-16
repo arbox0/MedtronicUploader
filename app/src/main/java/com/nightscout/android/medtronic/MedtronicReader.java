@@ -866,7 +866,7 @@ public class MedtronicReader {
 			difference = d.getTime() - lastGlucometerDate;
 		}
 
-		int added = 8;
+		int added;
 		int firstMeasureByte = firstByteAfterDeviceId(readData);
 
 
@@ -963,7 +963,8 @@ public class MedtronicReader {
 				added--;
 				lastRecordsInMemory.add(record);
 				calculateTrendAndArrow(record, lastRecordsInMemory);
-
+				DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss - ");
+				Log.v(TAG, "Read Record: backposition [" + (added + 1) + "] " + record.getBGValue() + " / " + dateFormat.format(record.getDate()));
 			}
 		}
 

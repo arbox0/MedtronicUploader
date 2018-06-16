@@ -114,14 +114,11 @@ public class MedtronicCGMService extends Service implements
 					break;
 
 				case MedtronicConstants.MSG_MEDTRONIC_SEND_MANUAL_CALIB_VALUE:
-					String value = msg.getData().getString("sgv");
-					if (value == null || value.equals("")) {
-						value = prefs.getString("manual_sgv", "");
-					}
+					int value = msg.getData().getInt("sgv");
 					Log.d(TAG, "Manual Calibration Received SGV " + value);
 					try {
-						if (medtronicReader != null && !value.equals("")) {
-						    medtronicReader.processManualCalibrationDataMessage(Float.parseFloat(value), false, true);
+						if (medtronicReader != null && value > 0) {
+						    medtronicReader.processManualCalibrationDataMessage(value, false, true);
 						    sendMessageCalibrationDoneToUI();
 						}
 						else {
@@ -132,18 +129,12 @@ public class MedtronicCGMService extends Service implements
 					}
 					break;
 				case MedtronicConstants.MSG_MEDTRONIC_SEND_INSTANT_CALIB_VALUE:  // manually entered calibration.
-					value = msg.getData().getString("sgv");
-					if (value == null || value.equals("")) {
-						value = prefs.getString("instant_sgv", "");
-					}
+					value = msg.getData().getInt("sgv");
 					Log.d(TAG, "Instant Calibration received SGV " + value);
 					try {
-						if (medtronicReader != null && !value.equals("")) {
-							if (prefs.getBoolean("mmolxl", false)) {
-								medtronicReader.calculateInstantCalibration(Float.parseFloat(value) * 18f);
-								sendMessageCalibrationDoneToUI();
-							} else {
-							    medtronicReader.calculateInstantCalibration(Float.parseFloat(value));
+						if (medtronicReader != null && value > 0) {
+							{
+							    medtronicReader.calculateInstantCalibration(value);
 								sendMessageCalibrationDoneToUI();
 							}
 						} else {
@@ -165,16 +156,8 @@ public class MedtronicCGMService extends Service implements
 
 
 	void sendExceptionToUI(String message, Exception e) {
-		Log.e(TAG, message);
+		Log.e(TAG, message, e);
 		sendErrorMessageToUI(message);
-		StringBuffer sb1 = new StringBuffer("");
-		sb1.append("EXCEPTION: " + e.getMessage() + " " + e.getCause());
-		for (StackTraceElement st : e.getStackTrace())
-		{
-			sb1.append(st.toString());
-		}
-		sendErrorMessageToUI(sb1.toString());
-		Log.e(TAG, sb1.toString());
 	}
 	/**
      * Sends a message to be printed in the display (DEBUG) or launches a pop-up message.
