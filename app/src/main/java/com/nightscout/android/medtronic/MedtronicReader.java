@@ -84,6 +84,8 @@ public class MedtronicReader {
 	SharedPreferences prefs = null;
 	Integer calibrationSelected = MedtronicConstants.CALIBRATION_GLUCOMETER;
 
+	private DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss - ");
+
 	/**
 	 * Constructor
 	 * 
@@ -215,8 +217,6 @@ public class MedtronicReader {
 
 	private void sendMessageToUI(String valuetosend) {
 
-		DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss - ");
-		//get current date time with Date()
 		Date date = new Date();
 		valuetosend = dateFormat.format(date) + valuetosend;
 		Log.i(TAG, valuetosend);
@@ -428,6 +428,7 @@ public class MedtronicReader {
 				}
 			}
 		} catch (Exception ex2) {
+			Log.e(TAG, ex2.toString(), ex2);
 			sendErrorMessageToUI(ex2.toString());
 		}
 
@@ -445,7 +446,7 @@ public class MedtronicReader {
 	 */
 	private ArrayList<byte[]> parseMessageData(byte[] readData, int read) {
 		byte[] readBuffer = null;
-		Log.d(TAG, "Parsing message");
+		Log.d(TAG, "Parsing message (" + read + " bytes)");
 		ArrayList<byte[]> messageList = new ArrayList<byte[]>();
 		if (notFinishedRead == null || notFinishedRead.length <= 0) {
 			readBuffer = Arrays.copyOf(readData, read);
@@ -500,7 +501,6 @@ public class MedtronicReader {
 					return messageList;
 				}
 			} else if (answer == MedtronicConstants.DATA_ANSWER) {
-				Log.d(TAG, "DATA_ANSWER");
 				if (readBuffer.length <= i + 1) {
 					notFinishedRead = Arrays.copyOfRange(readBuffer, i,
 							readBuffer.length);
@@ -696,7 +696,6 @@ public class MedtronicReader {
 
 			}
 			editor.putBoolean("isCalibrating", !instant);
-			editor.apply();
 		}
 		editor.apply();
 		Log.i(TAG, "Manual calibration:" + num);
@@ -741,7 +740,6 @@ public class MedtronicReader {
 	private void calibratingCurrentElement(long difference, MedtronicSensorRecord record, int num,
 			Date currentTime) {
 		boolean calibrated = false;
-		// currentMeasure = num;
 		if (isCalibrating) {
 			if (num > 0) {
 				calculateCalibration(difference, record.isig);
@@ -814,7 +812,7 @@ public class MedtronicReader {
 			}
 		}
 		else {
-			sendErrorMessageToUI("I can't calibrate, I don't have any recent stored sensor reading yet. Try again after sensor transmits again.");
+			sendErrorMessageToUI("I can't calibrate, I don't have any recent stored sensor reading yet. Try after sensor transmits again.");
 			Log.d(TAG,"Could not instant calibrate. I dont have ISIG from a previous record yet.");
 		}
 	}
@@ -832,7 +830,7 @@ public class MedtronicReader {
 			difference = d.getTime() - lastGlucometerDate;
 		}
 
-		int added;
+		int backcountToBeAdded;
 		int firstMeasureByte = firstByteAfterDeviceId(readData);
 
 
@@ -858,20 +856,20 @@ public class MedtronicReader {
 					|| calculateNextSensorSortNameFrom(1, expectedSensorSortNumber) == readData[firstMeasureByte + 3]) { // is either the one we need, or the repeat message we need
 				Log.i("Medtronic", "Expected sensor number received!!");
 				dataLost = 0;
-				added = 0;
+				backcountToBeAdded = 0;
 			} else {
 				Log.i(TAG, "NOT Expected sensor number received nor immediate sensor repeat!!");
 				if (previousRecord != null || lastSensorValueDate > 0) {
 					long timeDiff = 0;
 
-					if (previousRecord != null)
+					if (previousRecord != null && previousRecord.getDate() != null)
 						timeDiff = d.getTime() - previousRecord.getDate().getTime();
 					else
 						timeDiff = d.getTime() - lastSensorValueDate;
 
 					if (timeDiff > (MedtronicConstants.TIME_30_MIN_IN_MS + MedtronicConstants.TIME_10_MIN_IN_MS)) {
 						dataLost = 10;
-						added = 8;
+						backcountToBeAdded = 8;
 					} else {
 						int valPrev = transformSequenceToIndex(expectedSensorSortNumber);
 						int currentVal = transformSequenceToIndex(readData[firstMeasureByte + 3]);
@@ -881,14 +879,18 @@ public class MedtronicReader {
 						if (dataLost < 0)
 							dataLost *= -1;
 						dataLost--;
-						added = dataLost;
+						backcountToBeAdded = dataLost;
 						Log.i(TAG, " valPrev " + valPrev
 								+ " currentVal " + currentVal + " dataLost "
-								+ dataLost + " added " + added);
+								+ dataLost + " added " + backcountToBeAdded);
+
+						if (dataLost > (int) (timeDiff / 60 / 1000 / 5)) {
+                            dataLost = (int) (timeDiff / 60 / 1000 / 5);
+                        }
 					}
 				} else {
 					dataLost = 10;
-					added = 8;
+					backcountToBeAdded = 8;
 				}
 
 				Log.i(TAG, "Data Lost " + dataLost);
@@ -897,7 +899,7 @@ public class MedtronicReader {
 						dataLost += 2;
 					if (dataLost > 10) {
 						dataLost = 10;
-						added = 8;
+						backcountToBeAdded = 8;
 					}
 					dataLost *= 2;
 					lastElementsAdded = 0;
@@ -909,8 +911,6 @@ public class MedtronicReader {
 				if (i >= 4 && i < 8) {
 					continue;
 				}
-				lastElementsAdded++;
-
 				int ub = readData[firstMeasureByte + 4 + i] & 0xff;
 				int lb = readData[firstMeasureByte + 5 + i] & 0xff;
 				int num = lb + (ub << 8);
@@ -922,14 +922,15 @@ public class MedtronicReader {
 				} else {
 					calibratingBackwards(previousCalibrationFactor,
 							previousCalibrationStatus, record,
-							added, d);
+							backcountToBeAdded, d);
 				}
-				added--;
+				backcountToBeAdded--;
+				lastElementsAdded++;
 				lastRecordsInMemory.add(record);
 				previousRecord = record;
 				calculateTrendAndArrow(record, lastRecordsInMemory);
-				DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss - ");
-				Log.v(TAG, "Read Record: backposition [" + (added + 1) + "] " + record.getBGValue() + " / " + dateFormat.format(record.getDate()));
+
+				Log.v(TAG, "Read Record: backposition [" + (backcountToBeAdded + 1) + "] " + record.getBGValue() + " / " + dateFormat.format(record.getDate()));
 			}
 		}
 
@@ -947,9 +948,6 @@ public class MedtronicReader {
 		editor.putLong("lastSensorValueDate", lastSensorValueDate);
 		editor.apply();
 	 	writeLocalCSV(previousRecord, context);
-
-		Log.i(TAG, "sensorprocessed end expected "
-				+ HexDump.toHexString(expectedSensorSortNumber));
 
 	}
 
@@ -990,37 +988,6 @@ public class MedtronicReader {
 	private int transformSequenceToIndex(byte aux) {
 		int seq = aux >> 4;
 		return (seq == 0) ? 8 : seq;
-	}
-
-	/**
-	 * This function checks if the measure index is between a range of indexes
-	 * previously stored.
-	 * 
-	 * @param measureIndex
-	 *            , index to check
-	 * @param range
-	 *            ,
-	 * @return true if the measure index is between a range of indexes
-	 *         previously stored.
-	 */
-	private boolean isSensorMeasureInRange(byte measureIndex, byte[] range) {
-		byte minRange = range[0];
-		byte maxRange = range[1];
-		if (HexDump.unsignedByte(maxRange) < HexDump.unsignedByte(minRange)) {
-			return ((HexDump.unsignedByte(measureIndex) >= HexDump
-					.unsignedByte(minRange)) && (HexDump
-							.unsignedByte(measureIndex) <= HexDump
-							.unsignedByte((byte) 0x71)))
-							|| (HexDump.unsignedByte(measureIndex) <= HexDump
-							.unsignedByte(maxRange))
-							&& (HexDump.unsignedByte(measureIndex) >= HexDump
-							.unsignedByte((byte) 0x00));
-		} else {
-			return (HexDump.unsignedByte(measureIndex) >= HexDump
-					.unsignedByte(minRange))
-					&& (HexDump.unsignedByte(measureIndex) <= HexDump
-					.unsignedByte(maxRange));
-		}
 	}
 
 
@@ -1289,7 +1256,6 @@ public class MedtronicReader {
      * @param valuetosend
      */
 	private void sendErrorMessageToUI(String valuetosend) {
-		DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss - ");
 		//get current date time with Date()
 		Date date = new Date();
 		valuetosend = dateFormat.format(date) + valuetosend;

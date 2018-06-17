@@ -237,14 +237,17 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 
 		private void displaySensor(MedtronicSensorRecord record, long calDate) {
 			DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
-			if (prefs.getBoolean("mmolxl", false)) {
-				float fBgValue = record.getBGValue();
-				Log.i(TAG,"mmolxl true --> " + record.getBGValue());
-				record.setBGValue(fBgValue / 18f);
-				Log.i(TAG,"mmolxl/18 true --> " + record.getBGValue());
+			float value = record.getBGValue();
+			Date recordTime = record.getDate();
+			String displayDate = "<no record>";
+			String displayDiff = "<no record>";
+			if (recordTime != null) {
+				displayDate = dateFormat.format(recordTime);
+				displayDiff = "" + ((System.currentTimeMillis() - record.getDate().getTime()) / 60000) + " mins ago\n";
+			}
+			if (prefs.getBoolean("mmolxl", false))
+				value = value / 18f;
 
-			} else
-				Log.i(TAG,"mmolxl false --> " + record.getBGValue());
 			boolean isCalibrating = record.isCalibrating;
 			String calib = "---";
 			if (isCalibrating) {
@@ -266,9 +269,9 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 			calib += "\nat: " + dateFormat.format(new Date(calDate)) + "\n";
 
 
-			mDumpTextView.setText("Last record received:\n"  + (System.currentTimeMillis() - record.getDate().getTime()) / 60000 + " min. ago\nat: " + dateFormat.format(record.getDate()) + "\n"+
-						calib + "\n");
-			mSensorValue.setText(record.getBGValue() + "  " + record.trendArrow + "\n");
+			mDumpTextView.setText("Last record received: " + displayDiff + "\nat: " + displayDate + "\n"+
+						calib);
+			mSensorValue.setText(value + " " + record.trendArrow);
 
 
 
