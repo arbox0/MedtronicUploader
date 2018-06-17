@@ -64,7 +64,7 @@ public class MedtronicCGMService extends Service implements
 	private boolean listenerAttached = false;
 	private UploadHelper uploader;
 	private UsbSerialDevice mSerial;
-	private Handler mHandlerCheckSerial = new Handler();// This handler runs readAndUpload Runnable which checks the USB device and NET connection. 
+	private Handler mHandlerCheckSerial = new Handler();// This handler runs checkSerial Runnable which checks the USB device and NET connection.
 	private Handler mHandlerProcessRead = new Handler();// this Handler is used to process the messages parsed.
 	private Handler mHandlerReviewParameters = new Handler();
 	private boolean mHandlerActive = false;
@@ -345,8 +345,8 @@ public class MedtronicCGMService extends Service implements
 		IntentFilter filter = new IntentFilter();
 		filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
 		registerReceiver(mUsbReceiver, filter);
-		mHandlerCheckSerial.removeCallbacks(readAndUpload);
-		mHandlerCheckSerial.post(readAndUpload);
+		mHandlerCheckSerial.removeCallbacks(checkSerial);
+		mHandlerCheckSerial.post(checkSerial);
 		mHandlerReloadLost.postDelayed(reloadLostRecords, 60000);
 		mHandlerActive = true;
 
@@ -365,7 +365,7 @@ public class MedtronicCGMService extends Service implements
 		synchronized (checkSerialLock) {
 			Log.i(TAG, "onDestroy called");
 
-			mHandlerCheckSerial.removeCallbacks(readAndUpload);
+			mHandlerCheckSerial.removeCallbacks(checkSerial);
 
 			SharedPreferences.Editor editor = settings.edit();
 			editor.putLong("lastDestroy", System.currentTimeMillis());
@@ -388,9 +388,9 @@ public class MedtronicCGMService extends Service implements
 	 * It checks that it is a serial device available, and there is Internet connection.
 	 * It also binds readByListener with the serial device and execute it the first time;
 	 */
-	private Runnable readAndUpload = new Runnable() {
+	private Runnable checkSerial = new Runnable() {
 		public void run() {
-			Log.d(TAG, "run readAndUpload");
+			Log.d(TAG, "run checkSerial");
 			try {
 				UsbManager usbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
 				boolean hasPermission = faking;
@@ -410,8 +410,8 @@ public class MedtronicCGMService extends Service implements
 							Log.d(TAG,"destroy readAnd Upload "+ mHandlerActive + " isDes "+ isDestroying);
 							return;
 						}
-						mHandlerCheckSerial.removeCallbacks(readAndUpload);
-						mHandlerCheckSerial.postDelayed(readAndUpload, MedtronicConstants.FIVE_SECONDS__MS);
+						mHandlerCheckSerial.removeCallbacks(checkSerial);
+						mHandlerCheckSerial.postDelayed(checkSerial, MedtronicConstants.FIVE_SECONDS__MS * 2);
 						return;
 					}
 				} else
@@ -421,8 +421,6 @@ public class MedtronicCGMService extends Service implements
 				connected = isConnected();
 
 				if (connected) {
-					if (!isOnline())
-						sendErrorMessageToUI("Internet connection error");
 					if (!listenerAttached) {
 						Log.d(TAG, "!listener attached readByListener triggered");
 
@@ -438,8 +436,6 @@ public class MedtronicCGMService extends Service implements
 
 					if (!connected)
 						sendErrorMessageToUI("Receptor connection error");
-					else if (!isOnline())
-						sendErrorMessageToUI("Not online/connection error");
 					else {
 						sendMessageConnectedToUI();
 						sendMessageToUI("connected");
@@ -450,12 +446,12 @@ public class MedtronicCGMService extends Service implements
 				sendExceptionToUI("Unable to read from receptor or upload", e);
 			}
 
-				if (!mHandlerActive || isDestroying){
-					Log.d(TAG,"destroy readAnd Upload2 "+ mHandlerActive + " isDes "+ isDestroying);
-					return;
-				}
-				mHandlerCheckSerial.removeCallbacks(readAndUpload);
-				mHandlerCheckSerial.postDelayed(readAndUpload,  MedtronicConstants.FIVE_SECONDS__MS);
+			if (!mHandlerActive || isDestroying){
+				Log.d(TAG,"destroy readAnd Upload2 "+ mHandlerActive + " isDes "+ isDestroying);
+				return;
+			}
+			mHandlerCheckSerial.removeCallbacks(checkSerial);
+			mHandlerCheckSerial.postDelayed(checkSerial,  MedtronicConstants.FIVE_SECONDS__MS * 2);
 
 		}
 	};
@@ -850,7 +846,7 @@ public class MedtronicCGMService extends Service implements
 			if (key.equals("medtronic_cgm_id") || key.equals("glucometer_cgm_id") || key.equals("sensor_cgm_id")) {
 				String newID = sharedPreferences.getString("medtronic_cgm_id", "");
 				if (!"".equals(newID.replaceAll(" ", ""))) {
-					mHandlerCheckSerial.removeCallbacks(readAndUpload);
+					mHandlerCheckSerial.removeCallbacks(checkSerial);
 					byte[] newIdPump = HexDump.hexStringToByteArray(newID);
 					if (key.equals("medtronic_cgm_id") && !Arrays.equals(newIdPump, medtronicReader.idPump)) {
 						SharedPreferences.Editor editor = settings.edit();
@@ -868,7 +864,7 @@ public class MedtronicCGMService extends Service implements
 						editor.commit();
 						synchronized (checkSerialLock) {
 
-							mHandlerCheckSerial.removeCallbacks(readAndUpload);
+							mHandlerCheckSerial.removeCallbacks(checkSerial);
 
 							mHandlerActive = false;
 
@@ -877,7 +873,7 @@ public class MedtronicCGMService extends Service implements
 								getBaseContext(), mClients);
 						medtronicReader.idPump = newIdPump;
 						synchronized (checkSerialLock) {
-							mHandlerCheckSerial.post(readAndUpload);
+							mHandlerCheckSerial.post(checkSerial);
 							mHandlerActive = true;
 						}
 					}else{
@@ -902,7 +898,7 @@ public class MedtronicCGMService extends Service implements
 							}
 						}
 
-						mHandlerCheckSerial.post(readAndUpload);
+						mHandlerCheckSerial.post(checkSerial);
 					}
 				}
 			}
