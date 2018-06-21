@@ -77,10 +77,8 @@ public class MedtronicCGMService extends Service implements
 	private final Messenger mMessenger = new Messenger(new IncomingHandler()); // Target we publish for clients to send messages to IncomingHandler.
 	private SharedPreferences prefs = null;// common application preferences
 	private int calibrationSelected = MedtronicConstants.CALIBRATION_GLUCOMETER;//calibration Selected
-	private Handler mHandlerReloadLost = new Handler();// this Handler is used to upload records which upload failed due to a network error.
 	private boolean connectedSent = false;
 	private boolean isDestroying = false;
-	private Object reloadLostLock = new Object();
 	private Object checkSerialLock = new Object();
 	private Object isUploadingLock = new Object();
 	private Object buffMessagesLock = new Object();
@@ -347,7 +345,6 @@ public class MedtronicCGMService extends Service implements
 		registerReceiver(mUsbReceiver, filter);
 		mHandlerCheckSerial.removeCallbacks(checkSerial);
 		mHandlerCheckSerial.post(checkSerial);
-		mHandlerReloadLost.postDelayed(reloadLostRecords, 60000);
 		mHandlerActive = true;
 
 	}
@@ -359,9 +356,7 @@ public class MedtronicCGMService extends Service implements
 		isDestroying = true;
 		prefs.unregisterOnSharedPreferenceChangeListener(this);
 
-		synchronized (reloadLostLock) {
-			mHandlerReloadLost.removeCallbacks(reloadLostRecords);
-		}
+
 		synchronized (checkSerialLock) {
 			Log.i(TAG, "onDestroy called");
 
@@ -517,31 +512,7 @@ public class MedtronicCGMService extends Service implements
 	}
 
 	
-	/**
-	 * class This class process all the messages received after being correctly
-	 * parsed.
-	 */
-    private Runnable reloadLostRecords = new Runnable() {
-        public void run() {
 
-            try {
-                JSONArray recordsNotUploadedJson = new JSONArray(settings.getString("recordsNotUploadedJson", "[]"));
-                synchronized (reloadLostLock) {
-                    if (isOnline()) {
-                        if (recordsNotUploadedJson.length() > 0 && !isDestroying) {
-                            Log.i(TAG, "Uploading" + recordsNotUploadedJson.length() + " lost records");
-                            uploader = new UploadHelper(getApplicationContext());
-                        }
-                    }
-                }
-            } catch (JSONException e) {
-                sendExceptionToUI("Error Reloading Lost Records", e);
-            }
-
-            if (!isDestroying)
-                mHandlerReloadLost.postDelayed(reloadLostRecords, 60000);
-        }
-    };
 	/**
 	 * class This class process all the messages received after being correctly
 	 * parsed.
@@ -590,11 +561,11 @@ public class MedtronicCGMService extends Service implements
 						params[listToUpload.size() - 1 - i] = record;
 					}
 					if (params.length > 0) {
-						synchronized (reloadLostLock) {
+
 							uploader = new UploadHelper(getApplicationContext());
 							
 							uploader.execute(params);
-						}
+
 					}
 	
 					listToUpload.clear();

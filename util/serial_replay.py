@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import readchar
 import re
 import argparse
 import serial
@@ -60,6 +61,12 @@ ser = serial.Serial('/dev/ttyUSB0')
 ser.baudrate = 57600
 
 for packet in datastream:
-    print packet['data']
-
-    ser.write(bytearray(packet['data']))
+    print " ".join( [ '0x%02X' % x for x in packet['data']])
+    print 'Send.. y, quit=q - any other key to discard.'
+    c = readchar.readkey()
+    if (c == 'y'):
+        ser.write(bytearray(packet['data']))
+        print 'Sent'
+    if (c == 'q'):
+        break
+        

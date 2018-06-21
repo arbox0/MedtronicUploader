@@ -35,45 +35,19 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 
 
     private static final String TAG = "UploadHelper";
-    private SharedPreferences settings = null;// common application preferences
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("MM/dd/yyyy hh:mm:ss aa", Locale.getDefault());
     private static final int SOCKET_TIMEOUT = 60 * 1000;
     private static final int CONNECTION_TIMEOUT = 30 * 1000;
 
     private Context context;
 
-    private List<JSONObject> recordsNotUploadedListJson = new ArrayList<JSONObject>();
 
     public static Object isModifyingRecordsLock = new Object();
 
 
     public UploadHelper(Context context) {
         this.context = context;
-        settings = context.getSharedPreferences(MedtronicConstants.PREFS_NAME, 0);
-        synchronized (isModifyingRecordsLock) {
-            try {
-                long currentTime = System.currentTimeMillis();
-                long diff = currentTime - settings.getLong("lastDestroy", 0);
-                if (diff != currentTime && diff > (6 * MedtronicConstants.TIME_60_MIN_IN_MS)) {
-                    Log.d(TAG, "Remove older records");
-                    recordsNotUploadedListJson = new ArrayList<JSONObject>();
-                }
-                else {
-                    JSONArray recordsNotUploadedJson = new JSONArray(settings.getString("recordsNotUploadedJson", "[]"));
-                    for (int i = 0; i < recordsNotUploadedJson.length(); i++) {
-                        recordsNotUploadedListJson.add(recordsNotUploadedJson.getJSONObject(i));
-                    }
-                    Log.d(TAG, "retrieved older json records -->" + recordsNotUploadedJson.length());
-                }
-            } catch (Exception e) {
-                recordsNotUploadedListJson = new ArrayList<JSONObject>();
-            }
 
-            SharedPreferences.Editor editor = settings.edit();
-            if (settings.contains("recordsNotUploadedJson"))
-                editor.remove("recordsNotUploadedJson");
-            editor.commit();
-        }
     }
 
 
@@ -173,10 +147,6 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
             }
 
             if (error != null) {
-                JSONArray jsonArray = new JSONArray(recordsNotUploadedListJson);
-                SharedPreferences.Editor editor = settings.edit();
-                editor.putString("recordsNotUploadedJson", jsonArray.toString());
-                editor.commit();
                 throw new Exception(error);
             }
 
@@ -188,47 +158,6 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 
             postDeviceStatus(baseURL, httpclient);
 
-            if (recordsNotUploadedListJson.size() > 0) {
-                List<JSONObject> auxList = new ArrayList<JSONObject>(recordsNotUploadedListJson);
-                recordsNotUploadedListJson.clear();
-                for (int i = 0; i < auxList.size(); i++) {
-                    JSONObject json = auxList.get(i);
-                    String postURL = baseURL;
-                    postURL += "entries";
-                    Log.i(TAG, "postURL: " + postURL);
-
-                    HttpPost post = new HttpPost(postURL);
-
-
-                    MessageDigest digest = MessageDigest.getInstance("SHA-1");
-                    byte[] bytes = secret.getBytes("UTF-8");
-                    digest.update(bytes, 0, bytes.length);
-                    bytes = digest.digest();
-                    StringBuilder sb = new StringBuilder(bytes.length * 2);
-                    for (byte b : bytes) {
-                        sb.append(String.format("%02x", b & 0xff));
-                    }
-                    String token = sb.toString();
-                    post.setHeader("api-secret", token);
-
-
-                    String jsonString = json.toString();
-
-                    Log.i(TAG, "JSON to upload " + jsonString);
-
-                    try {
-                        StringEntity se = new StringEntity(jsonString);
-                        post.setEntity(se);
-                        post.setHeader("Accept", "application/json");
-                        post.setHeader("Content-type", "application/json");
-
-                        ResponseHandler responseHandler = new BasicResponseHandler();
-                        httpclient.execute(post, responseHandler);
-                    } catch (Exception e) {
-                        Log.w(TAG, "Unable to post data to: '" + post.getURI().toString() + "'", e);
-                    }
-                }
-            }
 
             for (Record record : records) {
                 String postURL = baseURL;
@@ -281,14 +210,6 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                     httpclient.execute(post, responseHandler);
                 } catch (Exception e) {
                     Log.e(TAG, "Exception uploading: ", e);
-                    if (typeSaved == 0) {//Only EGV records are important enough.
-                        if (recordsNotUploadedListJson.size() > 49) {
-                            recordsNotUploadedListJson.remove(0);
-                            recordsNotUploadedListJson.add(49, json);
-                        } else {
-                            recordsNotUploadedListJson.add(json);
-                        }
-                    }
                     Log.w(TAG, "Unable to post data to: '" + post.getURI().toString() + "'", e);
                 }
             }
@@ -296,44 +217,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
         } catch (Exception e) {
             Log.e(TAG, "Unable to post data", e);
         }
-        if (recordsNotUploadedListJson.size() > 0) {
-            synchronized (isModifyingRecordsLock) {
-                try {
-                    JSONArray recordsNotUploadedJson = new JSONArray(settings.getString("recordsNotUploadedJson", "[]"));
-                    if (recordsNotUploadedJson.length() > 0 && recordsNotUploadedJson.length() < recordsNotUploadedListJson.size()) {
-                        for (int i = 0; i < recordsNotUploadedJson.length(); i++) {
-                            if (recordsNotUploadedListJson.size() > 49) {
-                                recordsNotUploadedListJson.remove(0);
-                                recordsNotUploadedListJson.add(49, recordsNotUploadedJson.getJSONObject(i));
-                            } else {
-                                recordsNotUploadedListJson.add(recordsNotUploadedJson.getJSONObject(i));
-                            }
-                        }
-                    } else {
-                        for (int i = 0; i < recordsNotUploadedListJson.size(); i++) {
-                            recordsNotUploadedJson.put(recordsNotUploadedListJson.get(i));
-                        }
-                        int start = 0;
-                        if (recordsNotUploadedJson.length() > 50) {
-                            start = recordsNotUploadedJson.length() - 51;
-                        }
-                        recordsNotUploadedListJson.clear();
-                        for (int i = start; i < recordsNotUploadedJson.length(); i++) {
-                            recordsNotUploadedListJson.add(recordsNotUploadedJson.getJSONObject(i));
-                        }
-                    }
 
-                } catch (Exception e) {
-                    Log.i(TAG, "ERROR RETRIEVING OLDER LISTs, I HAVE LOST THEM");
-                }
-                SharedPreferences.Editor editor = settings.edit();
-                if (settings.contains("recordsNotUploadedJson"))
-                    editor.remove("recordsNotUploadedJson");
-                JSONArray jsonArray = new JSONArray(recordsNotUploadedListJson);
-                editor.putString("recordsNotUploadedJson", jsonArray.toString());
-                editor.commit();
-            }
-        }
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
