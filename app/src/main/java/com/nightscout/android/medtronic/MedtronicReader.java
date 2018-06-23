@@ -160,12 +160,7 @@ public class MedtronicReader {
                     this.calibrationFactor);
 		if (settings.contains("lastCalibrationDate"))
 			lastCalibrationDate = settings.getLong("lastCalibrationDate", 0);
-		if (settings.contains("expectedSensorSortNumber")
-				&& settings.getString("expectedSensorSortNumber", "").length() > 0) {
-			expectedSensorSortNumber = HexDump.hexStringToByteArray(settings
-					.getString("expectedSensorSortNumber", ""))[0];
 
-		}
 		if (settings.contains("lastGlucometerValue")
 				&& settings.getFloat("lastGlucometerValue", -1) > 0) {
 			lastGlucometerValue = settings.getFloat("lastGlucometerValue", -1);
@@ -941,8 +936,7 @@ public class MedtronicReader {
 
 
 		SharedPreferences.Editor editor = settings.edit();
-		editor.putString("expectedSensorSortNumber",
-				HexDump.toHexString(expectedSensorSortNumber));
+
 		editor.putInt("calibrationStatus", calibrationStatus);
 		lastSensorValueDate = d.getTime();
 		editor.putLong("lastSensorValueDate", lastSensorValueDate);
