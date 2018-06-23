@@ -2,10 +2,8 @@
 
 See "Medtronic_NightScout_Manual.pdf"
 
-Special thanks to https://github.com/ksksue/PhysicaloidLibrary
-
 Medtronic Nightscout Uploader
-    Copyright (C) 2014  Medtronic Nightscout contributors
+    Copyright (C) 2014-2018  Medtronic Nightscout contributors
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
