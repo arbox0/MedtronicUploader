@@ -35,7 +35,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 
 
     private static final String TAG = "UploadHelper";
-    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("MM/dd/yyyy hh:mm:ss aa", Locale.getDefault());
+    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss aa", Locale.getDefault());
     private static final int SOCKET_TIMEOUT = 60 * 1000;
     private static final int CONNECTION_TIMEOUT = 30 * 1000;
 
@@ -242,7 +242,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
     private void populateV1APIEntry(JSONObject json, Record oRecord) throws Exception {
         Date date = oRecord.getDate();
         json.put("date", date.getTime());
-
+        json.put("dateString", DATE_FORMAT.format(date));
         if (oRecord instanceof GlucometerRecord) {
             json.put("gdValue", ((GlucometerRecord) oRecord).numGlucometerValue);
             json.put("device", getSelectedDeviceName());
