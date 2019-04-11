@@ -110,7 +110,8 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	        	mHandler.post(updateDataView);
                 break;
             case MedtronicConstants.MSG_MEDTRONIC_CGM_USB_GRANTED:
-                Log.i(TAG, "Message received - USB permission granted");
+                if (!usbAllowedPermission)
+                	Log.i(TAG, "Message received - USB permission granted");
                 usbAllowedPermission = true;
                 mHandler.removeCallbacks(updateDataView);
 	        	mHandler.post(updateDataView);

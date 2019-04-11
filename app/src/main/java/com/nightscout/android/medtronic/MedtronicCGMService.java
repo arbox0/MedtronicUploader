@@ -226,7 +226,6 @@ public class MedtronicCGMService extends Service implements
      * Sends message to the UI to indicate that the device is connected.
      */
 	private void sendMessageConnectedToUI() {
-		Log.i("medtronicCGMService", "Connected");
 		if (!connectedSent){
 			Log.d(TAG, "Send Message Connected to UI");
 			connectedSent = true;

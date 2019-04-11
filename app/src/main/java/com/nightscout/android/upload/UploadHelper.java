@@ -116,7 +116,6 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
         if (!baseURI.endsWith("/v1/"))
             throw new Exception("REST API URL must start end with /v1/");
 
-        Integer typeSaved = null;
         try {
 
             String baseURL = null;
@@ -162,13 +161,10 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
             for (Record record : records) {
                 String postURL = baseURL;
                 if (record instanceof GlucometerRecord) {
-                    typeSaved = 0;
                     postURL += "entries";
                 } else if (record instanceof MedtronicPumpRecord) {
-                    typeSaved = 3;
                     postURL += "deviceentries";
                 } else {
-                    typeSaved = 0;
                     postURL += "entries";
                 }
                 Log.i(TAG, "postURL: " + postURL);
@@ -209,34 +205,40 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                     ResponseHandler responseHandler = new BasicResponseHandler();
                     httpclient.execute(post, responseHandler);
                 } catch (Exception e) {
-                    Log.e(TAG, "Exception uploading: ", e);
                     Log.w(TAG, "Unable to post data to: '" + post.getURI().toString() + "'", e);
                 }
             }
-            postDeviceStatus(baseURL, httpclient);
         } catch (Exception e) {
             Log.e(TAG, "Unable to post data", e);
         }
 
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private void postDeviceStatus(String baseURL, DefaultHttpClient httpclient) throws Exception {
-        String devicestatusURL = baseURL + "devicestatus";
-        Log.i(TAG, "devicestatusURL: " + devicestatusURL);
 
-        JSONObject json = new JSONObject();
-        json.put("uploaderBattery", DexcomG4Activity.batLevel);
-        String jsonString = json.toString();
+    private void postDeviceStatus(String baseURL, DefaultHttpClient httpclient) {
+        try {
 
-        HttpPost post = new HttpPost(devicestatusURL);
-        StringEntity se = new StringEntity(jsonString);
-        post.setEntity(se);
-        post.setHeader("Accept", "application/json");
-        post.setHeader("Content-type", "application/json");
+            String devicestatusURL = baseURL + "devicestatus";
 
-        ResponseHandler responseHandler = new BasicResponseHandler();
-        httpclient.execute(post, responseHandler);
+            Log.i(TAG, "devicestatusURL: " + devicestatusURL);
+
+            JSONObject json = new JSONObject();
+            json.put("uploaderBattery", DexcomG4Activity.batLevel);
+            String jsonString = json.toString();
+
+            HttpPost post = new HttpPost(devicestatusURL);
+            StringEntity se = new StringEntity(jsonString);
+            post.setEntity(se);
+            post.setHeader("Accept", "application/json");
+            post.setHeader("Content-type", "application/json");
+
+            ResponseHandler responseHandler = new BasicResponseHandler();
+            httpclient.execute(post, responseHandler);
+        } catch (Exception e) {
+            Log.w(TAG, "Could not send device status", e);
+
+        }
+
     }
 
     private void populateV1APIEntry(JSONObject json, Record oRecord) throws Exception {
