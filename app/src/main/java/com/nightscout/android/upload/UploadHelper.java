@@ -38,16 +38,12 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss aa", Locale.getDefault());
     private static final int SOCKET_TIMEOUT = 60 * 1000;
     private static final int CONNECTION_TIMEOUT = 30 * 1000;
-
-    private Context context;
-
-
-    public static Object isModifyingRecordsLock = new Object();
+    private String baseURLSettings;
 
 
     public UploadHelper(Context context) {
-        this.context = context;
-
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        baseURLSettings = prefs.getString("API Base URL", "");
     }
 
 
@@ -64,12 +60,11 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
      */
     protected Long doInBackground(Record... records) {
 
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this.context);
         try {
 
             long start = System.currentTimeMillis();
             Log.i(TAG, String.format("Starting upload of %s record using a REST API", records.length));
-            doRESTUpload(prefs, records);
+            doRESTUpload(records);
             Log.i(TAG, String.format("Finished upload of %s record using a REST API in %s ms", records.length, System.currentTimeMillis() - start));
 
         } catch (Exception e) {
@@ -86,8 +81,8 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 
     }
 
-    private void doRESTUpload(SharedPreferences prefs, Record... records) {
-        String baseURLSettings = prefs.getString("API Base URL", "");
+    private void doRESTUpload(Record... records) {
+
         ArrayList<String> baseURIs = new ArrayList<String>();
 
         try {
