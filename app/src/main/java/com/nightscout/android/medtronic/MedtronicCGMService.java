@@ -568,9 +568,7 @@ public class MedtronicCGMService extends Service implements
 					}
 	
 					listToUpload.clear();
-					if (prefs.getBoolean("EnableWifiHack", false)) {
-						doWifiHack();
-					}
+
 				} catch (Exception e) {
 					sendExceptionToUI("BufferedMessagesProcessor", e);
 				}
@@ -580,62 +578,13 @@ public class MedtronicCGMService extends Service implements
 
 	}
 
-	private void doWifiHack() {
-		Handler handler = new Handler();
-		handler.postDelayed(new Runnable() {
-			@Override
-			// Interesting case: location with lousy wifi
-			// toggle it off to use cellular
-			// toggle back on for next try
-			public void run() {
-				Status dataUp = uploader.getStatus();
-				if (dataUp == Status.RUNNING) {
-					uploader.cancel(true);
 
-					if (wifiManager.isWifiEnabled()) {
-						wifiManager.setWifiEnabled(false);
-						try {
-							Thread.sleep(2500);
-						} catch (InterruptedException e) {
-							Log.e(TAG,
-									"Sleep after setWifiEnabled(false) interrupted",
-									e);
-						}
-						wifiManager.setWifiEnabled(true);
-						try {
-							Thread.sleep(2500);
-						} catch (InterruptedException e) {
-							Log.e(TAG,
-									"Sleep after setWifiEnabled(true) interrupted",
-									e);
-						}
-					}
-				}
-
-			}
-		}, 22500);
-	}
 
 	private boolean isConnected() {
 		return mSerial != null || faking;
 	}
 
-	private boolean isOnline() {
-		ConnectivityManager connectivity = (ConnectivityManager) getBaseContext().getSystemService(Context.CONNECTIVITY_SERVICE);
-        if (connectivity != null) {
-            NetworkInfo[] info = connectivity.getAllNetworkInfo();
-            if (info != null) {
-                for (int i = 0; (i < info.length); i++) {
 
-                    if (info[i].getState() == NetworkInfo.State.CONNECTED) {
-                        return true; 
-                    }
-                }
-				Log.d(TAG, "INTERNET nothing connected of "+String.valueOf(info.length));
-            }
-        }
-        return false;
-	}
 
 	/**
      * Launches a pop up message

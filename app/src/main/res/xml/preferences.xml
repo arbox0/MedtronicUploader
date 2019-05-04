@@ -64,16 +64,6 @@
             android:dialogMessage="This only the base URL, the uploader will automatically append /entries for the POST of CGM data and /gdentries for the POST of glucometer data values">
     </EditTextPreference>
 
-    <com.nightscout.android.utils.CustomSwitchPreference
-            android:title="Wifi Hack"
-            android:key="EnableWifiHack"
-            android:disableDependentsState="false"
-            android:defaultValue="false"
-            android:summaryOn="Wifi will be disabled if there is a timeout (poor wifi signal/access point), this will allow mobile data to be used instead"
-            android:summaryOff="The uploader won't try to disable Wifi even if there is a timeout"
-            >
-    </com.nightscout.android.utils.CustomSwitchPreference>
-
     </PreferenceCategory>
      <PreferenceCategory android:title="Disclaimer">
 	    <com.nightscout.android.utils.CustomSwitchPreference

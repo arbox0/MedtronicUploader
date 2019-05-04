@@ -317,8 +317,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 				startActivity(intent);
 			}
 		}
-			this.settings = getBaseContext().getSharedPreferences(
-				MedtronicConstants.PREFS_NAME, 0);
+		this.settings = getBaseContext().getSharedPreferences(MedtronicConstants.PREFS_NAME, 0);
         PreferenceManager.getDefaultSharedPreferences(getBaseContext()).registerOnSharedPreferenceChangeListener(this);
         prefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
         String type;
