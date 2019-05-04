@@ -29,7 +29,7 @@ def gitVersionName = { ->
 }
 
 android {
-    compileSdkVersion 26
+    compileSdkVersion 23
     buildToolsVersion '28.0.3'
 
     lintOptions {
@@ -55,6 +55,6 @@ android {
 }
 
 dependencies {
-    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation 'com.github.felHR85:UsbSerial:4.5.2'
 }

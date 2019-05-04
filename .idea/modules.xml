@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/MedtronicUploader.iml" filepath="$PROJECT_DIR$/MedtronicUploader.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/MedtronicUploader.iml" filepath="$PROJECT_DIR$/.idea/MedtronicUploader.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
     </modules>
