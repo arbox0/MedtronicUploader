@@ -1,17 +1,26 @@
 package com.nightscout.android.upload;
 
 import java.io.Serializable;
+import java.util.Date;
 
 public class Record implements Serializable {
-	 public String displayTime = "---";
+
+	 private Date date;
+
+	 public void setDate(Date d)
+	 {
+	 	date = d;
+	 }
+
+	 public Date getDate()
+	 {
+	 	return date;
+	 }
 
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = -1381174446348390503L;
 	
-	public void setDisplayTime (String input) {
-    	this.displayTime = input;
-    }
 
 }

@@ -7,7 +7,6 @@ import java.text.DateFormat;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import org.slf4j.LoggerFactory;
 
 import android.app.Activity;
 import android.app.ActivityManager;
@@ -23,14 +22,18 @@ import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.graphics.Color;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
+import android.os.PowerManager;
 import android.os.RemoteException;
 import android.os.StrictMode;
 import android.preference.PreferenceManager;
+import android.provider.Settings;
 import android.text.InputType;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
@@ -39,13 +42,10 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.view.ViewGroup.LayoutParams;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.TextView.BufferType;
-import ch.qos.logback.classic.Logger;
 
 import com.nightscout.android.BuildConfig;
 import com.nightscout.android.R;
@@ -62,7 +62,6 @@ import com.bugfender.sdk.Bugfender;
 
 /* Main activity for the DexcomG4Activity program */
 public class DexcomG4Activity extends Activity implements OnSharedPreferenceChangeListener, OnEulaAgreedTo{
-	private Logger log = (Logger)LoggerFactory.getLogger(DexcomG4Activity.class.getName());
 	//CGMs supported
 	
     private static final String TAG = DexcomG4Activity.class.getSimpleName();
@@ -71,20 +70,18 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 
     private Handler mHandler = new Handler();
 
-    private int maxRetries = 20;
-    private int retryCount = 0;
+	private int retryCount = 0;
     EditText input ;
 
     private TextView mTitleTextView;
 	private TextView mSensorValue;
 
 	private TextView mDumpTextView;
-    private Button b1;
+    private Button startStopButton;
     private TextView display;
     private Menu menu = null;
     private Intent service = null;
-    private int msgsDisplayed = 0;
-    public static int batLevel = 0;
+	public static int batLevel = 0;
     BatteryReceiver mArrow;
     IBinder bService = null;
     Messenger mService = null;
@@ -98,66 +95,44 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
     final Context ctx = this;
     SharedPreferences settings = null;
     SharedPreferences prefs = null;
-    private static final boolean ISDEBUG = true;
    
     class IncomingHandler extends Handler {
         @Override
         public void handleMessage(Message msg) {
             switch (msg.what) {
             case MedtronicConstants.MSG_MEDTRONIC_CGM_MESSAGE_RECEIVED:
-            	/*if (msgsDisplayed > 8){
-            		display.setText("", BufferType.EDITABLE);
-            		msgsDisplayed = 0;
-            	}*/
             	Log.i(TAG,  msg.getData().getString("data")+"\n");
-            	if (ISDEBUG){
-	                display.append(msg.getData().getString("data")+"\n");
-	                msgsDisplayed++;
-            	}
+            	display.append(msg.getData().getString("data")+"\n");
             	mHandler.removeCallbacks(updateDataView);
 	        	mHandler.post(updateDataView);
                 break;
-            case MedtronicConstants.MSG_MEDTRONIC_CGM_CLEAR_DISPLAY:
-            	if (ISDEBUG){
-	            	display.setText("", BufferType.EDITABLE);
-	        		msgsDisplayed = 0;
-            	}
-        		break;
+
             case MedtronicConstants.MSG_MEDTRONIC_CGM_NO_PERMISSION:
+                Log.e(TAG, "Message received - no USB permission");
                 usbAllowedPermission = false;
                 mHandler.removeCallbacks(updateDataView);
 	        	mHandler.post(updateDataView);
                 break;
-            case MedtronicConstants.MSG_MEDTRONIC_GLUCMEASURE_DETECTED:
-            	showUseCalibConfirmation(msg.getData().getFloat("data"), msg.getData().getBoolean("calibrating"), msg.getData().getBoolean("isCalFactorFromPump"));
-            	break;
             case MedtronicConstants.MSG_MEDTRONIC_CGM_USB_GRANTED:
+                if (!usbAllowedPermission)
+                	Log.i(TAG, "Message received - USB permission granted");
                 usbAllowedPermission = true;
                 mHandler.removeCallbacks(updateDataView);
 	        	mHandler.post(updateDataView);
                 break;
             case MedtronicConstants.MSG_MEDTRONIC_CGM_ERROR_RECEIVED:
-            	Log.i(TAG,  msg.getData().getString("data")+"\n");
-            	if (ISDEBUG){
-	            	if (msgsDisplayed > 8){
-	            		display.setText("", BufferType.EDITABLE);
-	            		msgsDisplayed = 0;
-	            	}
-	            	String sText = display.getText().toString();
-	            	String sError = msg.getData().getString("data");
-	            	if (!(sText.indexOf(sError) >= 0)){
-	            		display.setText(display.getText()+"Medtronic CGM Message: " + sError +"\n", BufferType.EDITABLE);
-	            		msgsDisplayed++;
-	            	}
-            	}
+            	Log.e(TAG,  msg.getData().getString("data")+"\n");
+            	String sError = msg.getData().getString("data");
+            	display.setText(display.getText()+"Medtronic CGM Message: " + sError +"\n", BufferType.EDITABLE);
                 break;
             case MedtronicConstants.MSG_MEDTRONIC_CALIBRATION_DONE:
-            	Log.i(TAG,  MedtronicConstants.MSG_MEDTRONIC_CALIBRATION_DONE+"\n");
+            	Log.i(TAG,  "Calibration done message received");
+            	display.setText(display.getText() + "Calibration done\n");
             	mHandler.removeCallbacks(updateDataView);
  	        	mHandler.post(updateDataView);
                 break;
 			case MedtronicConstants.MSG_MEDTRONIC_FAKE:
-				Log.i(TAG,  MedtronicConstants.MSG_MEDTRONIC_FAKE+"\n");
+				Log.i(TAG, "Fake message sent / " + MedtronicConstants.MSG_MEDTRONIC_FAKE+"\n");
 				mHandler.removeCallbacks(updateDataView);
 				mHandler.post(updateDataView);
 				break;
@@ -167,68 +142,6 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
             }
         }
     }
-	private void showUseCalibConfirmation(final float num, final boolean calibrate, final boolean isCalFactorFromPump){
-		AlertDialog.Builder alert = new AlertDialog.Builder(ctx);
-    	alert.setTitle("Calibration Detected!!!");
-    	alert.setMessage("Do you want to use the received glucometer value for calibration?");
-
-    	alert.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-	    	public void onClick(DialogInterface dialog, int whichButton) {
-	    		if (mService != null){
-	            	 try {
-	                     Message msg = Message.obtain(null, MedtronicConstants.MSG_MEDTRONIC_GLUCMEASURE_APPROVED);
-	                     Bundle b = new Bundle();
-	                	 b.putBoolean("approved", true);
-	 					 b.putFloat("data", num);
-	 					 b.putBoolean("calibrating", calibrate);
-	 					 b.putBoolean("isCalFactorFromPump", isCalFactorFromPump);
-	 					 msg.setData(b);
-	                     msg.replyTo = mMessenger;
-	                     mService.send(msg);
-	                 } catch (RemoteException e) {
-	                	 StringBuffer sb1 = new StringBuffer("");
-	            		 sb1.append("EXCEPTION!!!!!! "+ e.getMessage()+" "+e.getCause());
-	            		 for (StackTraceElement st : e.getStackTrace()){
-	            			 sb1.append(st.toString()).append("\n");
-	            		 }
-	            		 Log.e(TAG, "Error approving gluc. value \n "+sb1.toString());
-	                	 if (ISDEBUG){
-	                		 display.setText(display.getText()+"Error approving gluc. value\n", BufferType.EDITABLE);
-	                	 }
-	                 }
-	    		}
-	    	}
-    	});
-
-    	alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-    	  public void onClick(DialogInterface dialog, int whichButton) {
-    		  if (mService != null){
-	            	 try {
-	                     Message msg = Message.obtain(null, MedtronicConstants.MSG_MEDTRONIC_GLUCMEASURE_APPROVED);
-	                     Bundle b = new Bundle();
-	 					
-	 					 b.putBoolean("approved", false);
-	 					
-	 					 msg.setData(b);
-	                     msg.replyTo = mMessenger;
-	                     mService.send(msg);
-	                 } catch (RemoteException e) {
-	                	 StringBuffer sb1 = new StringBuffer("");
-	            		 sb1.append("EXCEPTION!!!!!! "+ e.getMessage()+" "+e.getCause());
-	            		 for (StackTraceElement st : e.getStackTrace()){
-	            			 sb1.append(st.toString()).append("\n");
-	            		 }
-	            		 Log.e(TAG, "Error approving gluc. value \n "+sb1.toString());
-	                	 if (ISDEBUG){
-	                		 display.setText(display.getText()+"Error approving gluc. value\n", BufferType.EDITABLE);
-	                	 }
-	                 }
-	    		}
-    	  }
-    	});
-
-    	alert.show();
-	}
 
     private ServiceConnection mConnection = new ServiceConnection() {
         public void onServiceConnected(ComponentName className, IBinder service) {
@@ -239,16 +152,9 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
                 msg.replyTo = mMessenger;
                 mService.send(msg);
             } catch (RemoteException e) {
-            	
-            	 StringBuffer sb1 = new StringBuffer("");
-        		 sb1.append("EXCEPTION!!!!!! "+ e.getMessage()+" "+e.getCause());
-        		 for (StackTraceElement st : e.getStackTrace()){
-        			 sb1.append(st.toString()).append("\n");
-        		 }
-        		 Log.e(TAG,"Error Registering Client Service Connection\n"+sb1.toString());
-            	if (ISDEBUG){
-            		display.setText(display.getText()+"Error Registering Client Service Connection\n", BufferType.EDITABLE);
-            	}
+        		 Log.e(TAG,"Error Registering Client Service Connection\n", e);
+        		 display.setText(display.getText()+"Error Registering Client Service Connection\n", BufferType.EDITABLE);
+
                 // In this case the service has crashed before we could even do anything with it
             }
         }
@@ -258,13 +164,35 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
             mService = null;
             bService = null;
             Log.i(TAG,"Service Disconnected\n");
-            if (ISDEBUG){
-            	display.setText(display.getText()+"Service Disconnected\n", BufferType.EDITABLE);
-            }
+
+            display.setText(display.getText()+"Service Disconnected\n", BufferType.EDITABLE);
+
         }
     };
 
+	private void updateSensorDisplay() {
+		Record auxRecord = getLastRecord();
 
+		long calDate = -1;
+		if (settings.contains("lastCalibrationDate")) {
+			calDate = settings.getLong("lastCalibrationDate", -1);
+		}
+
+		if (auxRecord instanceof MedtronicSensorRecord) {
+
+			MedtronicSensorRecord record = (MedtronicSensorRecord) auxRecord;
+			displaySensor(record, calDate);
+
+		} else {
+			if (auxRecord == null || auxRecord.getDate() == null)
+				mDumpTextView.setText("\n---\n---\n---\n");
+			else
+				mDumpTextView.setText("\n" + auxRecord.getDate()
+						+ "\n---\n---\n");
+		}
+
+
+	}
 
     //All I'm really doing here is creating a simple activity to launch and maintain the service
     private Runnable updateDataView = new Runnable() {
@@ -273,7 +201,8 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
         		if (!mHandlerActive)
         			return;
 		        if (!isMyServiceRunning()) {
-		            if (retryCount < maxRetries) {
+					int maxRetries = 20;
+					if (retryCount < maxRetries) {
 		            	stopCGMServices();
 		            	startCGMServices();    		
 		                mTitleTextView.setTextColor(Color.YELLOW);
@@ -290,55 +219,13 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 		        	if (usbAllowedPermission){
 			            mTitleTextView.setTextColor(Color.GREEN);
 			            mTitleTextView.setText("CGM Service Started");
-			            b1.setText("Stop Uploading CGM Data");
-			            Record auxRecord =  DexcomG4Activity.this.loadClassFile(new File(getBaseContext().getFilesDir(), "save.bin"));
-			            long calDate = -1;
-			            try{
-			            	if (settings.contains("lastCalibrationDate")){
-			            		 calDate = settings.getLong("lastCalibrationDate", -1);
-			            	}
-			            	SharedPreferences prefs = PreferenceManager
-			        				.getDefaultSharedPreferences(getBaseContext());
-			            	
-			            	
-			            
-			            	DecimalFormat df =  null;
-			            	df = new DecimalFormat("#.##");
+			            startStopButton.setText("Stop Uploading CGM Data");
+			            updateSensorDisplay();
 
-			            	if (auxRecord instanceof MedtronicSensorRecord){
-
-								MedtronicSensorRecord record = (MedtronicSensorRecord) auxRecord;
-								displaySensor(record, calDate,df);
-
-			                }else if (auxRecord instanceof EGVRecord){
-				            	EGVRecord record = (EGVRecord)auxRecord;
-				            	if (prefs.getBoolean("mmolxl", false)){
-			            			Float fBgValue = null;
-				            		try{
-				            			fBgValue =  (float)Integer.parseInt(record.bGValue);
-				            			log.info("mmolxl true --> "+record.bGValue);
-				            				record.bGValue = df.format(fBgValue/18f);
-				            				log.info("mmolxl/18 true --> "+record.bGValue);
-				            		}catch (Exception e){
-				            			
-				            		}
-			            		}else
-			            			log.info("mmolxl false --> "+record.bGValue);
-				            	mDumpTextView.setTextColor(Color.WHITE);
-				                mDumpTextView.setText("\n" + record.displayTime + "\n" + record.bGValue + "  " + record.trendArrow + "\n");
-				            }else{
-				            	mDumpTextView.setTextColor(Color.WHITE);
-				            	if (auxRecord == null || auxRecord.displayTime == null)
-				            		mDumpTextView.setText("\n---\n---\n---\n");
-				            	else
-				            		mDumpTextView.setText("\n" + auxRecord.displayTime + "\n---\n---\n");
-				            }	
-			            }catch (Exception e){
-			            	e.printStackTrace();
-			            }
 			            	            
 		        	}else{
-		        		b1.setText("Start Uploading CGM Data");
+
+						startStopButton.setText("Start Uploading CGM Data");
 		                mTitleTextView.setTextColor(Color.RED);
 		                mTitleTextView.setText("CGM Service Stopped");
 		        	}
@@ -353,20 +240,19 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	};
 
 
-		private void displaySensor(MedtronicSensorRecord record, long calDate, DecimalFormat df) {
+		private void displaySensor(MedtronicSensorRecord record, long calDate) {
 			DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
-			if (prefs.getBoolean("mmolxl", false)) {
-				Float fBgValue = null;
-				try {
-					fBgValue = (float) Integer.parseInt(record.bGValue);
-					log.info("mmolxl true --> " + record.bGValue);
-					record.bGValue = df.format(fBgValue / 18f);
-					log.info("mmolxl/18 true --> " + record.bGValue);
-				} catch (Exception e) {
+			float value = record.getBGValue();
+			Date recordTime = record.getDate();
+			String displayDate = "<no record>";
+			String displayDiff = "<no record>";
+			if (recordTime != null) {
+				displayDate = dateFormat.format(recordTime);
+				displayDiff = "" + ((System.currentTimeMillis() - record.getDate().getTime()) / 60000) + " mins ago\n";
+			}
+			if (prefs.getBoolean("mmolxl", false))
+				value = value / 18f;
 
-				}
-			} else
-				log.info("mmolxl false --> " + record.bGValue);
 			boolean isCalibrating = record.isCalibrating;
 			String calib = "---";
 			if (isCalibrating) {
@@ -386,24 +272,14 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 			}
 			calib += "" + lastCal + tail;
 			calib += "\nat: " + dateFormat.format(new Date(calDate)) + "\n";
-			if (prefs.getBoolean("isWarmingUp", false)) {
-				calib = "";
-				record.bGValue = "W_Up";
-				record.trendArrow = "---";
-			}
-
-			mDumpTextView.setTextColor(Color.WHITE);
-			mSensorValue.setTextColor(Color.WHITE);
-			if (record.displayDateTime == 0) {
-				mDumpTextView.setText("\n" + record.displayTime + "\n" + calib + "\n");
-				mSensorValue.setText(record.bGValue + "  " + record.trendArrow + "\n");
-			} else {
-				mDumpTextView.setText("Last record received:\n"  + (System.currentTimeMillis() - record.displayDateTime) / 60000 + " min. ago\nat: " + dateFormat.format(new Date(record.displayDateTime)) + "\n"+
-						calib + "\n");
-				mSensorValue.setText(record.bGValue + "  " + record.trendArrow + "\n");
 
 
-			}
+			mDumpTextView.setText("Last record received: " + displayDiff + "\nat: " + displayDate + "\n"+
+						calib);
+			mSensorValue.setText(value + " " + record.trendArrow);
+
+
+
 		}
 
 	private class  BatteryReceiver extends BroadcastReceiver {
@@ -431,8 +307,17 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	 	StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
 		StrictMode.setThreadPolicy(policy);
 
-		this.settings = getBaseContext().getSharedPreferences(
-				MedtronicConstants.PREFS_NAME, 0);
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+			Intent intent = new Intent();
+			String packageName = getPackageName();
+			PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+			if (!pm.isIgnoringBatteryOptimizations(packageName)) {
+				intent.setAction(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+				intent.setData(Uri.parse("package:" + packageName));
+				startActivity(intent);
+			}
+		}
+		this.settings = getBaseContext().getSharedPreferences(MedtronicConstants.PREFS_NAME, 0);
         PreferenceManager.getDefaultSharedPreferences(getBaseContext()).registerOnSharedPreferenceChangeListener(this);
         prefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
         String type;
@@ -455,14 +340,11 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
         registerReceiver(mArrow,mIntentFilter);
         setContentView(R.layout.adb);
         manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-        mTitleTextView = (TextView) findViewById(R.id.demoTitle);
-        mDumpTextView = (TextView) findViewById(R.id.demoText);
+        mTitleTextView = (TextView) findViewById(R.id.status);
+        mDumpTextView = (TextView) findViewById(R.id.sensorDetail);
 		mSensorValue = (TextView) findViewById(R.id.sensorValue);
-        LinearLayout lnr = (LinearLayout) findViewById(R.id.container);
-        LinearLayout lnr2 = new LinearLayout(this);
-        LinearLayout lnr3 = new LinearLayout(this);
-        lnr3.setOrientation(LinearLayout.HORIZONTAL);
-        b1 = new Button(this);
+
+       	startStopButton = (Button) findViewById(R.id.buttonStartStop);
         
         if (!prefs.getBoolean("IUNDERSTAND", false)){
 			 stopCGMServices();
@@ -478,26 +360,18 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
         mTitleTextView.setTextColor(Color.YELLOW);
         mTitleTextView.setText("CGM Service Pending");
 
-        b1.setText("Stop Uploading CGM Data");
-        lnr.addView(b1);
 
-		lnr2.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
-        lnr3.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
-        Button b2 = new Button(this);
-        b2.setText("Clear Log");
-        b2.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT,1.0f));
+        startStopButton.setText("Stop Uploading CGM Data");
 
-		Button b3 = new Button(this);
-		b3.setText("Send test data");
+        Button clearButton = (Button) findViewById(R.id.buttonClear);
 
-		if (BuildConfig.DEBUG) {
-			lnr.addView(b3);
+		Button testButton =  (Button) findViewById(R.id.buttonTest);
+
+        if (!BuildConfig.DEBUG) {
+			testButton.setVisibility(View.GONE);
 		}
-       // b4 = new Button(this);
-       // b4.setText("Calibrate");
-       // b4.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT,1.0f));
-        //lnr3.addView(b4);
-        if (menu != null){
+
+		if (menu != null){
 	        if (calibrationSelected == MedtronicConstants.CALIBRATION_MANUAL){
 	        	menu.getItem(1).setVisible(true);
 	        	menu.getItem(2).setVisible(false);
@@ -506,34 +380,24 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	        	menu.getItem(2).setVisible(true);
 	        }
         }
-        if (ISDEBUG){
-        	lnr3.addView(b2);
-        }
-        lnr.addView(lnr3);
-        lnr.addView(lnr2);
-        display = new TextView(this);
-        if (ISDEBUG){
-	        display.setText("", BufferType.EDITABLE);
-	        display.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
-	        display.setKeyListener(null);
-	        display.setBackgroundColor(Color.BLACK);
-	        display.setTextColor(Color.WHITE);
-	        display.setMovementMethod(new ScrollingMovementMethod());
-	        display.setMaxLines(10);
-	        
-	        lnr2.addView(display);
-        }
-        b2.setOnClickListener(new OnClickListener() {
+
+
+        display = (TextView) findViewById(R.id.logView);
+        display.setText("", BufferType.EDITABLE);
+        display.setKeyListener(null);
+		display.setMovementMethod(new ScrollingMovementMethod());
+        display.setMaxLines(10);
+
+        clearButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
             	display.setText("", BufferType.EDITABLE);
             	display.setKeyListener(null);
-            	msgsDisplayed = 0;
-            }
+			}
         });
 
 
-		b3.setOnClickListener(new OnClickListener() {
+		testButton.setOnClickListener(new OnClickListener() {
 			@Override
 			public void onClick(View v) {
 				try {
@@ -543,22 +407,21 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 					mService.send(msg);
 				}
 				catch (RemoteException re) {
-
-
+					Log.e(TAG, "Remote exception sending fake message");
 				}
 			}
 		});
 
-        b1.setOnClickListener(new OnClickListener() {
+        startStopButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
             	synchronized (mHandlerActiveLock) {
-            		 if (b1.getText() == "Stop Uploading CGM Data") {
+            		 if (startStopButton.getText() == "Stop Uploading CGM Data") {
                      	mHandlerActive = false;
                          mHandler.removeCallbacks(updateDataView);
                          keepServiceAlive = false;
                          stopCGMServices();
-                         b1.setText("Start Uploading CGM Data");
+                         startStopButton.setText("Start Uploading CGM Data");
                          mTitleTextView.setTextColor(Color.RED);
                          mTitleTextView.setText("CGM Service Stopped");
                          finish();
@@ -580,7 +443,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
                                  }
                          	 }
                          mHandlerActive = true;
-                         b1.setText("Stop Uploading CGM Data");
+                         startStopButton.setText("Stop Uploading CGM Data");
                      }
 				}
            
@@ -593,62 +456,22 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 
     @Override
     protected void onPause() {
-    	log.info("ON PAUSE!");
+    	Log.i(TAG,"ON PAUSE!");
         super.onPause();
 
     }
 
+    private Record getLastRecord()
+	{
+		return DexcomG4Activity.this.loadClassFile(new File(getBaseContext().getFilesDir(), "save.bin"));
+	}
+
 	@Override
 	protected void onResume() {
-		log.info("ON RESUME!");
+		Log.i(TAG, "ON RESUME!");
 		super.onResume();
 		// Refresh the status
-		try {
-			Record auxRecord = DexcomG4Activity.this.loadClassFile(new File(
-					getBaseContext().getFilesDir(), "save.bin"));
-			long calDate = -1;
-			if (settings.contains("lastCalibrationDate")) {
-				calDate = settings.getLong("lastCalibrationDate", -1);
-			}
-			SharedPreferences prefs = PreferenceManager
-					.getDefaultSharedPreferences(getBaseContext());
-
-			DecimalFormat df = new DecimalFormat("#.##");
-
-			if (auxRecord instanceof MedtronicSensorRecord) {
-
-				MedtronicSensorRecord record = (MedtronicSensorRecord) auxRecord;
-				displaySensor(record, calDate,df);
-
-			} else if (auxRecord instanceof EGVRecord) {
-				EGVRecord record = (EGVRecord) auxRecord;
-				if (prefs.getBoolean("mmolxl", false)){
-        			Float fBgValue = null;
-            		try{
-            			fBgValue =  (float)Integer.parseInt(record.bGValue);
-            			log.info("mmolxl true --> "+record.bGValue);
-            				record.bGValue = df.format(fBgValue/18f);
-            				log.info("mmolxl/18 true --> "+record.bGValue);
-            		}catch (Exception e){
-            			
-            		}
-        		}else
-        			log.info("mmolxl false --> "+record.bGValue);
-				mDumpTextView.setTextColor(Color.WHITE);
-				mDumpTextView.setText("\n" + record.displayTime + "\n"
-						+ record.bGValue + "  " + record.trendArrow + "\n");
-			} else {
-				mDumpTextView.setTextColor(Color.WHITE);
-				if (auxRecord == null || auxRecord.displayTime == null)
-					mDumpTextView.setText("\n---\n---\n---\n");
-				else
-					mDumpTextView.setText("\n" + auxRecord.displayTime
-							+ "\n---\n---\n");
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-
+		updateSensorDisplay();
 	}
 
     //Check to see if service is running
@@ -663,20 +486,13 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 
     //Deserialize the EGVRecord (most recent) value
     public Record loadClassFile(File f) {
-    	 ObjectInputStream ois = null;
-        try {
-            ois = new ObjectInputStream(new FileInputStream(f));
+    	try {
+			ObjectInputStream ois = new ObjectInputStream(new FileInputStream(f));
             Object o = ois.readObject();
             ois.close();
             return (Record) o;
         } catch (Exception ex) {
             Log.w(TAG, " unable to loadEGVRecord");
-            try{
-	            if (ois != null)
-	            	ois.close();
-            }catch(Exception e){
-            	Log.e(TAG, " Error closing ObjectInputStream");
-            }
         }
         return new Record();
     }
@@ -687,8 +503,6 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
         this.menu = menu;
         inflater.inflate(R.menu.menu, menu);
 
-		SharedPreferences prefs = PreferenceManager
-				.getDefaultSharedPreferences(getBaseContext());
 		if (prefs.contains("calibrationType")) {
 			String type = prefs.getString("calibrationType", "3");
 			if ("3".equalsIgnoreCase(type))
@@ -720,54 +534,50 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
                 break;
 
             case R.id.calibMan:{
-            	
-            	log.debug("Manual Calibration");
+
+            	Log.d(TAG, "Manual Calibration");
             	AlertDialog.Builder alert = new AlertDialog.Builder(ctx);
 	        	alert.setTitle("Manual Calibration");
 	        	alert.setMessage("Insert your glucose value in mg/dl (only natural numbers)");
-	    
-	        	if (prefs.getBoolean("mmolxl", false)){
+
+	        	boolean mmolxl = prefs.getBoolean("mmolxl", false);
+
+	        	if (mmolxl){
 	        		alert.setMessage("Insert your glucose value in mmol/l (only 2 decimals)");
-	        		log.debug("mmol/l");
+	        		Log.d(TAG,"mmol/l");
 	        	}
-	        		
 	        		
 	        	// Set an EditText view to get user input 
 	        	input = new EditText(ctx);
 	        	input.setInputType(InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);
 	        	alert.setView(input);
-	
-	        	alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
-	        	public void onClick(DialogInterface dialog, int whichButton) {
-	        	  String value = input.getText().toString();
-	        	  log.debug("Manual Calibration send "+value);
-	        	  if (mService == null && bService != null) {
-             		 mService = new Messenger(bService);
-             	 }
-	        	  if (mService != null){
-		            	 try {
-		                     Message msg = Message.obtain(null, MedtronicConstants.MSG_MEDTRONIC_SEND_MANUAL_CALIB_VALUE);
-		                     Bundle b = new Bundle();
-		 					 b.putString("sgv", value);
-		 					 prefs.edit().putString("manual_sgv", value).commit();
-		 					 msg.setData(b);
-		                     msg.replyTo = mMessenger;
-		                     mService.send(msg);
-		                 } catch (RemoteException e) {
-		                	 StringBuffer sb1 = new StringBuffer("");
-		            		 sb1.append("EXCEPTION!!!!!! "+ e.getMessage()+" "+e.getCause());
-		            		 for (StackTraceElement st : e.getStackTrace()){
-		            			 sb1.append(st.toString()).append("\n");
-		            		 }
-		            		 Log.e(TAG, "Error sending Manual Calibration\n "+sb1.toString());
-		                	 if (ISDEBUG){
-		                		 display.setText(display.getText()+"Error sending Manual Calibration\n", BufferType.EDITABLE);
-		                	 }
-		                     // In this case the service has crashed before we could even do anything with it
-		                 }
-	            	}
-	        	  }
-	        	});
+
+                alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int whichButton) {
+                        String value = input.getText().toString();
+                        boolean mmolxl = prefs.getBoolean("mmolxl", false);
+                        float v = Float.parseFloat(value);
+                        Log.d(TAG, "Manual Calibration send "+value);
+                        if (mService == null && bService != null) {
+                            mService = new Messenger(bService);
+                        }
+                        try {
+                            Message msg = Message.obtain(null, MedtronicConstants.MSG_MEDTRONIC_SEND_MANUAL_CALIB_VALUE);
+                            Bundle b = new Bundle();
+                            b.putInt("sgv", (int) (mmolxl ? v * 18 : v));
+                            prefs.edit().putString("manual_sgv", value).apply();
+                            msg.setData(b);
+                            msg.replyTo = mMessenger;
+                            mService.send(msg);
+                        } catch (RemoteException e) {
+                            Log.e(TAG, "Error sending Manual Calibration\n ", e);
+                            display.setText(display.getText()+"Error sending Manual Calibration\n", BufferType.EDITABLE);
+
+                            // In this case the service has crashed before we could even do anything with it
+                        }
+
+                    }
+                });
 	
 	        	alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
 	        	  public void onClick(DialogInterface dialog, int whichButton) {
@@ -779,16 +589,15 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
             }
             	break;
             case R.id.instantCalib:{
-            	log.debug("Instant Calibration ");
+            	Log.d(TAG, "Instant Calibration ");
             	AlertDialog.Builder alert2 = new AlertDialog.Builder(ctx);
             	
 	        	alert2.setTitle("Instant Calibration");
 	        	alert2.setMessage("Insert pump value in mg/dl (only natural numbers)");
-	        	prefs = PreferenceManager
-        				.getDefaultSharedPreferences(getBaseContext());
+
 	        	if (prefs.getBoolean("mmolxl", false)){
 	        		alert2.setMessage("Insert pump value in mmol/l (only 2 decimals)");
-	        		log.debug("Instant Calibration mmol/l");
+	        		Log.d(TAG, "Instant Calibration mmol/l");
 	        	}
 	        	// Set an EditText view to get user input 
 	        	input = new EditText(ctx);
@@ -808,27 +617,21 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	        	alert2.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
 	        	public void onClick(DialogInterface dialog, int whichButton) {
 	        	  String value = input.getText().toString();
-	        	  log.debug("Instant Calibration send "+value);
+	        	  boolean mmolxl = prefs.getBoolean("mmolxl", false);
+	        	  float v = Float.parseFloat(value);
+	        	  Log.d(TAG, "Instant Calibration send "+value);
 	        	  if (mService != null){
 		            	 try {
 		                     Message msg = Message.obtain(null, MedtronicConstants.MSG_MEDTRONIC_SEND_INSTANT_CALIB_VALUE);
 		                     Bundle b = new Bundle();
-		 					 b.putString("sgv", value);
-		 					 prefs.edit().putString("instant_sgv", value).commit();
+                             b.putInt("sgv", (int) (mmolxl ? v * 18 : v));
+		 					 prefs.edit().putString("instant_sgv", value).apply();
 		 					 msg.setData(b);
 		                     msg.replyTo = mMessenger;
 		                     mService.send(msg);
 		                 } catch (RemoteException e) {
-		                	 StringBuffer sb1 = new StringBuffer("");
-		            		 sb1.append("EXCEPTION!!!!!! "+ e.getMessage()+" "+e.getCause());
-		            		 for (StackTraceElement st : e.getStackTrace()){
-		            			 sb1.append(st.toString()).append("\n");
-		            		 }
-		            		 Log.e(TAG, "Error sending Instant Calibration\n "+sb1.toString());
-		                	 if (ISDEBUG){
-		                		 display.setText(display.getText()+"Error sending Instant Calibration\n", BufferType.EDITABLE);
-		                	 }
-		           
+		            		 Log.e(TAG, "Error sending Instant Calibration\n ", e);
+		                	 display.setText(display.getText()+"Error sending Instant Calibration\n", BufferType.EDITABLE);
 		                 }
 	            	}
 	        	  }
@@ -874,7 +677,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
     @Override
     protected void onDestroy() {
     	Log.i(TAG, "onDestroy called");
-    	log.info("onDestroy called");
+
     	PreferenceManager.getDefaultSharedPreferences(getBaseContext()).unregisterOnSharedPreferenceChangeListener(this);
     	unregisterReceiver(mArrow);
         synchronized (mHandlerActiveLock) {
@@ -886,10 +689,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 	            startService(service);
         	}
 			mHandlerActive = false;
-			SharedPreferences.Editor editor = getBaseContext().getSharedPreferences(MedtronicConstants.PREFS_NAME, 0).edit();
-			editor.putLong("lastDestroy", System.currentTimeMillis());
-			editor.commit();
-        	super.onDestroy();
+			super.onDestroy();
 		}
     }
 
@@ -957,7 +757,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 					mHandler.removeCallbacks(updateDataView);
 					mHandlerActive = false;
 				}
-				b1.setText("Start Uploading CGM Data");
+				startStopButton.setText("Start Uploading CGM Data");
 				mTitleTextView.setTextColor(Color.RED);
 				mTitleTextView.setText("CGM Service Stopped");
 				stopCGMServices();
@@ -974,7 +774,7 @@ public class DexcomG4Activity extends Activity implements OnSharedPreferenceChan
 						mHandler.removeCallbacks(updateDataView);
 						mHandlerActive = false;
 					}
-					b1.setText("Start Uploading CGM Data");
+					startStopButton.setText("Start Uploading CGM Data");
 					mTitleTextView.setTextColor(Color.RED);
 					mTitleTextView.setText("CGM Service Stopped");
 					stopCGMServices();

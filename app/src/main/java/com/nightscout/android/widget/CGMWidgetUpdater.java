@@ -19,15 +19,13 @@ import android.widget.RemoteViews;
 
 import com.nightscout.android.R;
 import com.nightscout.android.dexcom.DexcomG4Activity;
-import com.nightscout.android.dexcom.EGVRecord;
 import com.nightscout.android.medtronic.MedtronicConstants;
 import com.nightscout.android.upload.MedtronicSensorRecord;
 import com.nightscout.android.upload.Record;
 
 public class CGMWidgetUpdater extends Service{
-	
-	public static int UPDATE_FREQUENCY_SEC = 10;
-	@Override  
+
+    @Override
     public void onCreate()  
     {  
         super.onCreate();  
@@ -76,17 +74,13 @@ public class CGMWidgetUpdater extends Service{
 	    		calib = MedtronicConstants.getWidgetCalAppend(record.calibrationStatus);
 	    	if (prefs.getBoolean("isWarmingUp",false)){
 	    		calib = "";
-	    		record.bGValue = "W._Up";
+	    		record.setBGValue(0);
 	    		record.trendArrow="---";
 	    	}
-	    	views.setTextViewText(R.id.sgv_id, record.bGValue+calib);
+	    	views.setTextViewText(R.id.sgv_id, record.getBGValue()+calib);
 	    	views.setTextViewText(R.id.arrow_id, record.trendArrow);
         	
-        }else if (auxRecord instanceof EGVRecord){
-        	EGVRecord record = (EGVRecord)auxRecord;
-        	views.setTextViewText(R.id.sgv_id, record.bGValue);
-	    	views.setTextViewText(R.id.arrow_id, record.trendArrow);
-        }else{
+        } else{
         	views.setTextViewText(R.id.sgv_id, "---");
 	    	views.setTextViewText(R.id.arrow_id, "---");
         }	            

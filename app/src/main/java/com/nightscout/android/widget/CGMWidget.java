@@ -16,7 +16,6 @@ import android.widget.RemoteViews;
 
 import com.nightscout.android.R;
 import com.nightscout.android.dexcom.DexcomG4Activity;
-import com.nightscout.android.dexcom.EGVRecord;
 import com.nightscout.android.medtronic.MedtronicConstants;
 import com.nightscout.android.upload.MedtronicSensorRecord;
 import com.nightscout.android.upload.Record;
@@ -47,14 +46,10 @@ public class CGMWidget extends AppWidgetProvider {
 	    	    		calib = "*";
 	    	    	else
 	    	    		calib = MedtronicConstants.getWidgetCalAppend(record.calibrationStatus);
-	    	    	views.setTextViewText(R.id.sgv_id, record.bGValue+calib);
+	    	    	views.setTextViewText(R.id.sgv_id, record.getBGValue()+calib);
 	    	    	views.setTextViewText(R.id.arrow_id, record.trendArrow);
 	            	
-	            }else if (auxRecord instanceof EGVRecord){
-	            	EGVRecord record = (EGVRecord)auxRecord;
-	            	views.setTextViewText(R.id.sgv_id, record.bGValue);
-	    	    	views.setTextViewText(R.id.arrow_id, record.trendArrow);
-	            }else{
+	            } else{
 	            	views.setTextViewText(R.id.sgv_id, "---");
 	    	    	views.setTextViewText(R.id.arrow_id, "---");
 	            }	            
@@ -75,7 +70,7 @@ public class CGMWidget extends AppWidgetProvider {
 	                service = PendingIntent.getService(context, 0, in, PendingIntent.FLAG_CANCEL_CURRENT);  
 	            }  
 	      
-	            m.setRepeating(AlarmManager.RTC, TIME.getTime().getTime(), 1000 * 30, service);  
+	            m.setRepeating(AlarmManager.RTC, TIME.getTime().getTime(), 1000 * 60, service);
 	        }
 	    }
 	 @Override  

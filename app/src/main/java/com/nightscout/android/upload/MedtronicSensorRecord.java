@@ -14,8 +14,7 @@ public class MedtronicSensorRecord extends EGVRecord {
     public int calibrationStatus = MedtronicConstants.WITHOUT_ANY_CALIBRATION;
     public float unfilteredGlucose = 0;
     public boolean isCalibrating = false;
-    public long displayDateTime = 0;
-	
+
 	
     public void setIsig(float isig) {
 		this.isig = isig;
@@ -29,7 +28,5 @@ public class MedtronicSensorRecord extends EGVRecord {
 	public void setUnfilteredGlucose(float unfilteredGlucose) {
 		this.unfilteredGlucose = unfilteredGlucose;
 	}
-	public long getDisplayDateTime() {
-		return displayDateTime;
-	}
+
 }

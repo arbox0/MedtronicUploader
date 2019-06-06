@@ -1,82 +1,44 @@
 package com.nightscout.android.upload;
 
-import java.security.MessageDigest;
-
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Locale;
-
-import org.apache.http.client.ResponseHandler;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.BasicResponseHandler;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.params.BasicHttpParams;
-import org.apache.http.params.HttpConnectionParams;
-import org.apache.http.params.HttpParams;
-import org.json.JSONArray;
-import org.json.JSONObject;
-
-import org.slf4j.LoggerFactory;
-
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.preference.PreferenceManager;
 import android.util.Log;
 
-import ch.qos.logback.classic.Logger;
-
 import com.nightscout.android.dexcom.DexcomG4Activity;
 import com.nightscout.android.dexcom.EGVRecord;
-import com.nightscout.android.medtronic.MedtronicConstants;
-import com.nightscout.android.medtronic.MedtronicReader;
+
+import org.json.JSONObject;
+
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.net.HttpURLConnection;
+import java.net.ProtocolException;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Locale;
 
 public class UploadHelper extends AsyncTask<Record, Integer, Long> {
 
-    private Logger log = (Logger) LoggerFactory.getLogger(MedtronicReader.class.getName());
+
     private static final String TAG = "UploadHelper";
-    private SharedPreferences settings = null;// common application preferences
-    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("MM/dd/yyyy hh:mm:ss aa", Locale.getDefault());
-    private static final int SOCKET_TIMEOUT = 60 * 1000;
+    private SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss aa", Locale.getDefault());
+    private static final int READ_TIMEOUT = 30 * 1000;
     private static final int CONNECTION_TIMEOUT = 30 * 1000;
-
-    Context context;
-
-    private List<JSONObject> recordsNotUploadedListJson = new ArrayList<JSONObject>();
-
-    public static Object isModifyingRecordsLock = new Object();
+    private String baseURLSettings;
 
 
     public UploadHelper(Context context) {
-        this.context = context;
-        settings = context.getSharedPreferences(MedtronicConstants.PREFS_NAME, 0);
-        synchronized (isModifyingRecordsLock) {
-            try {
-                long currentTime = System.currentTimeMillis();
-                long diff = currentTime - settings.getLong("lastDestroy", 0);
-                if (diff != currentTime && diff > (6 * MedtronicConstants.TIME_60_MIN_IN_MS)) {
-                    Log.d(TAG, "Remove older records");
-                    recordsNotUploadedListJson = new ArrayList<JSONObject>();
-                }
-                else {
-                    JSONArray recordsNotUploadedJson = new JSONArray(settings.getString("recordsNotUploadedJson", "[]"));
-                    for (int i = 0; i < recordsNotUploadedJson.length(); i++) {
-                        recordsNotUploadedListJson.add(recordsNotUploadedJson.getJSONObject(i));
-                    }
-                    Log.d(TAG, "retrieved older json records -->" + recordsNotUploadedJson.length());
-                }
-            } catch (Exception e) {
-                recordsNotUploadedListJson = new ArrayList<JSONObject>();
-            }
-
-            SharedPreferences.Editor editor = settings.edit();
-            if (settings.contains("recordsNotUploadedJson"))
-                editor.remove("recordsNotUploadedJson");
-            editor.commit();
-        }
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        baseURLSettings = prefs.getString("API Base URL", "");
     }
 
 
@@ -93,20 +55,16 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
      */
     protected Long doInBackground(Record... records) {
 
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this.context);
         try {
 
             long start = System.currentTimeMillis();
             Log.i(TAG, String.format("Starting upload of %s record using a REST API", records.length));
-            log.info(String.format("Starting upload of %s record using a REST API", records.length));
-            doRESTUpload(prefs, records);
+            doRESTUpload(records);
             Log.i(TAG, String.format("Finished upload of %s record using a REST API in %s ms", records.length, System.currentTimeMillis() - start));
-            log.info(String.format("Finished upload of %s record using a REST API in %s ms", records.length, System.currentTimeMillis() - start));
 
         } catch (Exception e) {
-            log.error("ERROR uploading data!!!!!", e);
+            Log.e(TAG, "ERROR uploading data!!!!!", e);
         }
-
 
         return 1L;
     }
@@ -114,13 +72,11 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
     protected void onPostExecute(Long result) {
         super.onPostExecute(result);
         Log.i(TAG, "Post execute, Result: " + result + ", Status: FINISHED");
-        log.info("Post execute, Result: " + result + ", Status: FINISHED");
-
     }
 
-    private void doRESTUpload(SharedPreferences prefs, Record... records) {
-        String baseURLSettings = prefs.getString("API Base URL", "");
-        ArrayList<String> baseURIs = new ArrayList<String>();
+    private void doRESTUpload(Record... records) {
+
+        ArrayList<String> baseURIs = new ArrayList<>();
 
         try {
             for (String baseURLSetting : baseURLSettings.split(" ")) {
@@ -130,7 +86,6 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
             }
         } catch (Exception e) {
             Log.e(TAG, "Unable to process API Base URL setting: " + baseURLSettings, e);
-            log.error("Unable to process API Base URL setting: " + baseURLSettings, e);
             return;
         }
 
@@ -139,18 +94,16 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
                 doRESTUploadTo(baseURI, records);
             } catch (Exception e) {
                 Log.e(TAG, "Unable to do REST API Upload to: " + baseURI, e);
-                log.error("Unable to do REST API Upload to: " + baseURI, e);
             }
         }
     }
 
 
     private void doRESTUploadTo(String baseURI, Record[] records) throws Exception {
-        int apiVersion = 1;
+
         if (!baseURI.endsWith("/v1/"))
             throw new Exception("REST API URL must start end with /v1/");
 
-        Integer typeSaved = null;
         try {
 
             String baseURL = null;
@@ -158,6 +111,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
             String[] uriParts = baseURI.split("@");
             String error = null;
 
+            //noinspection IfCanBeSwitch
             if (uriParts.length == 1) {
                 error = "Passphrase is required in REST API URL";
             } else if (uriParts.length == 2) {
@@ -180,194 +134,196 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
             }
 
             if (error != null) {
-                JSONArray jsonArray = new JSONArray(recordsNotUploadedListJson);
-                SharedPreferences.Editor editor = settings.edit();
-                editor.putString("recordsNotUploadedJson", jsonArray.toString());
-                editor.commit();
                 throw new Exception(error);
             }
 
-            HttpParams params = new BasicHttpParams();
-            HttpConnectionParams.setSoTimeout(params, SOCKET_TIMEOUT);
-            HttpConnectionParams.setConnectionTimeout(params, CONNECTION_TIMEOUT);
-
-            DefaultHttpClient httpclient = new DefaultHttpClient(params);
-
-            postDeviceStatus(baseURL, httpclient);
-
-            if (recordsNotUploadedListJson.size() > 0) {
-                List<JSONObject> auxList = new ArrayList<JSONObject>(recordsNotUploadedListJson);
-                recordsNotUploadedListJson.clear();
-                for (int i = 0; i < auxList.size(); i++) {
-                    JSONObject json = auxList.get(i);
-                    String postURL = baseURL;
-                    postURL += "entries";
-                    Log.i(TAG, "postURL: " + postURL);
-
-                    HttpPost post = new HttpPost(postURL);
-
-
-                    MessageDigest digest = MessageDigest.getInstance("SHA-1");
-                    byte[] bytes = secret.getBytes("UTF-8");
-                    digest.update(bytes, 0, bytes.length);
-                    bytes = digest.digest();
-                    StringBuilder sb = new StringBuilder(bytes.length * 2);
-                    for (byte b : bytes) {
-                        sb.append(String.format("%02x", b & 0xff));
-                    }
-                    String token = sb.toString();
-                    post.setHeader("api-secret", token);
-
-
-                    String jsonString = json.toString();
-
-                    Log.i(TAG, "JSON to upload " + jsonString);
-
-                    try {
-                        StringEntity se = new StringEntity(jsonString);
-                        post.setEntity(se);
-                        post.setHeader("Accept", "application/json");
-                        post.setHeader("Content-type", "application/json");
-
-                        ResponseHandler responseHandler = new BasicResponseHandler();
-                        httpclient.execute(post, responseHandler);
-                    } catch (Exception e) {
-                        Log.w(TAG, "Unable to post data to: '" + post.getURI().toString() + "'", e);
-                    }
-                }
-            }
+            postDeviceStatus(baseURL);
 
             for (Record record : records) {
-                String postURL = baseURL;
-                if (record instanceof GlucometerRecord) {
-                    typeSaved = 0;
-                    postURL += "entries";
-                } else if (record instanceof MedtronicPumpRecord) {
-                    typeSaved = 3;
-                    postURL += "deviceentries";
-                } else {
-                    typeSaved = 0;
-                    postURL += "entries";
-                }
-                Log.i(TAG, "postURL: " + postURL);
-                log.info("postURL: " + postURL);
 
-                HttpPost post = new HttpPost(postURL);
-
-                MessageDigest digest = MessageDigest.getInstance("SHA-1");
-                byte[] bytes = secret.getBytes("UTF-8");
-                digest.update(bytes, 0, bytes.length);
-                bytes = digest.digest();
-                StringBuilder sb = new StringBuilder(bytes.length * 2);
-                for (byte b : bytes) {
-                    sb.append(String.format("%02x", b & 0xff));
-                }
-                String token = sb.toString();
-                post.setHeader("api-secret", token);
-
-                JSONObject json = new JSONObject();
-
-                try {
-                    populateV1APIEntry(json, record);
-
-                } catch (Exception e) {
-                    Log.w(TAG, "Unable to populate entry, apiVersion: " + apiVersion, e);
-                    continue;
-                }
-
-                String jsonString = json.toString();
-
-                Log.i(TAG, "DEXCOM JSON: " + jsonString);
-
-                try {
-                    StringEntity se = new StringEntity(jsonString);
-                    post.setEntity(se);
-                    post.setHeader("Accept", "application/json");
-                    post.setHeader("Content-type", "application/json");
-
-                    ResponseHandler responseHandler = new BasicResponseHandler();
-                    httpclient.execute(post, responseHandler);
-                } catch (Exception e) {
-                    Log.e(TAG, "Exception uploading: ", e);
-                    if (typeSaved == 0) {//Only EGV records are important enough.
-                        if (recordsNotUploadedListJson.size() > 49) {
-                            recordsNotUploadedListJson.remove(0);
-                            recordsNotUploadedListJson.add(49, json);
-                        } else {
-                            recordsNotUploadedListJson.add(json);
-                        }
-                    }
-                    Log.w(TAG, "Unable to post data to: '" + post.getURI().toString() + "'", e);
-                }
+                String postURL = determineUrlForRecord(baseURL, record);
+                postRecord(postURL, secret, record);
             }
-            postDeviceStatus(baseURL, httpclient);
         } catch (Exception e) {
             Log.e(TAG, "Unable to post data", e);
         }
-        if (recordsNotUploadedListJson.size() > 0) {
-            synchronized (isModifyingRecordsLock) {
-                try {
-                    JSONArray recordsNotUploadedJson = new JSONArray(settings.getString("recordsNotUploadedJson", "[]"));
-                    if (recordsNotUploadedJson.length() > 0 && recordsNotUploadedJson.length() < recordsNotUploadedListJson.size()) {
-                        for (int i = 0; i < recordsNotUploadedJson.length(); i++) {
-                            if (recordsNotUploadedListJson.size() > 49) {
-                                recordsNotUploadedListJson.remove(0);
-                                recordsNotUploadedListJson.add(49, recordsNotUploadedJson.getJSONObject(i));
-                            } else {
-                                recordsNotUploadedListJson.add(recordsNotUploadedJson.getJSONObject(i));
-                            }
-                        }
-                    } else {
-                        for (int i = 0; i < recordsNotUploadedListJson.size(); i++) {
-                            recordsNotUploadedJson.put(recordsNotUploadedListJson.get(i));
-                        }
-                        int start = 0;
-                        if (recordsNotUploadedJson.length() > 50) {
-                            start = recordsNotUploadedJson.length() - 51;
-                        }
-                        recordsNotUploadedListJson.clear();
-                        for (int i = start; i < recordsNotUploadedJson.length(); i++) {
-                            recordsNotUploadedListJson.add(recordsNotUploadedJson.getJSONObject(i));
-                        }
-                    }
-                    log.debug("retrieve older json records -->" + recordsNotUploadedJson.length());
 
-                } catch (Exception e) {
-                    Log.i(TAG, "ERROR RETRIEVING OLDER LISTs, I HAVE LOST THEM");
+    }
+
+    private String determineUrlForRecord(String baseURL, Record record) {
+
+       String postURL;
+        if (record instanceof GlucometerRecord) {
+            postURL =  baseURL + "entries";
+        } else if (record instanceof MedtronicPumpRecord) {
+            postURL = baseURL + "deviceentries";
+        } else {
+            postURL = baseURL + "entries";
+        }
+        Log.i(TAG, "postURL: " + postURL);
+        return postURL;
+    }
+
+    private void postRecord(String postURL, String secret, Record record) throws NoSuchAlgorithmException, IOException {
+
+        HttpURLConnection urlConnection = null;
+        OutputStream os = null;
+        BufferedWriter writer = null;
+
+        try {
+            urlConnection = (HttpURLConnection) new URL(postURL).openConnection();
+            setPostConnectionProperties(urlConnection);
+            setAuthenticationToken(secret, urlConnection);
+
+            String jsonString = convertRecordToJsonString(record);
+            if (jsonString == null) {
+                return;
+            }
+
+            try {
+                urlConnection.setRequestProperty("Accept", "application/json");
+                urlConnection.setRequestProperty("Content-type", "application/json");
+
+                // stream the body
+                os = urlConnection.getOutputStream();
+                writer = new BufferedWriter(
+                        new OutputStreamWriter(os, StandardCharsets.UTF_8));
+                writer.write(jsonString);
+
+                writer.flush();
+            } catch (Exception e) {
+                Log.w(TAG, "Unable to post data to: '" + postURL + "'", e);
+            }
+        } finally {
+            if (writer != null) {
+                try {
+                    writer.close();
+                } catch (IOException e) {
+                    Log.e(TAG, e.getMessage(), e);
                 }
-                SharedPreferences.Editor editor = settings.edit();
-                if (settings.contains("recordsNotUploadedJson"))
-                    editor.remove("recordsNotUploadedJson");
-                JSONArray jsonArray = new JSONArray(recordsNotUploadedListJson);
-                editor.putString("recordsNotUploadedJson", jsonArray.toString());
-                editor.commit();
+            }
+            if (os != null) {
+                try {
+                    os.close();
+                } catch (IOException e) {
+                    Log.e(TAG, e.getMessage(), e);
+                }
+            }
+
+            if (urlConnection != null) {
+                try {
+                    Log.i(TAG, "Post to Url: '" + postURL + "' returned Http-Status " + urlConnection.getResponseCode());
+                } catch (IOException e) {
+                    Log.e(TAG, e.getMessage(), e);
+                }
+                urlConnection.disconnect();
             }
         }
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private void postDeviceStatus(String baseURL, DefaultHttpClient httpclient) throws Exception {
-        String devicestatusURL = baseURL + "devicestatus";
-        Log.i(TAG, "devicestatusURL: " + devicestatusURL);
+    private void setAuthenticationToken(String secret, HttpURLConnection urlConnection) throws NoSuchAlgorithmException {
+
+        MessageDigest digest = MessageDigest.getInstance("SHA-1");
+        byte[] bytes = secret.getBytes(StandardCharsets.UTF_8);
+        digest.update(bytes, 0, bytes.length);
+        bytes = digest.digest();
+        StringBuilder sb = new StringBuilder(bytes.length * 2);
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b & 0xff));
+        }
+        String token = sb.toString();
+
+        urlConnection.setRequestProperty("api-secret", token);
+    }
+
+    private String convertRecordToJsonString(Record record) {
 
         JSONObject json = new JSONObject();
-        json.put("uploaderBattery", DexcomG4Activity.batLevel);
+        try {
+            populateV1APIEntry(json, record);
+
+        } catch (Exception e) {
+            Log.w(TAG, "Unable to populate entry.", e);
+            return null;
+        }
         String jsonString = json.toString();
 
-        HttpPost post = new HttpPost(devicestatusURL);
-        StringEntity se = new StringEntity(jsonString);
-        post.setEntity(se);
-        post.setHeader("Accept", "application/json");
-        post.setHeader("Content-type", "application/json");
+        Log.i(TAG, "JSON: " + jsonString);
+        return jsonString;
+    }
 
-        ResponseHandler responseHandler = new BasicResponseHandler();
-        httpclient.execute(post, responseHandler);
+    private void postDeviceStatus(String baseURL) {
+
+        HttpURLConnection urlConnection = null;
+        OutputStream os = null;
+        BufferedWriter writer = null;
+        String devicestatusURL = "";
+        try {
+
+            devicestatusURL = baseURL + "devicestatus";
+
+            Log.i(TAG, "devicestatusURL: " + devicestatusURL);
+
+            JSONObject json = new JSONObject();
+            json.put("uploaderBattery", DexcomG4Activity.batLevel);
+            String jsonString = json.toString();
+
+            urlConnection = (HttpURLConnection) new URL(devicestatusURL).openConnection();
+            setPostConnectionProperties(urlConnection);
+
+            urlConnection.setRequestProperty("Accept", "application/json");
+            urlConnection.setRequestProperty("Content-type", "application/json");
+
+            // stream the body
+            os = urlConnection.getOutputStream();
+            writer = new BufferedWriter(
+                    new OutputStreamWriter(os, StandardCharsets.UTF_8));
+            writer.write(jsonString);
+
+            writer.flush();
+        } catch (Exception e) {
+            Log.w(TAG, "Could not send device status", e);
+
+        } finally {
+            if (writer != null) {
+                try {
+                    writer.close();
+                } catch (IOException e) {
+                    Log.e(TAG, e.getMessage(), e);
+                }
+            }
+            if (os != null) {
+                try {
+                    os.close();
+                } catch (IOException e) {
+                    Log.e(TAG, e.getMessage(), e);
+                }
+            }
+
+            if (urlConnection != null) {
+                try {
+                    Log.i(TAG, "Post to Url: '" + devicestatusURL + "' returned Http-Status " + urlConnection.getResponseCode());
+                } catch (IOException e) {
+                    Log.e(TAG, e.getMessage(), e);
+                }
+                urlConnection.disconnect();
+            }
+        }
+
+    }
+
+    private void setPostConnectionProperties(HttpURLConnection urlConnection) throws ProtocolException {
+        urlConnection.setReadTimeout(READ_TIMEOUT);
+        urlConnection.setConnectTimeout(CONNECTION_TIMEOUT);
+        urlConnection.setRequestMethod("POST");
+        urlConnection.setDoInput(true);
+        urlConnection.setDoOutput(true);
     }
 
     private void populateV1APIEntry(JSONObject json, Record oRecord) throws Exception {
-        Date date = DATE_FORMAT.parse(oRecord.displayTime);
+        Date date = oRecord.getDate();
         json.put("date", date.getTime());
-
+        json.put("dateString", DATE_FORMAT.format(date));
         if (oRecord instanceof GlucometerRecord) {
             json.put("gdValue", ((GlucometerRecord) oRecord).numGlucometerValue);
             json.put("device", getSelectedDeviceName());
@@ -376,7 +332,7 @@ public class UploadHelper extends AsyncTask<Record, Integer, Long> {
         } else if (oRecord instanceof EGVRecord) {
             EGVRecord record = (EGVRecord) oRecord;
             json.put("device", getSelectedDeviceName());
-            json.put("sgv", Integer.parseInt(record.bGValue));
+            json.put("sgv", (int) record.getBGValue());
             json.put("direction", record.trend);
             if (oRecord instanceof MedtronicSensorRecord) {
                 json.put("isig", ((MedtronicSensorRecord) record).isig);

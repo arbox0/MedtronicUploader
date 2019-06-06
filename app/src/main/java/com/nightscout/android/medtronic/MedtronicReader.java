@@ -1,15 +1,13 @@
 package com.nightscout.android.medtronic;
 
 import java.text.DateFormat;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 
-import org.slf4j.LoggerFactory;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -23,14 +21,13 @@ import android.preference.PreferenceManager;
 import android.text.TextUtils;
 import android.util.Log;
 
-import ch.qos.logback.classic.Logger;
-
 import com.nightscout.android.dexcom.USB.HexDump;
 import com.nightscout.android.upload.GlucometerRecord;
-import com.nightscout.android.upload.MedtronicPumpRecord;
 import com.nightscout.android.upload.MedtronicSensorRecord;
 import com.nightscout.android.upload.Record;
-import com.physicaloid.lib.Physicaloid;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.ObjectOutputStream;
 
 /**
  * Class: MedtronicReader This class manages all read operations over all the
@@ -42,18 +39,14 @@ import com.physicaloid.lib.Physicaloid;
  * 
  */
 public class MedtronicReader {
-	private Logger log = (Logger) LoggerFactory.getLogger(MedtronicReader.class
-			.getName());
 	private static final String TAG = MedtronicReader.class.getSimpleName();
-	public Physicaloid mSerialDevice;
 
+	private Context context;
 
 	protected byte[] idPump = null;
 	protected byte[] notFinishedRead = null;
 
-	public MedtronicPumpRecord lastMedtronicPumpRecord = null;// last medtronic
-	// pump info
-	// received
+
 	public int crcErrorBytesToDiscard = 0;
 	public boolean isCalibrating = false;
 	public int calibrationStatus = MedtronicConstants.WITHOUT_ANY_CALIBRATION;
@@ -63,20 +56,13 @@ public class MedtronicReader {
 	public long lastGlucometerDate = 0;
 	public long lastSensorValueDate = 0;
 	public float lastGlucometerValue = -1f;
-	public byte[] expectedSensorSortNumberForCalibration = { (byte) 0xff,
-			(byte) 0xff }; // expected indexes of the next sensor reading for
-	// correct calibration
+
 	public GlucometerRecord lastGlucometerRecord = null;// last glucometer
 	// record read
 	public byte expectedSensorSortNumber = (byte) 0xff; // expected index of the
 	// next sensor reading
-	public Boolean expectedSensorSortNumberLock = false; // expectedSensorSortNumber
-	// Lock for
-	// synchronize
-	public float previousValue = -1f; // last sensor value read
 	public MedtronicSensorRecord previousRecord = null; // last sensor record
-	public Byte lastCommandSend = null; // last command sent from this
-	public Object sendingCommandLock = new Object();
+
 	// the receptor is sending a command
 	// and we have no received the ACK
 
@@ -93,29 +79,28 @@ public class MedtronicReader {
 	// included).
 	public int lastElementsAdded = 0; // last records read from sensor
 	ArrayList<Messenger> mClients = new ArrayList<Messenger>();
-	private byte[] lastGlucometerMessage = null; // last glucometer message
-	// received
+
 	SharedPreferences settings = null;
 	SharedPreferences prefs = null;
 	Integer calibrationSelected = MedtronicConstants.CALIBRATION_GLUCOMETER;
 
-	Handler mHandlerSensorCalibration = null;
+	private DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss - ");
 
 	/**
 	 * Constructor
 	 * 
-	 * @param device
+	 *
 	 * @param context
 	 */
-	public MedtronicReader(Physicaloid device, Context context,
+	public MedtronicReader(Context context,
 			ArrayList<Messenger> mClients) {
 		this.settings = context.getSharedPreferences(
 				MedtronicConstants.PREFS_NAME, 0);
 
 		this.mClients = mClients;
-
+		this.context = context;
 		knownDevices = new ArrayList<String>();
-		mSerialDevice = device;
+
 		prefs = PreferenceManager.getDefaultSharedPreferences(context);
 
 		if (prefs.contains("calibrationType")) {
@@ -147,10 +132,10 @@ public class MedtronicReader {
 				try {
 					String sensorID = HexDump.toHexString(Integer.parseInt(prefs
 							.getString("sensor_cgm_id", "0")));
-					while (sensorID != null && sensorID.length() > 6) {
+					while (sensorID.length() > 6) {
 						sensorID = sensorID.substring(1);
 					}
-					log.debug("SensorID inserted "
+					Log.d(TAG, "SensorID inserted "
 							+ prefs.getString("sensor_cgm_id", "0")
 							+ " transformed to " + sensorID);
 					knownDevices.add(sensorID);
@@ -158,8 +143,6 @@ public class MedtronicReader {
 				catch(NumberFormatException nfe){
 					sendErrorMessageToUI("Sensor ID is incorrect - needs to be a number.  Ignored.");
 				}
-
-
 			}
 		}
 
@@ -171,24 +154,13 @@ public class MedtronicReader {
 					MedtronicConstants.WITHOUT_ANY_CALIBRATION);
 		if (settings.contains("isCalibrating"))
 			isCalibrating = settings.getBoolean("isCalibrating", false);
-		if (settings.contains("lastGlucometerMessage")
-				&& settings.getString("lastGlucometerMessage", "").length() > 0)
-			lastGlucometerMessage = HexDump.hexStringToByteArray(settings
-					.getString("lastGlucometerMessage", ""));
+
 		if (settings.contains("calibrationFactor"))
 			calibrationFactor = settings.getFloat("calibrationFactor",
                     this.calibrationFactor);
 		if (settings.contains("lastCalibrationDate"))
 			lastCalibrationDate = settings.getLong("lastCalibrationDate", 0);
-		if (settings.contains("previousValue"))
-			previousValue = settings.getFloat("previousValue",
-                    this.previousValue);
-		if (settings.contains("expectedSensorSortNumber")
-				&& settings.getString("expectedSensorSortNumber", "").length() > 0) {
-			expectedSensorSortNumber = HexDump.hexStringToByteArray(settings
-					.getString("expectedSensorSortNumber", ""))[0];
 
-		}
 		if (settings.contains("lastGlucometerValue")
 				&& settings.getFloat("lastGlucometerValue", -1) > 0) {
 			lastGlucometerValue = settings.getFloat("lastGlucometerValue", -1);
@@ -196,37 +168,14 @@ public class MedtronicReader {
 		if (settings.contains("lastGlucometerDate")
 				&& settings.getLong("lastGlucometerDate", -1) > 0)
 			lastGlucometerDate = settings.getLong("lastGlucometerDate", -1);
-		if ((settings.contains("expectedSensorSortNumberForCalibration0") && settings
-				.getString("expectedSensorSortNumberForCalibration0", "")
-				.length() > 0)
-				&& settings.contains("expectedSensorSortNumberForCalibration1")
-				&& settings.getString(
-						"expectedSensorSortNumberForCalibration1", "").length() > 0) {
-			expectedSensorSortNumberForCalibration[0] = HexDump
-					.hexStringToByteArray(settings.getString(
-							"expectedSensorSortNumberForCalibration0", ""))[0];
-			expectedSensorSortNumberForCalibration[1] = HexDump
-					.hexStringToByteArray(settings.getString(
-							"expectedSensorSortNumberForCalibration1", ""))[0];
-		} else {
-			if (isCalibrating) {
-				expectedSensorSortNumberForCalibration[0] = (byte) 0x00;
-				expectedSensorSortNumberForCalibration[1] = (byte) 0x71;
-			}
-		}
+
 		checkCalibrationOutOfTime();
-		if (settings.contains("last_read")) {
-			String lastRead = settings.getString("lastRead", "");
-			if (lastRead.length() > 0) {
-				byte[] last_read = HexDump.hexStringToByteArray(lastRead);
-				ArrayList<byte[]> bufferedMessages = parseMessageData(
-						last_read, last_read.length);
-				if (bufferedMessages != null && bufferedMessages.size() > 0)
-					processBufferedMessages(bufferedMessages);
-			}
-		}
 	}
 
+	public List<String> getKnownDevices()
+	{
+		return Collections.unmodifiableList(knownDevices);
+	}
 	/**
 	 * This method checks if the message received has its source in one of the
 	 * devices registered.
@@ -237,7 +186,7 @@ public class MedtronicReader {
 	private boolean isMessageFromMyDevices(byte[] readData) {
 		int initByte = firstByteOfDeviceId(readData);
 		if (initByte < 0 || readData.length < initByte){
-			log.error("Error checking initByte and received length, I can't check If is from 'My devices'");
+			Log.e(TAG, "Error checking initByte and received length, I can't check If is from 'My devices'");
 			return false;
 		}
 		for (String knownDevice : knownDevices) {
@@ -246,7 +195,7 @@ public class MedtronicReader {
 				nBytes++;
 			}
 			if (readData.length < (nBytes + initByte)){
-				log.error("Error checking received length, I can't check If is from 'My devices'");
+				Log.e(TAG, "Error checking received length, I can't check If is from 'My devices'");
 				return false;
 			}
 			String deviceCode = HexDump.toHexString(readData, initByte, nBytes);
@@ -254,7 +203,7 @@ public class MedtronicReader {
 			if (knownDevice.toLowerCase().equals(deviceCode.toLowerCase()))
 				return true;
 			else
-				log.error("Current Known Device "+knownDevice+" Message Received From "+deviceCode);
+				Log.e(TAG, "Current Known Device "+knownDevice+" Message Received From "+deviceCode);
 		}
 		Log.i(TAG, "Message received from unknown device: " + HexDump.dumpHexString(readData) + " I am expecting any of: " + TextUtils.join(", ", knownDevices));
 		return false;
@@ -263,8 +212,6 @@ public class MedtronicReader {
 
 	private void sendMessageToUI(String valuetosend) {
 
-		DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss - ");
-		//get current date time with Date()
 		Date date = new Date();
 		valuetosend = dateFormat.format(date) + valuetosend;
 		Log.i(TAG, valuetosend);
@@ -372,7 +319,7 @@ public class MedtronicReader {
 				calibrationStatus = MedtronicConstants.CALIBRATION_MORE_THAN_12H_OLD;
 				SharedPreferences.Editor editor = settings.edit();
 				editor.putInt("calibrationStatus", calibrationStatus);
-				editor.commit();
+				editor.apply();
 			}
 		}
 
@@ -380,237 +327,50 @@ public class MedtronicReader {
 
 	/**
 	 * This method reads from the serial device, and process the answer
-	 * 
-	 * @param context
-	 * @return String, for debug or notification purposes
-	 */
-	public ArrayList<byte[]> readFromReceiver(int size) {
+	 *
+	 * */
+	public ArrayList<byte[]> readFromReceiver(byte[] readFromDevice) {
 		ArrayList<byte[]> bufferedMessages = null;
-		byte[] readFromDevice = new byte[1024];
-		int read = 0;
-		if (size >= 0) {
-			Log.d(TAG, "readFromReceiver: " + size + " bytes!!");
-			try {
-				read = mSerialDevice.read(readFromDevice);
-			} catch (Exception e) {
-				Log.e(TAG, "Unable to read from serial device", e);
-				return null;
-			}
-		}
-		if (read > 0) {
-			Log.d(TAG, "READ " + read + " bytes: " + HexDump.dumpHexString(readFromDevice, 0, read));
+		Log.d(TAG, "READ " + readFromDevice.length + " bytes: " + HexDump.dumpHexString(readFromDevice));
 
-			SharedPreferences.Editor editor = settings.edit();
-			editor.putLong("lastDestroy", System.currentTimeMillis());
-			editor.commit();
-			try {
+		try {
+			bufferedMessages = parseMessageData(
+					Arrays.copyOfRange(readFromDevice, 0, readFromDevice.length), readFromDevice.length);
 
-				bufferedMessages = parseMessageData(
-						Arrays.copyOfRange(readFromDevice, 0, read), read);
-				checkCalibrationOutOfTime();
-			} catch (Exception e) {
-				sendErrorMessageToUI(e.toString());
-				bufferedMessages = new ArrayList<byte[]>();
-			}
+			checkCalibrationOutOfTime();
+
+		} catch (Exception e) {
+			sendErrorMessageToUI(e.toString());
+			bufferedMessages = new ArrayList<byte[]>();
 		}
 		return bufferedMessages;
 	}
 
 	private void processDataAnswer(byte[] readData)
 	{
-		int calibrationSelectedAux;
 		Log.d(TAG, "processDataAnswer");
-
-		calibrationSelectedAux = calibrationSelected;
 
 		if (isMessageFromMyDevices(readData)) {
 			Log.d(TAG, "IS FROM MY DEVICES");
 			switch (readData[2]) {
 				case MedtronicConstants.MEDTRONIC_PUMP:
-					Log.d(TAG, "IS A PUMP MESSAGE");
-
-					processPumpDataMessage(readData
-					);
-					if (lastMedtronicPumpRecord == null) {
-						lastMedtronicPumpRecord = new MedtronicPumpRecord();
-						calculateDate(lastMedtronicPumpRecord,
-								new Date(), 0);
-						lastMedtronicPumpRecord.deviceId = prefs
-								.getString("medtronic_cgm_id", "");
-					}
-					lastMedtronicPumpRecord.isWarmingUp = prefs
-							.getBoolean("isWarmingUp", false);
+					Log.d(TAG, "Pump message received");
+					processPumpDataMessage(readData);
 					break;
-				case MedtronicConstants.MEDTRONIC_GL: {
-					//if (calibrationSelectedAux == MedtronicConstants.CALIBRATION_GLUCOMETER) {
+				case MedtronicConstants.MEDTRONIC_GL:
 					Log.d(TAG, "GLUCOMETER DATA RECEIVED");
-					if (lastGlucometerMessage == null
-							|| lastGlucometerMessage.length == 0) {
-						lastGlucometerMessage = Arrays
-								.copyOfRange(readData, 0,
-										readData.length);
-						SharedPreferences.Editor editor = settings
-								.edit();
-						editor.putString(
-								"lastGlucometerMessage",
-								HexDump.toHexString(lastGlucometerMessage));
-						editor.commit();
-					} else {
-						boolean isEqual = Arrays
-								.equals(lastGlucometerMessage,
-										readData);
-						if (isEqual
-								&& (System.currentTimeMillis()
-								- lastGlucometerDate < MedtronicConstants.TIME_15_MIN_IN_MS)) {
-							return;
-						}
-						lastGlucometerDate = System
-								.currentTimeMillis();
-						lastGlucometerMessage = Arrays
-								.copyOfRange(readData, 0,
-										readData.length);
-					}
-
 					processGlucometerDataMessage(readData);
-					if (lastGlucometerValue > 0) {
-						isCalibrating = calibrationSelectedAux == MedtronicConstants.CALIBRATION_GLUCOMETER;
-						if (previousRecord == null) {
-							MedtronicSensorRecord auxRecord = new MedtronicSensorRecord();
-
-							auxRecord.isCalibrating = calibrationSelectedAux == MedtronicConstants.CALIBRATION_GLUCOMETER;
-							Log.d(TAG, "No previous record - 1");
-
-						} else {
-							previousRecord.isCalibrating = calibrationSelectedAux == MedtronicConstants.CALIBRATION_GLUCOMETER;
-							Log.d(TAG, "Has previous record - 2");
-
-						}
-						SharedPreferences.Editor editor = settings
-								.edit();
-
-						editor.putBoolean("isCalibrating", calibrationSelectedAux == MedtronicConstants.CALIBRATION_GLUCOMETER);
-						if (calibrationSelectedAux == MedtronicConstants.CALIBRATION_GLUCOMETER)
-							sendMessageToUI("isCalibrating");
-						sendMessageToUI("glucometer data received");
-
-						editor.commit();
-					}
-
-				}
-				break;
-				case MedtronicConstants.MEDTRONIC_SENSOR1: {
-					Log.d(TAG, "SENSOR1 DATA RECEIVED");
-					if (prefs.getString("glucSrcTypes", "1")
-							.equals("2")) {
-						Log.d(TAG, "Sensor value received, but value is took only by pump logs");
-						break;
-					}
-					Log.d(TAG, "WARMING_UP");
-					SharedPreferences.Editor editor = settings
-							.edit();
-					editor.remove("lastGlucometerMessage");
-					editor.remove("previousValue");
-					editor.remove("expectedSensorSortNumber");
-					editor.remove("isCalibrating");
-					calibrationStatus = MedtronicConstants.WITHOUT_ANY_CALIBRATION;
-					editor.putInt(
-							"calibrationStatus",
-							MedtronicConstants.WITHOUT_ANY_CALIBRATION);
-					editor.remove("calibrationFactor");
-					Log.d(TAG, "remove lastCalibrationDate");
-					editor.remove("lastCalibrationDate");
-					editor.remove("lastGlucometerValue");
-					editor.remove("lastGlucometerDate");
-					editor.remove("expectedSensorSortNumber");
-					editor.remove("expectedSensorSortNumberForCalibration0");
-					editor.remove("expectedSensorSortNumberForCalibration1");
-					editor.remove("isCheckedWUP");
-					if (!prefs.getBoolean("isWarmingUp", false)) {
-						if (lastMedtronicPumpRecord == null) {
-							lastMedtronicPumpRecord = new MedtronicPumpRecord();
-							calculateDate(lastMedtronicPumpRecord,
-									new Date(), 0);
-							lastMedtronicPumpRecord.deviceId = prefs
-									.getString("medtronic_cgm_id",
-											"");
-						}
-
-						editor.putBoolean("isWarmingUp", true);
-
-						lastMedtronicPumpRecord.isWarmingUp = true;
-					}
-
-					if (previousRecord == null) {
-						MedtronicSensorRecord auxRecord = new MedtronicSensorRecord();
-						calculateDate(auxRecord, new Date(), 0);
-						Log.d(TAG, "no previous record - 3");
-
-					} else {
-						calculateDate(previousRecord, new Date(), 0);
-						Log.d(TAG, "previous record - 4");
-
-					}
-					sendMessageToUI("sensor data wUp.");
-					editor.commit();
 					break;
-				}
+				case MedtronicConstants.MEDTRONIC_SENSOR1:
 				case MedtronicConstants.MEDTRONIC_SENSOR2:
-					Log.d(TAG, "SENSOR2 DATA RECEIVED");
-					if (lastMedtronicPumpRecord != null)
-						lastMedtronicPumpRecord.isWarmingUp = false;
+					Log.d(TAG, "SENSOR DATA RECEIVED");
 					if (prefs.getString("glucSrcTypes", "1")
 							.equals("2")) {
-						if (prefs.getBoolean("isWarmingUp", false)) {
-							if (lastMedtronicPumpRecord == null) {
-								lastMedtronicPumpRecord = new MedtronicPumpRecord();
-								calculateDate(
-										lastMedtronicPumpRecord,
-										new Date(), 0);
-								lastMedtronicPumpRecord.deviceId = prefs
-										.getString(
-												"medtronic_cgm_id",
-												"");
-							}
-							lastMedtronicPumpRecord.isWarmingUp = false;
-							SharedPreferences.Editor editor1 = prefs
-									.edit();
-							editor1.putBoolean("isWarmingUp", false);
-							editor1.commit();
-						}
 						Log.d(TAG,"Sensor value received, but value is took only by pump logs");
 						break;
 					}
-					Log.i(TAG, "process sensor2");
-					log.debug("SENSOR DATA RECEIVED");
-					if (prefs.getBoolean("isWarmingUp", false)) {
-						if (lastMedtronicPumpRecord == null) {
-							lastMedtronicPumpRecord = new MedtronicPumpRecord();
-							calculateDate(lastMedtronicPumpRecord,
-									new Date(), 0);
-							lastMedtronicPumpRecord.deviceId = prefs
-									.getString("medtronic_cgm_id",
-											"");
-						}
-						lastMedtronicPumpRecord.isWarmingUp = false;
-						SharedPreferences.Editor editor = prefs
-								.edit();
-						editor.remove("isWarmingUp");
-						editor.commit();
-					}
-					boolean calculateCalibration = false;
-					if (isCalibrating) {
-						calculateCalibration = true;
-					}
-
 					processSensorDataMessage(readData);
-
-					if (calculateCalibration && !isCalibrating) {
-						SharedPreferences.Editor editor = settings
-								.edit();
-						editor.putBoolean("isCalibrating", false);
-						editor.commit();
-					}
-					sendMessageToUI("sensor data value received");
+					sendMessageToUI("sensor data value processed");
 					break;
 				default:
 					Log.i(TAG, "No Match");
@@ -619,7 +379,6 @@ public class MedtronicReader {
 		} else {
 			Log.i(TAG,
 					"I don't have to listen to this. This message comes from another source: " + HexDump.dumpHexString(readData));
-			log.debug("I don't have to listen to this message. This message comes from another source.");
 
 		}
 
@@ -646,8 +405,6 @@ public class MedtronicReader {
 						break;
 					case MedtronicConstants.COMMAND_ANSWER:
 						Log.d(TAG, "ACK Received");
-						synchronized (sendingCommandLock) {
-						}
 						break;
 					case MedtronicConstants.FILTER_COMMAND:
 						if (readData[0] == (byte) 0x13)
@@ -662,15 +419,14 @@ public class MedtronicReader {
 					}
 					}
 				} else {
-					Log.d(TAG, "CRC ERROR!!! " + HexDump.dumpHexString(readData));
+					Log.d(TAG, "Invalid message start packet:" + HexDump.dumpHexString(readData));
 				}
 			}
 		} catch (Exception ex2) {
+			Log.e(TAG, ex2.toString(), ex2);
 			sendErrorMessageToUI(ex2.toString());
 		}
-		SharedPreferences.Editor editor = settings.edit();
-		editor.remove("last_read");
-		editor.commit();
+
 	}
 
 	/**
@@ -685,7 +441,7 @@ public class MedtronicReader {
 	 */
 	private ArrayList<byte[]> parseMessageData(byte[] readData, int read) {
 		byte[] readBuffer = null;
-		Log.d(TAG, "Parsing message");
+		Log.d(TAG, "Parsing message (" + read + " bytes)");
 		ArrayList<byte[]> messageList = new ArrayList<byte[]>();
 		if (notFinishedRead == null || notFinishedRead.length <= 0) {
 			readBuffer = Arrays.copyOf(readData, read);
@@ -697,10 +453,7 @@ public class MedtronicReader {
 			}
 			notFinishedRead = null;
 		}
-		SharedPreferences.Editor editor = settings.edit();
-		editor.putString("last_read", HexDump.toHexString(Arrays.copyOfRange(
-				readBuffer, 0, readBuffer.length)));
-		editor.commit();
+
 		int i = 0;
 		if (crcErrorBytesToDiscard > 0)
 			i = crcErrorBytesToDiscard;
@@ -743,7 +496,6 @@ public class MedtronicReader {
 					return messageList;
 				}
 			} else if (answer == MedtronicConstants.DATA_ANSWER) {
-				Log.d(TAG, "DATA_ANSWER");
 				if (readBuffer.length <= i + 1) {
 					notFinishedRead = Arrays.copyOfRange(readBuffer, i,
 							readBuffer.length);
@@ -780,8 +532,6 @@ public class MedtronicReader {
 	public void processPumpDataMessage(byte[] readData) {
 		int commandByte = firstByteAfterDeviceId(readData);
 		if (commandByte < 0)
-			return;
-		if (lastCommandSend == null)
 			return;
 		switch (readData[commandByte]) {
 		case MedtronicConstants.MEDTRONIC_GET_LAST_PAGE:
@@ -833,7 +583,6 @@ public class MedtronicReader {
 			return;
 		default:
 			Log.e(TAG, "Undecoded Command");
-			return;
 		}
 	}
 
@@ -860,101 +609,90 @@ public class MedtronicReader {
         int ub = readData[firstMeasureByte]  & 0xff;
         int lb = readData[firstMeasureByte + 1]  & 0xff;
         int num = lb + (ub << 8);
+
+
+		if (lastGlucometerRecord != null
+				&& num == lastGlucometerRecord.getValue()
+				&& lastGlucometerDate > 0
+				&& (System.currentTimeMillis() - lastGlucometerDate < MedtronicConstants.TIME_15_MIN_IN_MS))
+		{
+			Log.d(TAG, String.format("Glucometer is a repeat of previous. reading seen: %d  / %.2f", num, ((float)num )/18.0));
+			return;
+		}
+
 		sendMessageToUI(String.format("Glucometer reading seen: %d  / %.2f", num, ((float)num )/18.0));
 
-        if (num < 0 || num > 1535) {
+		lastGlucometerDate = System.currentTimeMillis();
+
+		if (num < 0 || num > 1535) {
             Log.e(TAG, "Glucometer value under 0 or over 0x5ff. Possible ACK or malfunction.");
             return;
         }
 		processManualCalibrationDataMessage(num, true, false);
+
+		if (lastGlucometerValue > 0) {
+			if (calibrationSelected == MedtronicConstants.CALIBRATION_GLUCOMETER)
+				isCalibrating = true;
+
+			if (previousRecord == null) {
+				MedtronicSensorRecord auxRecord = new MedtronicSensorRecord();
+
+				auxRecord.isCalibrating = isCalibrating;
+				writeLocalCSV(auxRecord, context);
+				Log.d(TAG, "No previous record - 1");
+
+			} else {
+				previousRecord.isCalibrating = isCalibrating;
+				writeLocalCSV(previousRecord, context);
+				Log.d(TAG, "Has previous record - 2");
+
+			}
+			SharedPreferences.Editor editor = settings
+					.edit();
+
+			editor.putBoolean("isCalibrating", isCalibrating);
+			if (isCalibrating) sendMessageToUI("Glucometer data received - and calibrating from it");
+			else sendMessageToUI("Glucometer data received - to use for calibration, go to manual/instant calibration");
+
+			editor.apply();
+		}
 	}
 
 	
-	
-	public void approveGlucValueForCalibration(float num, boolean calibrate, boolean isSensorFactorFromPump){
-		if (!isSensorFactorFromPump) {
-			processManualCalibrationDataMessage(num, false, calibrate);
-		}
-		else{
-			sendMessageToUI(
-					"Glucometer Detected!!..Waiting 15 min. to retrieve calibration factor...");
-			log.debug("Glucometer Detected!!..Waiting 15 min. to retrieve calibration factor...");
-			Log.d(TAG,"glucometer handler or glucometer runnable is null");
-			lastGlucometerRecord = new GlucometerRecord();
-			lastGlucometerRecord.numGlucometerValue = num;
-			lastGlucometerValue = num;
-			Date d = new Date();
-			lastGlucometerRecord.lastDate = d.getTime();
-			lastGlucometerDate = d.getTime();
-			calculateDate(lastGlucometerRecord, d, 0);
-			SharedPreferences.Editor editor = settings.edit();
-			editor.putFloat("lastGlucometerValue", lastGlucometerValue);
-			editor.putLong("glucometerLastDate", d.getTime());
-			editor.commit();
-		}
-	}
+
 	/**
 	 * This method process the Manual Calibration message
 	 * 
-	 * @param readData
-	 * @return String, for debug or notification purposes
 	 */
 	public void processManualCalibrationDataMessage(float value,
 			boolean instant, boolean doCalibration) {
-		float mult = 1f;
-		//if (prefs.getBoolean("mmolxl", false))
-			//mult = 1f/18f;
-		float num = value * mult;
+
+		float num = value;
 		lastGlucometerRecord = new GlucometerRecord();
 		lastGlucometerRecord.numGlucometerValue = num;
 		lastGlucometerValue = num;
 		Date d = new Date();
-		lastGlucometerRecord.lastDate = d.getTime();
+		lastGlucometerRecord.setDate(d);
 		lastGlucometerDate = d.getTime();
-		calculateDate(lastGlucometerRecord, d, 0);
-		if (!instant && doCalibration) {
-			if (HexDump.unsignedByte(expectedSensorSortNumber) == HexDump
-					.unsignedByte((byte) 0xff)) {
-				expectedSensorSortNumberForCalibration[0] = (byte) 0x00;
-				expectedSensorSortNumberForCalibration[1] = (byte) 0x71;
-			} else {
-				synchronized (expectedSensorSortNumberLock) {
-					byte expectedAux = expectedSensorSortNumber;
-					if ((expectedSensorSortNumber & (byte) 0x01) > 0)
-						expectedAux = (byte) (expectedSensorSortNumber & (byte) 0xFE);
-					expectedSensorSortNumberForCalibration[0] = calculateNextSensorSortNameFrom(
-							6, expectedAux);
-					expectedSensorSortNumberForCalibration[1] = calculateNextSensorSortNameFrom(
-							10, expectedAux);
-				}
-			}
-		}
+
+
 		SharedPreferences.Editor editor = settings.edit();
 		editor.putFloat("lastGlucometerValue", num);
 		editor.putLong("glucometerLastDate", d.getTime());
-		if (!instant && doCalibration) {
-			editor.putString("expectedSensorSortNumberForCalibration0", HexDump
-					.toHexString(expectedSensorSortNumberForCalibration[0]));
-			editor.putString("expectedSensorSortNumberForCalibration1", HexDump
-					.toHexString(expectedSensorSortNumberForCalibration[1]));
-		} else {
-			editor.remove("expectedSensorSortNumberForCalibration0");
-			editor.remove("expectedSensorSortNumberForCalibration1");
-		}
+
 		if (lastGlucometerValue > 0) {
 			isCalibrating = !instant && doCalibration;
 			if (previousRecord == null) {
 				MedtronicSensorRecord auxRecord = new MedtronicSensorRecord();
 				auxRecord.isCalibrating = !instant;
-				log.debug("8");
+
 			} else {
 				previousRecord.isCalibrating = !instant;
-				log.debug("9");
+
 			}
 			editor.putBoolean("isCalibrating", !instant);
-			editor.commit();
 		}
-		editor.commit();
+		editor.apply();
 		Log.i(TAG, "Manual calibration:" + num);
 	}
 
@@ -964,67 +702,61 @@ public class MedtronicReader {
 	 * 
 	 * @param previousCalibrationFactor
 	 * @param previousCalibrationStatus
-	 * @param isig
 	 * @param record
 	 * @param added
 	 * @param currentTime
 	 */
 	private void calibratingBackwards(float previousCalibrationFactor,
-			int previousCalibrationStatus, float isig,
+			int previousCalibrationStatus,
 			MedtronicSensorRecord record, int added, Date currentTime) {
 		if (previousCalibrationFactor > 0) {
+			record.setUnfilteredGlucose(record.isig * previousCalibrationFactor);
+			record.setBGValue((applyFilterToRecord(record)) );
+			record.isCalibrating = false;
+			record.calibrationFactor = previousCalibrationFactor;
 			if (previousCalibrationStatus != MedtronicConstants.WITHOUT_ANY_CALIBRATION) {
-				record.setUnfilteredGlucose(isig * previousCalibrationFactor);
-				record.setBGValue((applyFilterToRecord(record)) + "");
-				record.isCalibrating = false;
-				record.calibrationFactor = previousCalibrationFactor;
 				record.calibrationStatus = previousCalibrationStatus;
 			} else {
-				record.setUnfilteredGlucose(isig * previousCalibrationFactor);
-				record.setBGValue((applyFilterToRecord(record)) + "");
-				record.isCalibrating = false;
-				record.calibrationFactor = previousCalibrationFactor;
 				record.calibrationStatus = MedtronicConstants.LAST_CALIBRATION_FAILED_USING_PREVIOUS;
 			}
 		}
-		calculateDate(record, currentTime, added);
+		setRecordDateHistoric(record, currentTime, added);
 	}
 
 	/**
 	 * Apply calibration to the "current" value of the sensor message
 	 * 
 	 * @param difference
-	 * @param isig
-	 * @param readData
-	 * @param index
+
 	 * @param record
 	 * @param num
 	 * @param currentTime
 	 */
-	private void calibratingCurrentElement(long difference, float isig,
-			byte[] readData, int index, MedtronicSensorRecord record, int num,
+	private void calibratingCurrentElement(long difference, MedtronicSensorRecord record, int num,
 			Date currentTime) {
 		boolean calibrated = false;
-		// currentMeasure = num;
 		if (isCalibrating) {
 			if (num > 0) {
-				calculateCalibration(difference, isig, readData[index]);
+				calculateCalibration(difference, record.isig);
+
+				record.isCalibrating = isCalibrating;
+				record.calibrationStatus = calibrationStatus;
+
 				if (calibrationFactor > 0) {
 					if (!isCalibrating) {
 						if (calibrationStatus != MedtronicConstants.WITHOUT_ANY_CALIBRATION
 								&& calibrationStatus != MedtronicConstants.LAST_CALIBRATION_FAILED_USING_PREVIOUS
 								&& calibrationStatus != MedtronicConstants.CALIBRATION_MORE_THAN_12H_OLD) {
-							record.setBGValue(((int) lastGlucometerValue) + "");
+							record.setBGValue( lastGlucometerValue );
 							record.setUnfilteredGlucose(lastGlucometerValue);
 							record.calibrationFactor = calibrationFactor;
-							record.isCalibrating = false;
-							record.calibrationStatus = calibrationStatus;
+
 							lastCalibrationDate = currentTime.getTime();
 							SharedPreferences.Editor editor = settings.edit();
-							log.debug("change lastCalibrationDate");
+
 							editor.putLong("lastCalibrationDate",
 									lastCalibrationDate);
-							editor.commit();
+							editor.apply();
 							calibrated = true;
 						}
 					}
@@ -1032,67 +764,52 @@ public class MedtronicReader {
 			}
 		}
 		if (calibrationFactor > 0 && !calibrated) {
-
+			record.setUnfilteredGlucose(record.isig * calibrationFactor);
+			record.setBGValue(applyFilterToRecord(record));
+			record.isCalibrating = false;
+			record.calibrationFactor = calibrationFactor;
 			if (calibrationStatus != MedtronicConstants.WITHOUT_ANY_CALIBRATION) {
-				record.setUnfilteredGlucose(isig * calibrationFactor);
-				record.setBGValue((applyFilterToRecord(record)) + "");
-				record.isCalibrating = false;
-				record.calibrationFactor = calibrationFactor;
 				record.calibrationStatus = calibrationStatus;
 			} else {
-				record.setUnfilteredGlucose(isig * calibrationFactor);
-				record.setBGValue((applyFilterToRecord(record)) + "");
-				record.isCalibrating = false;
-				record.calibrationFactor = calibrationFactor;
 				record.calibrationStatus = MedtronicConstants.LAST_CALIBRATION_FAILED_USING_PREVIOUS;
 			}
 		}
-		calculateDate(record, currentTime, 0);
+		record.setDate(currentTime);
 		previousRecord = record;
 	}
 
+	/*
+
+	Apply calibration to all upcoming data, immediately.
+
+	 */
 	public void calculateInstantCalibration(float currentMeasure) {
-		log.debug("Instant Calibration");
 		if (previousRecord != null && previousRecord.isig != 0) {
-			log.debug("I  have isig " + previousRecord.isig);
 			calibrationFactor = currentMeasure / previousRecord.isig;
-			log.debug("Instant Calibration result " + calibrationFactor);
+			Log.d(TAG,"Instant Calibration result " + calibrationFactor + "; ISIG is " + previousRecord.isig);
 			if (calibrationFactor > 0) {
-				previousRecord.bGValue = "" + ((int) currentMeasure);
-				log.debug("Instant Calibration Success!! ");
+				previousRecord.setBGValue(currentMeasure);
 				calibrationStatus = MedtronicConstants.CALIBRATED;
 				lastCalibrationDate = System.currentTimeMillis();
 				isCalibrating = false;
 				previousRecord.isCalibrating = false;
 				previousRecord.calibrationStatus = calibrationStatus;
-				log.debug("10");
+
+ 				writeLocalCSV(previousRecord, context);
 
 				SharedPreferences.Editor editor = settings.edit();
-				log.debug("change instant lastCalibrationDate");
-				editor.putLong("lastCalibrationDate", lastCalibrationDate);
-				editor.putBoolean("isCalibrating", false);
-				editor.putFloat("calibrationFactor", calibrationFactor);
-				editor.putInt("calibrationStatus",
-							calibrationStatus);
-				editor.commit();
-			}
-			return;
-		} else{
-			sendErrorMessageToUI("I can't calibrate, I don't have any ISIG stored yet.");
-			log.debug("I dont have isig");
-		}
-		if (previousRecord == null)
-			previousRecord = new MedtronicSensorRecord();
-		if (calibrationStatus != MedtronicConstants.WITHOUT_ANY_CALIBRATION
-				&& calibrationFactor != -1f) {
-			calibrationStatus = MedtronicConstants.LAST_CALIBRATION_FAILED_USING_PREVIOUS;
-		} else {
-			calibrationStatus = MedtronicConstants.WITHOUT_ANY_CALIBRATION;
-		}
-		previousRecord.calibrationStatus = calibrationStatus;
-		log.debug("11");
 
-		log.debug("Instant Calibration Failure!! ");
+				editor.putLong("lastCalibrationDate", lastCalibrationDate);
+				editor.putBoolean("isCalibrating", isCalibrating);
+				editor.putFloat("calibrationFactor", calibrationFactor);
+				editor.putInt("calibrationStatus", calibrationStatus);
+				editor.apply();
+			}
+		}
+		else {
+			sendErrorMessageToUI("I can't calibrate, I don't have any recent stored sensor reading yet. Try after sensor transmits again.");
+			Log.d(TAG,"Could not instant calibrate. I dont have ISIG from a previous record yet.");
+		}
 	}
 
 	/**
@@ -1108,10 +825,9 @@ public class MedtronicReader {
 			difference = d.getTime() - lastGlucometerDate;
 		}
 
-		int added = 8;
+		int backcountToBeAdded;
 		int firstMeasureByte = firstByteAfterDeviceId(readData);
-		int currentMeasure = -1;
-		float isig = 0;
+
 
 		if (firstMeasureByte < 0)
 			return;
@@ -1123,97 +839,32 @@ public class MedtronicReader {
 		float previousCalibrationFactor = calibrationFactor;
 		short adjustement = (short) readData[firstMeasureByte + 2];
 		long firstTimeOut = d.getTime() - lastSensorValueDate;
-		if (expectedSensorSortNumber == (byte) 0xff
-				|| lastSensorValueDate == 0
-				|| (firstTimeOut >= MedtronicConstants.TIME_10_MIN_IN_MS)) {
-			Log.i("Medtronic", "First reading - or missed last 40 minutes - Backfilling old data");
 
-			lastElementsAdded = 0;
-			// I must read ALL THE MEASURES
-			synchronized (expectedSensorSortNumberLock) {
-				expectedSensorSortNumber = readData[firstMeasureByte + 3];
-			}
+		int dataLost = 0;
 
-			for (int i = 20; i >= 0; i -= 2) {
-				if (i >= 4 && i < 8) {
-					continue;
-				}
-				lastElementsAdded++;
-
-				int ub = readData[firstMeasureByte + 4 + i] & 0xff;
-				int lb = readData[firstMeasureByte + 5 + i] & 0xff;
-				int num = lb + (ub << 8);
-
-				MedtronicSensorRecord record = new MedtronicSensorRecord();
-				record.isCalibrating = isCalibrating;
-				isig = calculateISIG(num, adjustement);
-				record.setIsig(isig);
-				if (i == 0) {
-					currentMeasure = num;
-					calibratingCurrentElement(difference, isig, readData,
-							firstMeasureByte + 3, record, num, d);
-				} else {
-					calibratingBackwards(previousCalibrationFactor,
-							previousCalibrationStatus, isig, record, added, d);
-				}
-				added--;
-				lastRecordsInMemory.add(record);
-				calculateTrendAndArrow(record, lastRecordsInMemory);
-
-			}
-
-		} else {
-
+		if (expectedSensorSortNumber == readData[firstMeasureByte + 3] && isSensorRepeatedMessage(expectedSensorSortNumber)) {
+			Log.d(TAG, "Sensor repeat of previously read reading, ignored"); // ignore - we saw its previous entry
+			// nothing to add!
+		}
+		else {
 			if (expectedSensorSortNumber == readData[firstMeasureByte + 3]
-					||calculateNextSensorSortNameFrom(1, expectedSensorSortNumber) == readData[firstMeasureByte + 3]) {
+					|| calculateNextSensorSortNameFrom(1, expectedSensorSortNumber) == readData[firstMeasureByte + 3]) { // is either the one we need, or the repeat message we need
 				Log.i("Medtronic", "Expected sensor number received!!");
-
-				lastElementsAdded = 0;
-				// I must read only the first value except if byte ends in "1"
-				// then I skip this value
-				if (!isSensorRepeatedMessage(readData[firstMeasureByte + 3])
-						|| HexDump
-						.unsignedByte((byte) (expectedSensorSortNumber & (byte) 0x01)) < 1
-						&& HexDump
-						.unsignedByte((byte) (readData[firstMeasureByte + 3] & (byte) 0x01)) == 1) {
-
-					int ub = readData[firstMeasureByte + 4] & 0xff;
-					int lb = readData[firstMeasureByte + 5] & 0xff;
-					int num = lb + (ub << 8);
-
-					Log.d(TAG, "Read from sensor: value is " + num);
-					MedtronicSensorRecord record = new MedtronicSensorRecord();
-					isig = calculateISIG(num, adjustement);
-					record.setIsig(isig);
-					record.isCalibrating = isCalibrating;
-					currentMeasure = num;
-					calibratingCurrentElement(difference, isig, readData,
-							firstMeasureByte + 3, record, num, d);
-					lastRecordsInMemory.add(record);
-					calculateTrendAndArrow(record, lastRecordsInMemory);
-
-					lastElementsAdded++;
-				} else {
-					// sendMessageToUI("ES REPETIDO NO LO EVALUO ", false);
-					synchronized (expectedSensorSortNumberLock) {
-						expectedSensorSortNumber = calculateNextSensorSortNameFrom(
-								1, expectedSensorSortNumber);
-					}
-					return;
-				}
+				dataLost = 0;
+				backcountToBeAdded = 0;
 			} else {
-				Log.i("Medtronic", "NOT Expected sensor number received!!");
-				log.debug("SENSOR MEASURE, NOT Expected sensor measure received!!");
-				int dataLost = -1;
+				Log.i(TAG, "NOT Expected sensor number received nor immediate sensor repeat!!");
 				if (previousRecord != null || lastSensorValueDate > 0) {
 					long timeDiff = 0;
-					if (previousRecord != null)
-						timeDiff = d.getTime() - previousRecord.displayDateTime;
+
+					if (previousRecord != null && previousRecord.getDate() != null)
+						timeDiff = d.getTime() - previousRecord.getDate().getTime();
 					else
 						timeDiff = d.getTime() - lastSensorValueDate;
+
 					if (timeDiff > (MedtronicConstants.TIME_30_MIN_IN_MS + MedtronicConstants.TIME_10_MIN_IN_MS)) {
 						dataLost = 10;
-						added = 8;
+						backcountToBeAdded = 8;
 					} else {
 						int valPrev = transformSequenceToIndex(expectedSensorSortNumber);
 						int currentVal = transformSequenceToIndex(readData[firstMeasureByte + 3]);
@@ -1223,104 +874,74 @@ public class MedtronicReader {
 						if (dataLost < 0)
 							dataLost *= -1;
 						dataLost--;
-						added = dataLost;
+						backcountToBeAdded = dataLost;
 						Log.i(TAG, " valPrev " + valPrev
 								+ " currentVal " + currentVal + " dataLost "
-								+ dataLost + " added " + added);
+								+ dataLost + " added " + backcountToBeAdded);
+
+						if (dataLost > (int) (timeDiff / 60 / 1000 / 5)) {
+                            dataLost = (int) (timeDiff / 60 / 1000 / 5);
+                        }
 					}
 				} else {
 					dataLost = 10;
-					added = 8;
+					backcountToBeAdded = 8;
 				}
+
 				Log.i(TAG, "Data Lost " + dataLost);
 				if (dataLost >= 0) {
 					if (dataLost >= 2)
 						dataLost += 2;
 					if (dataLost > 10) {
 						dataLost = 10;
-						added = 8;
+						backcountToBeAdded = 8;
 					}
-					log.debug("SENSOR MEASURE, I am going to retrieve "
-							+ (dataLost) + " previous values");
 					dataLost *= 2;
 					lastElementsAdded = 0;
 					// I must read ALL THE MEASURES
-					if (dataLost == 20 || dataLost == 0) {
-						synchronized (expectedSensorSortNumberLock) {
-							expectedSensorSortNumber = readData[firstMeasureByte + 3];
-						}
-					}
-
-					for (int i = dataLost; i >= 0; i -= 2) {
-						if (i >= 4 && i < 8) {
-							continue;
-						}
-						lastElementsAdded++;
-
-						int ub = readData[firstMeasureByte + 4 + i] & 0xff;
-						int lb = readData[firstMeasureByte + 5 + i] & 0xff;
-						int num = lb + (ub << 8);
-						MedtronicSensorRecord record = new MedtronicSensorRecord();
-						record.isCalibrating = isCalibrating;
-						isig = calculateISIG(num, adjustement);
-						record.setIsig(isig);
-						if (i == 0) {
-							currentMeasure = num;
-							calibratingCurrentElement(difference, isig,
-									readData, firstMeasureByte + 3, record,
-									num, d);
-						} else {
-							calibratingBackwards(previousCalibrationFactor,
-									previousCalibrationStatus, isig, record,
-									added, d);
-						}
-						added--;
-						lastRecordsInMemory.add(record);
-						calculateTrendAndArrow(record, lastRecordsInMemory);
-
-					}
-				} else {
-
-					int ub = readData[firstMeasureByte + 4] & 0xff;
-					int lb = readData[firstMeasureByte + 5] & 0xff;
-					int num = lb + (ub << 8);
-
-					MedtronicSensorRecord record = new MedtronicSensorRecord();
-					isig = calculateISIG(num, adjustement);
-					record.setIsig(isig);
-					record.isCalibrating = isCalibrating;
-					currentMeasure = num;
-					calibratingCurrentElement(difference, isig, readData,
-							firstMeasureByte + 3, record, num, d);
-					lastRecordsInMemory.add(record);
-					calculateTrendAndArrow(record, lastRecordsInMemory);
-
-					lastElementsAdded++;
 				}
 			}
-			Log.i("Medtronic", "Fill next expected");
-			expectedSensorSortNumber = readData[firstMeasureByte + 3];
-		}
-		previousValue = currentMeasure;
-		// I must recalculate next message!!!!
-		synchronized (expectedSensorSortNumberLock) {
-			expectedSensorSortNumber = calculateNextSensorSortNameFrom(1,
-					expectedSensorSortNumber);
+
+			for (int i = dataLost; i >= 0; i -= 2) {
+				if (i >= 4 && i < 8) {
+					continue;
+				}
+				int ub = readData[firstMeasureByte + 4 + i] & 0xff;
+				int lb = readData[firstMeasureByte + 5 + i] & 0xff;
+				int num = lb + (ub << 8);
+				MedtronicSensorRecord record = new MedtronicSensorRecord();
+				record.isCalibrating = isCalibrating;
+				record.setIsig(calculateISIG(num, adjustement));
+				if (i == 0) {
+					calibratingCurrentElement(difference, record, num, d);
+				} else {
+					calibratingBackwards(previousCalibrationFactor,
+							previousCalibrationStatus, record,
+							backcountToBeAdded, d);
+				}
+				backcountToBeAdded--;
+				lastElementsAdded++;
+				lastRecordsInMemory.add(record);
+				previousRecord = record;
+				calculateTrendAndArrow(record, lastRecordsInMemory);
+
+				Log.v(TAG, "Read Record: backposition [" + (backcountToBeAdded + 1) + "] " + record.getBGValue() + " / " + dateFormat.format(record.getDate()));
+			}
 		}
 
+		// I must recalculate next message!!!!
+		expectedSensorSortNumber = readData[firstMeasureByte + 3];
+		expectedSensorSortNumber = calculateNextSensorSortNameFrom(1,
+				expectedSensorSortNumber);
+
+
 		SharedPreferences.Editor editor = settings.edit();
-		editor.putFloat("previousValue", previousValue);
-		editor.putString("expectedSensorSortNumber",
-				HexDump.toHexString(expectedSensorSortNumber));
+
 		editor.putInt("calibrationStatus", calibrationStatus);
 		lastSensorValueDate = d.getTime();
 		editor.putLong("lastSensorValueDate", lastSensorValueDate);
-		editor.commit();
-		log.debug("12");
-
-		Log.i("Medtronic", "BYE!!!!");
-		log.debug("sensorprocessed end expected "
-				+ HexDump.toHexString(expectedSensorSortNumber));
+		editor.apply();
+	 	writeLocalCSV(previousRecord, context);
 
 	}
 
@@ -1363,37 +984,6 @@ public class MedtronicReader {
 		return (seq == 0) ? 8 : seq;
 	}
 
-	/**
-	 * This function checks if the measure index is between a range of indexes
-	 * previously stored.
-	 * 
-	 * @param measureIndex
-	 *            , index to check
-	 * @param range
-	 *            ,
-	 * @return true if the measure index is between a range of indexes
-	 *         previously stored.
-	 */
-	private boolean isSensorMeasureInRange(byte measureIndex, byte[] range) {
-		byte minRange = range[0];
-		byte maxRange = range[1];
-		if (HexDump.unsignedByte(maxRange) < HexDump.unsignedByte(minRange)) {
-			return ((HexDump.unsignedByte(measureIndex) >= HexDump
-					.unsignedByte(minRange)) && (HexDump
-							.unsignedByte(measureIndex) <= HexDump
-							.unsignedByte((byte) 0x71)))
-							|| (HexDump.unsignedByte(measureIndex) <= HexDump
-							.unsignedByte(maxRange))
-							&& (HexDump.unsignedByte(measureIndex) >= HexDump
-							.unsignedByte((byte) 0x00));
-		} else {
-			return (HexDump.unsignedByte(measureIndex) >= HexDump
-					.unsignedByte(minRange))
-					&& (HexDump.unsignedByte(measureIndex) <= HexDump
-					.unsignedByte(maxRange));
-		}
-	}
-
 
 	/**
 	 * This method calculates the date of the sensor readings
@@ -1406,7 +996,7 @@ public class MedtronicReader {
 	 *            , index of this reading respectively the initTime reading.
 	 *            Each increment subtracts 5 minutes to "initTime"
 	 */
-	public void calculateDate(Record record, Date initTime, int subtract) {
+	public void setRecordDateHistoric(Record record, Date initTime, int subtract) {
 
 		long milliseconds = initTime.getTime();
 
@@ -1428,99 +1018,46 @@ public class MedtronicReader {
 		 * if (!tz.inDaylightTime(new Date())) timeAdd = timeAdd - 3600000L;
 		 */
 		Date display = new Date(timeAdd);
-		record.displayTime = new SimpleDateFormat("MM/dd/yyy hh:mm:ss aa",
-				Locale.getDefault()).format(display);
+
 		if (record instanceof MedtronicSensorRecord) {
-			((MedtronicSensorRecord) record).displayDateTime = display
-					.getTime();
+			((MedtronicSensorRecord) record).setDate(display);
 		}
 	}
 
 	/**
-	 * This method checks if a calibration is valid.
+	 * This method checks if it is time to use the current sensor as the calibration value.
 	 * 
 	 * @param difference
 	 * @param currentMeasure
-	 * @param currentIndex
 	 */
-	private void calculateCalibration(long difference, float currentMeasure,
-			byte currentIndex) {
+	private void calculateCalibration(long difference, float currentMeasure) {
+		SharedPreferences.Editor editor = settings.edit();
+
 		if (difference >= MedtronicConstants.TIME_15_MIN_IN_MS
-				&& difference < MedtronicConstants.TIME_20_MIN_IN_MS) {
-			if (isSensorMeasureInRange(currentIndex,
-					expectedSensorSortNumberForCalibration)) {
-				isCalibrating = false;
-				calibrationStatus = MedtronicConstants.CALIBRATED;
-				calibrationIsigValue = currentMeasure;
-				SharedPreferences.Editor editor = settings.edit();
-				calibrationFactor = lastGlucometerValue / calibrationIsigValue;
-				editor.remove("expectedSensorSortNumberForCalibration0");
-				editor.remove("expectedSensorSortNumberForCalibration1");
-				editor.putFloat("calibrationFactor", calibrationFactor);
-				editor.putInt("calibrationStatus",
-						calibrationStatus);
-				editor.commit();
-			} else {
-				if (calibrationStatus != MedtronicConstants.WITHOUT_ANY_CALIBRATION
-						&& currentIndex != expectedSensorSortNumber) {
-					calibrationStatus = MedtronicConstants.LAST_CALIBRATION_FAILED_USING_PREVIOUS;
-					isCalibrating = false;
-				} else {
-					calibrationStatus = MedtronicConstants.WITHOUT_ANY_CALIBRATION;
-				}
-				SharedPreferences.Editor editor = settings.edit();
-				editor.remove("expectedSensorSortNumberForCalibration0");
-				editor.remove("expectedSensorSortNumberForCalibration1");
-				editor.commit();
-			}
-		} else if (difference >= MedtronicConstants.TIME_20_MIN_IN_MS) {
-			if (isSensorMeasureInRange(currentIndex,
-					expectedSensorSortNumberForCalibration)) {
-				calibrationStatus = MedtronicConstants.CALIBRATED_IN_15MIN;
-				calibrationIsigValue = currentMeasure;
-				SharedPreferences.Editor editor = settings.edit();
-				calibrationFactor = lastGlucometerValue / calibrationIsigValue;
-				editor.remove("expectedSensorSortNumberForCalibration0");
-				editor.remove("expectedSensorSortNumberForCalibration1");
-				editor.putFloat("calibrationFactor", calibrationFactor);
-				editor.putInt("calibrationStatus",
-						calibrationStatus);
-				editor.commit();
-			} else {
-				if (calibrationStatus != MedtronicConstants.WITHOUT_ANY_CALIBRATION)
-					calibrationStatus = MedtronicConstants.LAST_CALIBRATION_FAILED_USING_PREVIOUS;
-				else {
-					calibrationStatus = MedtronicConstants.WITHOUT_ANY_CALIBRATION;
-				}
-				SharedPreferences.Editor editor = settings.edit();
-				editor.remove("expectedSensorSortNumberForCalibration0");
-				editor.remove("expectedSensorSortNumberForCalibration1");
-				editor.commit();
-			}
+				&& difference < MedtronicConstants.TIME_30_MIN_IN_MS) {
 			isCalibrating = false;
-		} else {
-			if (isCalibrating){
-				if (difference < MedtronicConstants.TIME_5_MIN_IN_MS) {
-					calibrationStatus = MedtronicConstants.CALIBRATING;
-				} else if (difference >= MedtronicConstants.TIME_5_MIN_IN_MS
-						&& difference <= MedtronicConstants.TIME_15_MIN_IN_MS)
-					calibrationStatus = MedtronicConstants.CALIBRATING2;
-				else
-					calibrationStatus = MedtronicConstants.CALIBRATING;
-			}else{
-				if (calibrationStatus != MedtronicConstants.WITHOUT_ANY_CALIBRATION)
-					calibrationStatus = MedtronicConstants.LAST_CALIBRATION_FAILED_USING_PREVIOUS;
-				else {
-					calibrationStatus = MedtronicConstants.WITHOUT_ANY_CALIBRATION;
-				}
-				SharedPreferences.Editor editor = settings.edit();
-				editor.remove("expectedSensorSortNumberForCalibration0");
-				editor.remove("expectedSensorSortNumberForCalibration1");
-				editor.putInt("calibrationStatus",
-						calibrationStatus);
-				editor.commit();
-			}
+			calibrationStatus = MedtronicConstants.CALIBRATED;
+			calibrationIsigValue = currentMeasure;
+			calibrationFactor = lastGlucometerValue / calibrationIsigValue;
+			editor.putFloat("calibrationFactor", calibrationFactor);
+
 		}
+		else if (difference >= MedtronicConstants.TIME_30_MIN_IN_MS) {
+			if (calibrationStatus != MedtronicConstants.WITHOUT_ANY_CALIBRATION)
+				calibrationStatus = MedtronicConstants.LAST_CALIBRATION_FAILED_USING_PREVIOUS;
+			else
+				calibrationStatus = MedtronicConstants.WITHOUT_ANY_CALIBRATION;
+			isCalibrating = false;
+		}
+		else if (difference <= MedtronicConstants.TIME_5_MIN_IN_MS){
+			calibrationStatus = MedtronicConstants.CALIBRATING;
+		}
+		else {
+			calibrationStatus = MedtronicConstants.CALIBRATING2;
+		}
+
+		editor.putInt("calibrationStatus", calibrationStatus);
+		editor.apply();
 	}
 
 	/**
@@ -1534,16 +1071,9 @@ public class MedtronicReader {
 	 */
 	public Float getGlucoseDifferentialIn(int size, CircleList<Record> list) {
 		List<Record> auxList = list.getListFromTail(size);
-		SimpleDateFormat formatter = new SimpleDateFormat(
-				"MM/dd/yyyy hh:mm:ss a", Locale.getDefault());
 		if (auxList.size() == size) {
 			Log.d(TAG, "I Have the correct size");
-			for (int i = 1; i < size; i++) {
-				if (!(auxList.get(i) instanceof MedtronicSensorRecord)) {
-					Log.d(TAG, "but not the correct records");
-					return null;
-				}
-			}
+
 			float diff = 0;
 			long dateDif = 0;
 			for (int i = 1; i < size; i++) {
@@ -1552,29 +1082,17 @@ public class MedtronicReader {
 						.get(i - 1);
 				MedtronicSensorRecord record = (MedtronicSensorRecord) auxList
 						.get(i);
-				Date prevDate = null;
-				Date date = null;
-				try {
-					prevDate = formatter.parse(prevRecord.displayTime);
-					date = formatter.parse(record.displayTime);
-					dateDif += (prevDate.getTime() - date.getTime());
-					Log.d(TAG, "DATE_diff " + dateDif);
-				} catch (ParseException e1) {
-					Log.e(TAG, "Bad current or previous value for date", e1);
-				}
+
+				Date prevDate = prevRecord.getDate();
+				Date date = record.getDate();
+				dateDif += (prevDate.getTime() - date.getTime());
 
 				float prevRecordValue = 0;
 				float recordValue = 0;
-				try {
-					prevRecordValue = Float.parseFloat(prevRecord.bGValue);
-				} catch (Exception e) {
-					Log.e(TAG, "Bad previous bGValue: " + prevRecord.bGValue, e);
-				}
-				try {
-					recordValue = Float.parseFloat(record.bGValue);
-				} catch (Exception e) {
-					Log.e(TAG, "Bad current bGValue: " + record.bGValue, e);
-				}
+
+				prevRecordValue = prevRecord.getBGValue();
+				recordValue = record.getBGValue();
+
 
 				if (prevRecordValue > 0 && recordValue <= 0) {
 					Log.d(TAG, "AdjustRecordValue prev " + prevRecordValue
@@ -1732,7 +1250,6 @@ public class MedtronicReader {
      * @param valuetosend
      */
 	private void sendErrorMessageToUI(String valuetosend) {
-		DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss - ");
 		//get current date time with Date()
 		Date date = new Date();
 		valuetosend = dateFormat.format(date) + valuetosend;
@@ -1827,8 +1344,7 @@ public class MedtronicReader {
 			synchronized (listLock) {
 				auxEndOffset = endOffset;
 				auxStartOffset = startOffset;
-				aux = new ArrayList<E>();
-				aux.addAll(list);
+				aux = new ArrayList<E>(list);
 
 			}
 			int auxSize = size;
@@ -1888,5 +1404,28 @@ public class MedtronicReader {
 					MedtronicConstants.TIME_5_MIN_IN_MS);
 		}
 	}
+
+
+	private void writeLocalCSV(MedtronicSensorRecord mostRecentData,
+                       Context context) {
+
+               // Write EGV Binary of last (most recent) data
+               try {
+                       if (mostRecentData == null || mostRecentData.getBGValue() == 0)
+                               Log.d(TAG, "writeLocalCSV SAVING  EMPTY!!");
+                       else
+                               Log.d(TAG, "writeLocalCSV SAVING --> " + mostRecentData.getBGValue());
+                       ObjectOutputStream oos = new ObjectOutputStream(
+					                                       new FileOutputStream(new File(context.getFilesDir(),
+					                                                       "save.bin"))); // Select where you wish to save the
+                       // file...
+                       oos.writeObject(mostRecentData); // write the class as an 'object'
+                       oos.flush(); // flush the stream to insure all of the information
+                       // was written to 'save.bin'
+                       oos.close();// close the stream
+               } catch (Exception e) {
+                       Log.e(TAG, "write to OutputStream failed", e);
+               }
+       }
 
 }

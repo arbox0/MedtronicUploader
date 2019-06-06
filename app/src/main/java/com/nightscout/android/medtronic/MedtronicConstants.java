@@ -19,9 +19,9 @@ public class MedtronicConstants {
     public static final int TIME_12_HOURS_IN_MS = 43200000;
     public static final String PREFS_NAME = "MyPrefsFile";
     public static final float SENSOR_CONVERSION_CONSTANT_VALUE = 160.72f;
-    public static final float SENSOR_CONVERSION_CONSTANT_VALUE2 = Float.valueOf("5.8E-4").floatValue();
-    public static final float SENSOR_CONVERSION_CONSTANT_VALUE3 = Float.valueOf("6.25E-6").floatValue();
-    public static final float SENSOR_CONVERSION_CONSTANT_VALUE4 = Float.valueOf("1.5E-6").floatValue();
+    public static final float SENSOR_CONVERSION_CONSTANT_VALUE2 = Float.valueOf("5.8E-4");
+    public static final float SENSOR_CONVERSION_CONSTANT_VALUE3 = Float.valueOf("6.25E-6");
+    public static final float SENSOR_CONVERSION_CONSTANT_VALUE4 = Float.valueOf("1.5E-6");
     public static final int SENSOR_CONVERSION_CONSTANT_VALUE5 = 65536;
 
     
@@ -44,9 +44,8 @@ public class MedtronicConstants {
     public static final String	CALIBRATED_STR = "Calibrated";
     public static final String	CALIBRATION_MORE_THAN_12H_OLD_STR = "Last Calibration > 12H";
     public static final String	LAST_CALIBRATION_FAILED_USING_PREVIOUS_STR = "Using Prev. Calibration";
-    public static final String	CALIBRATED_IN_15MIN_STR = "Calibrated between 15min. and 20min.";
     public static final String	CALIBRATING_STR = "Calibrating, wait 15 to 20min.";
-    public static final String	CALIBRATING2_STR = "Calibrating, 2 values received wait 5min. more";
+    public static final String	CALIBRATING2_STR = "Calibrating, 2 values received wait 5-10min. more";
 
     public static final byte MEDTRONIC_GET_PUMP_MODEL = (byte)0x8d;
 	public static final byte MEDTRONIC_GET_ALARM_MODE = (byte)0x75;
@@ -71,18 +70,13 @@ public class MedtronicConstants {
 	public static final int MSG_REGISTER_CLIENT = 0; 
 	public static final int MSG_UNREGISTER_CLIENT = 1;
 	public static final int MSG_MEDTRONIC_CGM_MESSAGE_RECEIVED = 2;
-    public static final int MSG_MEDTRONIC_CGM_CLEAR_DISPLAY = 4;
 	public static final int MSG_MEDTRONIC_CGM_NO_PERMISSION = 5;
 	public static final int MSG_MEDTRONIC_CGM_USB_GRANTED = 6;
 	public static final int MSG_MEDTRONIC_CGM_REQUEST_PERMISSION = 7;
 	public static final int MSG_MEDTRONIC_CGM_ERROR_RECEIVED = 8;
 	public static final int MSG_MEDTRONIC_SEND_MANUAL_CALIB_VALUE = 9;
-	public static final int MSG_MEDTRONIC_SEND_GET_SENSORCAL_FACTOR = 10;
-	public static final int MSG_MEDTRONIC_SEND_GET_PUMP_INFO = 11;
 	public static final int MSG_MEDTRONIC_SEND_INSTANT_CALIB_VALUE = 12;
     public static final int MSG_MEDTRONIC_CALIBRATION_DONE = 14;
-	public static final int MSG_MEDTRONIC_GLUCMEASURE_DETECTED = 15;
-	public static final int MSG_MEDTRONIC_GLUCMEASURE_APPROVED = 16;
 	public static final int MSG_MEDTRONIC_FAKE = 17;
 
 
@@ -93,8 +87,6 @@ public class MedtronicConstants {
 			return CALIBRATED_STR;
 		case LAST_CALIBRATION_FAILED_USING_PREVIOUS:
 			return LAST_CALIBRATION_FAILED_USING_PREVIOUS_STR;
-		case CALIBRATED_IN_15MIN:
-			return CALIBRATED_IN_15MIN_STR;
 		case CALIBRATION_MORE_THAN_12H_OLD:
 			return CALIBRATION_MORE_THAN_12H_OLD_STR;
 		case CALIBRATING:
